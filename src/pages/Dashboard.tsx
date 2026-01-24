@@ -149,7 +149,7 @@ export default function Dashboard() {
       <header className="border-b border-border bg-card">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link to="/" className="text-xl font-bold gradient-text">
-            feds.lol
+            UserVault
           </Link>
           <div className="flex items-center gap-3">
             <Button asChild variant="outline" size="sm">
@@ -191,7 +191,7 @@ export default function Dashboard() {
               className="text-primary hover:underline"
               target="_blank"
             >
-              feds.lol/{profile.username}
+              uservault.app/{profile.username}
             </Link>
           </p>
 

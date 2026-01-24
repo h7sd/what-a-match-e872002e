@@ -33,14 +33,14 @@ export default function Index() {
   return (
     <div className="min-h-screen animated-bg relative overflow-hidden">
       {/* Gradient orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/20 rounded-full blur-3xl" />
 
       <div className="relative z-10">
         {/* Header */}
         <header className="p-6 flex justify-between items-center max-w-6xl mx-auto">
           <Link to="/" className="text-xl font-bold gradient-text">
-            feds.lol
+            UserVault
           </Link>
           <div className="flex gap-3">
             {user ? (
@@ -71,7 +71,7 @@ export default function Index() {
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
               <span className="gradient-text">One link</span>
               <br />
-              <span className="text-white">for everything</span>
+              <span className="text-foreground">for everything</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               Create your personalized bio page with stunning effects, social links,
@@ -108,7 +108,7 @@ export default function Index() {
                 <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
                   <feature.icon className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
+                <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
                 <p className="text-sm text-muted-foreground">{feature.description}</p>
               </motion.div>
             ))}
@@ -123,7 +123,7 @@ export default function Index() {
           >
             <p className="text-muted-foreground mb-4">Trusted by thousands of creators</p>
             <div className="flex justify-center gap-4 flex-wrap">
-              {['yourname.feds.lol', 'artist.feds.lol', 'gamer.feds.lol'].map((url) => (
+              {['yourname.uservault.app', 'artist.uservault.app', 'gamer.uservault.app'].map((url) => (
                 <span
                   key={url}
                   className="px-4 py-2 glass rounded-full text-sm text-muted-foreground"
@@ -135,10 +135,9 @@ export default function Index() {
           </motion.div>
         </main>
 
-        {/* Footer */}
         <footer className="max-w-6xl mx-auto px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            © 2024 feds.lol clone. Built with Lovable.
+            © 2024 UserVault. Built with Lovable.
           </p>
         </footer>
       </div>
