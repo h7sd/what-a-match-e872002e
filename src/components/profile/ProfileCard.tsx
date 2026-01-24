@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useRef } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Music } from 'lucide-react';
+import { Eye, MapPin, Briefcase } from 'lucide-react';
 import type { Profile } from '@/hooks/useProfile';
 import { TypewriterText } from './TypewriterText';
 import { SparkleEffect } from './SparkleEffect';
@@ -39,6 +39,14 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
   };
 
   const accentColor = profile.accent_color || '#8b5cf6';
+  const avatarShape = (profile as any).avatar_shape || 'circle';
+
+  const avatarClasses = {
+    circle: 'rounded-full',
+    square: 'rounded-none',
+    soft: 'rounded-lg',
+    rounded: 'rounded-2xl',
+  };
 
   return (
     <motion.div
@@ -52,56 +60,103 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
         transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
         transition: 'transform 0.1s ease-out',
       }}
-      className="relative"
+      className="relative w-full max-w-sm mx-auto"
     >
-      {/* Glow effect behind card */}
-      {profile.effects_config?.glow && (
-        <div
-          className="absolute -inset-4 rounded-3xl blur-xl opacity-30"
-          style={{ backgroundColor: accentColor }}
-        />
-      )}
+      {/* Animated glow effect behind card */}
+      <motion.div
+        className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
+        style={{
+          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
+        }}
+        animate={{
+          opacity: [0.4, 0.6, 0.4],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
 
       <div
-        className="glass-card p-8 relative overflow-hidden"
+        className="relative rounded-2xl p-8 backdrop-blur-xl border overflow-hidden"
         style={{
-          backgroundColor: profile.card_color || 'rgba(0,0,0,0.5)',
+          backgroundColor: profile.card_color || 'rgba(0,0,0,0.6)',
+          borderColor: `${accentColor}30`,
         }}
       >
         {/* Sparkle effects */}
         {profile.effects_config?.sparkles && <SparkleEffect />}
 
+        {/* Corner sparkle decorations */}
+        <motion.div
+          className="absolute top-4 right-4 text-lg"
+          animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{ color: accentColor }}
+        >
+          ✦
+        </motion.div>
+        <motion.div
+          className="absolute bottom-4 right-4 text-lg"
+          animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+          style={{ color: accentColor }}
+        >
+          ✦
+        </motion.div>
+
         {/* Gradient border glow */}
         <div
-          className="absolute inset-0 rounded-xl opacity-50"
+          className="absolute inset-0 rounded-2xl opacity-30"
           style={{
-            background: `linear-gradient(135deg, ${accentColor}20, transparent, ${accentColor}10)`,
+            background: `linear-gradient(135deg, ${accentColor}30, transparent 50%, ${accentColor}20)`,
           }}
         />
 
         <div className="relative z-10 flex flex-col items-center text-center">
-          {/* Avatar */}
+          {/* Avatar with glow */}
           <motion.div
             whileHover={{ scale: 1.05 }}
             className="relative mb-6"
           >
-            <div
-              className="absolute -inset-1 rounded-full blur-md opacity-60"
+            <motion.div
+              className="absolute -inset-2 blur-lg opacity-60"
               style={{ backgroundColor: accentColor }}
+              animate={{
+                opacity: [0.4, 0.7, 0.4],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
             />
-            <Avatar className="w-28 h-28 ring-2 ring-white/20 relative">
+            <Avatar 
+              className={`w-28 h-28 ring-2 ring-white/20 relative ${avatarClasses[avatarShape as keyof typeof avatarClasses] || 'rounded-full'}`}
+            >
               <AvatarImage
                 src={profile.avatar_url || undefined}
                 alt={profile.display_name || profile.username}
+                className="object-cover"
               />
-              <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-500 to-pink-500 text-white">
+              <AvatarFallback 
+                className="text-3xl text-foreground"
+                style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80)` }}
+              >
                 {(profile.display_name || profile.username).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </motion.div>
 
           {/* Display Name */}
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1 
+            className="text-2xl font-bold mb-1"
+            style={{ 
+              fontFamily: (profile as any).name_font || 'Inter',
+              color: 'white',
+            }}
+          >
             {profile.effects_config?.typewriter ? (
               <TypewriterText text={profile.display_name || profile.username} />
             ) : (
@@ -130,23 +185,48 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
 
           {/* Bio */}
           {profile.bio && (
-            <p className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-4">
+            <p 
+              className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-4"
+              style={{ fontFamily: (profile as any).text_font || 'Inter' }}
+            >
               {profile.bio}
             </p>
           )}
 
-          {/* Stats */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Eye className="w-3.5 h-3.5" />
-              <span>{profile.views_count.toLocaleString()} views</span>
-            </div>
-            {profile.music_url && (
+          {/* Location & Occupation */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mb-4">
+            {(profile as any).occupation && (
               <div className="flex items-center gap-1">
-                <Music className="w-3.5 h-3.5" style={{ color: accentColor }} />
-                <span>Playing music</span>
+                <Briefcase className="w-3 h-3" />
+                <span>{(profile as any).occupation}</span>
               </div>
             )}
+            {(profile as any).location && (
+              <div className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                <span>{(profile as any).location}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Eye className="w-3.5 h-3.5" />
+            <motion.span
+              key={profile.views_count}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {profile.views_count.toLocaleString()} views
+            </motion.span>
+            <motion.span
+              className="ml-1"
+              animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              style={{ color: accentColor }}
+            >
+              ✦
+            </motion.span>
           </div>
         </div>
       </div>

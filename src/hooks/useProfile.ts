@@ -32,6 +32,8 @@ export interface SocialLink {
   url: string;
   title: string | null;
   icon: string | null;
+  description: string | null;
+  style: string | null;
   display_order: number;
   is_visible: boolean;
   created_at: string;

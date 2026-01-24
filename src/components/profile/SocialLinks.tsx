@@ -11,6 +11,16 @@ import {
   SiGithub,
   SiSteam,
   SiSoundcloud,
+  SiTelegram,
+  SiPaypal,
+  SiPatreon,
+  SiKofi,
+  SiSnapchat,
+  SiLinkedin,
+  SiReddit,
+  SiPinterest,
+  SiFacebook,
+  SiKick,
 } from 'react-icons/si';
 import type { SocialLink } from '@/hooks/useProfile';
 
@@ -26,12 +36,22 @@ const platformIcons: Record<string, React.ComponentType<{ className?: string }>>
   github: SiGithub,
   steam: SiSteam,
   soundcloud: SiSoundcloud,
+  telegram: SiTelegram,
+  paypal: SiPaypal,
+  patreon: SiPatreon,
+  kofi: SiKofi,
+  snapchat: SiSnapchat,
+  linkedin: SiLinkedin,
+  reddit: SiReddit,
+  pinterest: SiPinterest,
+  facebook: SiFacebook,
+  kick: SiKick,
 };
 
 const platformColors: Record<string, string> = {
   discord: '#5865F2',
   spotify: '#1DB954',
-  twitter: '#1DA1F2',
+  twitter: '#000000',
   x: '#000000',
   instagram: '#E4405F',
   tiktok: '#000000',
@@ -40,27 +60,64 @@ const platformColors: Record<string, string> = {
   github: '#ffffff',
   steam: '#00ADEE',
   soundcloud: '#FF5500',
+  telegram: '#0088cc',
+  paypal: '#00457C',
+  patreon: '#FF424D',
+  kofi: '#FF5E5B',
+  snapchat: '#FFFC00',
+  linkedin: '#0A66C2',
+  reddit: '#FF4500',
+  pinterest: '#BD081C',
+  facebook: '#1877F2',
+  kick: '#53FC18',
 };
+
+// Auto-detect platform from URL
+function detectPlatform(url: string): string {
+  const urlLower = url.toLowerCase();
+  if (urlLower.includes('discord.gg') || urlLower.includes('discord.com')) return 'discord';
+  if (urlLower.includes('spotify.com')) return 'spotify';
+  if (urlLower.includes('twitter.com') || urlLower.includes('x.com')) return 'x';
+  if (urlLower.includes('instagram.com')) return 'instagram';
+  if (urlLower.includes('tiktok.com')) return 'tiktok';
+  if (urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) return 'youtube';
+  if (urlLower.includes('twitch.tv')) return 'twitch';
+  if (urlLower.includes('github.com')) return 'github';
+  if (urlLower.includes('steamcommunity.com')) return 'steam';
+  if (urlLower.includes('soundcloud.com')) return 'soundcloud';
+  if (urlLower.includes('t.me') || urlLower.includes('telegram')) return 'telegram';
+  if (urlLower.includes('paypal.me') || urlLower.includes('paypal.com')) return 'paypal';
+  if (urlLower.includes('patreon.com')) return 'patreon';
+  if (urlLower.includes('ko-fi.com')) return 'kofi';
+  if (urlLower.includes('snapchat.com')) return 'snapchat';
+  if (urlLower.includes('linkedin.com')) return 'linkedin';
+  if (urlLower.includes('reddit.com')) return 'reddit';
+  if (urlLower.includes('pinterest.com')) return 'pinterest';
+  if (urlLower.includes('facebook.com')) return 'facebook';
+  if (urlLower.includes('kick.com')) return 'kick';
+  return 'link';
+}
 
 interface SocialLinksProps {
   links: SocialLink[];
   accentColor?: string;
+  glowingIcons?: boolean;
 }
 
-export function SocialLinks({ links, accentColor = '#8b5cf6' }: SocialLinksProps) {
+export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = true }: SocialLinksProps) {
   const container = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
+        staggerChildren: 0.08,
       },
     },
   };
 
   const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 },
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    show: { opacity: 1, y: 0, scale: 1 },
   };
 
   return (
@@ -71,8 +128,10 @@ export function SocialLinks({ links, accentColor = '#8b5cf6' }: SocialLinksProps
       className="w-full max-w-sm space-y-3"
     >
       {links.map((link) => {
-        const Icon = platformIcons[link.platform.toLowerCase()] || Link2;
-        const color = platformColors[link.platform.toLowerCase()] || accentColor;
+        const detectedPlatform = detectPlatform(link.url);
+        const platform = link.platform.toLowerCase() || detectedPlatform;
+        const Icon = platformIcons[platform] || Link2;
+        const color = platformColors[platform] || accentColor;
 
         return (
           <motion.a
@@ -83,23 +142,29 @@ export function SocialLinks({ links, accentColor = '#8b5cf6' }: SocialLinksProps
             variants={item}
             whileHover={{ scale: 1.02, x: 4 }}
             whileTap={{ scale: 0.98 }}
-            className="glass-card-hover flex items-center gap-4 p-4 group"
+            className="flex items-center gap-4 p-4 rounded-xl backdrop-blur-xl bg-black/40 border border-white/10 transition-all duration-300 hover:bg-black/50 hover:border-white/20 group"
+            style={{
+              boxShadow: glowingIcons ? `0 0 20px ${color}20` : undefined,
+            }}
           >
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: `${color}20` }}
+              className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300"
+              style={{
+                backgroundColor: `${color}20`,
+                boxShadow: glowingIcons ? `0 0 15px ${color}40` : undefined,
+              }}
             >
               <Icon
-                className="w-5 h-5 transition-colors"
+                className="w-6 h-6 transition-all duration-300"
                 style={{ color }}
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-white truncate">
-                {link.title || link.platform}
+              <p className="font-medium text-foreground truncate">
+                {link.title || link.platform || detectedPlatform}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                {link.url.replace(/^https?:\/\//, '')}
+                {link.description || link.url.replace(/^https?:\/\//, '')}
               </p>
             </div>
             <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -7,6 +7,8 @@ import { ProfileCard } from '@/components/profile/ProfileCard';
 import { SocialLinks } from '@/components/profile/SocialLinks';
 import { BackgroundEffects } from '@/components/profile/BackgroundEffects';
 import { MusicPlayer } from '@/components/profile/MusicPlayer';
+import { CustomCursor } from '@/components/profile/CustomCursor';
+import { DiscordPresence } from '@/components/profile/DiscordPresence';
 
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
@@ -52,12 +54,21 @@ export default function UserProfile() {
     );
   }
 
+  const showCursorTrail = profile.effects_config?.sparkles;
+  const accentColor = profile.accent_color || '#8b5cf6';
+
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Custom cursor with trail */}
+      {showCursorTrail && (
+        <CustomCursor color={accentColor} showTrail={true} />
+      )}
+
       <BackgroundEffects
         backgroundUrl={profile.background_url}
+        backgroundVideoUrl={(profile as any).background_video_url}
         backgroundColor={profile.background_color}
-        accentColor={profile.accent_color}
+        accentColor={accentColor}
       />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 py-12">
@@ -65,16 +76,32 @@ export default function UserProfile() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-md space-y-6"
+          className="w-full max-w-md mx-auto space-y-6"
         >
           <ProfileCard profile={profile} badges={badges} />
 
+          {/* Discord Presence Widget */}
+          {(profile as any).discord_user_id && (
+            <DiscordPresence
+              username={(profile as any).discord_user_id}
+              status="online"
+              activityName="Visual Studio Code"
+              activityType="Playing"
+              activityDetails="Working on UserVault"
+              accentColor={accentColor}
+            />
+          )}
+
           {profile.music_url && (
-            <MusicPlayer url={profile.music_url} accentColor={profile.accent_color || undefined} />
+            <MusicPlayer url={profile.music_url} accentColor={accentColor} />
           )}
 
           {socialLinks.length > 0 && (
-            <SocialLinks links={socialLinks} accentColor={profile.accent_color || undefined} />
+            <SocialLinks 
+              links={socialLinks} 
+              accentColor={accentColor}
+              glowingIcons={profile.effects_config?.glow}
+            />
           )}
         </motion.div>
 

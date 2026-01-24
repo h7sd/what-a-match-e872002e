@@ -88,6 +88,59 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_presence: {
+        Row: {
+          activity_details: string | null
+          activity_large_image: string | null
+          activity_name: string | null
+          activity_state: string | null
+          activity_type: string | null
+          avatar: string | null
+          discord_user_id: string
+          id: string
+          profile_id: string
+          status: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          activity_details?: string | null
+          activity_large_image?: string | null
+          activity_name?: string | null
+          activity_state?: string | null
+          activity_type?: string | null
+          avatar?: string | null
+          discord_user_id: string
+          id?: string
+          profile_id: string
+          status?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          activity_details?: string | null
+          activity_large_image?: string | null
+          activity_name?: string | null
+          activity_state?: string | null
+          activity_type?: string | null
+          avatar?: string | null
+          discord_user_id?: string
+          id?: string
+          profile_id?: string
+          status?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_presence_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_views: {
         Row: {
           id: number
@@ -123,16 +176,25 @@ export type Database = {
       profiles: {
         Row: {
           accent_color: string | null
+          avatar_shape: string | null
           avatar_url: string | null
           background_color: string | null
           background_url: string | null
+          background_video_url: string | null
           bio: string | null
           card_color: string | null
+          card_style: string | null
           created_at: string
+          discord_user_id: string | null
           display_name: string | null
           effects_config: Json | null
           id: string
+          layout_style: string | null
+          location: string | null
           music_url: string | null
+          name_font: string | null
+          occupation: string | null
+          text_font: string | null
           updated_at: string
           user_id: string
           username: string
@@ -140,16 +202,25 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          avatar_shape?: string | null
           avatar_url?: string | null
           background_color?: string | null
           background_url?: string | null
+          background_video_url?: string | null
           bio?: string | null
           card_color?: string | null
+          card_style?: string | null
           created_at?: string
+          discord_user_id?: string | null
           display_name?: string | null
           effects_config?: Json | null
           id?: string
+          layout_style?: string | null
+          location?: string | null
           music_url?: string | null
+          name_font?: string | null
+          occupation?: string | null
+          text_font?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -157,16 +228,25 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          avatar_shape?: string | null
           avatar_url?: string | null
           background_color?: string | null
           background_url?: string | null
+          background_video_url?: string | null
           bio?: string | null
           card_color?: string | null
+          card_style?: string | null
           created_at?: string
+          discord_user_id?: string | null
           display_name?: string | null
           effects_config?: Json | null
           id?: string
+          layout_style?: string | null
+          location?: string | null
           music_url?: string | null
+          name_font?: string | null
+          occupation?: string | null
+          text_font?: string | null
           updated_at?: string
           user_id?: string
           username?: string
@@ -177,34 +257,40 @@ export type Database = {
       social_links: {
         Row: {
           created_at: string
+          description: string | null
           display_order: number | null
           icon: string | null
           id: string
           is_visible: boolean | null
           platform: string
           profile_id: string
+          style: string | null
           title: string | null
           url: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
           is_visible?: boolean | null
           platform: string
           profile_id: string
+          style?: string | null
           title?: string | null
           url: string
         }
         Update: {
           created_at?: string
+          description?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
           is_visible?: boolean | null
           platform?: string
           profile_id?: string
+          style?: string | null
           title?: string | null
           url?: string
         }
