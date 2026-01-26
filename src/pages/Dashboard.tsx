@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
-import { useCurrentUserProfile, useUpdateProfile, useSocialLinks, useCreateSocialLink, useDeleteSocialLink } from '@/hooks/useProfile';
+import { useCurrentUserProfile, useUpdateProfile, useSocialLinks, useCreateSocialLink, useDeleteSocialLink, useBadges } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +23,9 @@ import {
   Layout,
   Music,
   MessageSquare,
+  LayoutDashboard,
+  Puzzle,
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -32,16 +33,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { OverviewStats } from '@/components/dashboard/OverviewStats';
+import { BadgesCarousel } from '@/components/dashboard/BadgesCarousel';
+import { DiscordCard } from '@/components/dashboard/DiscordCard';
+import { GiveawaysSection } from '@/components/dashboard/GiveawaysSection';
+import { WalletOverview } from '@/components/dashboard/WalletOverview';
+import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
+import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
+import { cn } from '@/lib/utils';
+
+type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects';
+
+const navItems: { icon: React.ElementType; label: string; tab: TabType }[] = [
+  { icon: LayoutDashboard, label: 'Overview', tab: 'overview' },
+  { icon: User, label: 'Profile', tab: 'profile' },
+  { icon: Palette, label: 'Appearance', tab: 'appearance' },
+  { icon: LinkIcon, label: 'Links', tab: 'links' },
+  { icon: Puzzle, label: 'Widgets', tab: 'widgets' },
+  { icon: Sparkles, label: 'Effects', tab: 'effects' },
+];
 
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { data: profile, isLoading: profileLoading } = useCurrentUserProfile();
   const { data: socialLinks = [] } = useSocialLinks(profile?.id || '');
+  const { data: badges = [] } = useBadges(profile?.id || '');
   const updateProfile = useUpdateProfile();
   const createLink = useCreateSocialLink();
   const deleteLink = useDeleteSocialLink();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Get active tab from hash
+  const getActiveTab = (): TabType => {
+    const hash = location.hash.replace('#', '') as TabType;
+    return navItems.some(item => item.tab === hash) ? hash : 'overview';
+  };
+  const [activeTab, setActiveTab] = useState<TabType>(getActiveTab());
+
+  useEffect(() => {
+    setActiveTab(getActiveTab());
+  }, [location.hash]);
 
   // Profile state
   const [displayName, setDisplayName] = useState('');
@@ -49,7 +82,7 @@ export default function Dashboard() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarShape, setAvatarShape] = useState('circle');
   const [occupation, setOccupation] = useState('');
-  const [location, setLocation] = useState('');
+  const [location_, setLocation_] = useState('');
   
   // Appearance state
   const [backgroundUrl, setBackgroundUrl] = useState('');
@@ -91,7 +124,7 @@ export default function Dashboard() {
       setAvatarUrl(profile.avatar_url || '');
       setAvatarShape((profile as any).avatar_shape || 'circle');
       setOccupation((profile as any).occupation || '');
-      setLocation((profile as any).location || '');
+      setLocation_((profile as any).location || '');
       setBackgroundUrl(profile.background_url || '');
       setBackgroundVideoUrl((profile as any).background_video_url || '');
       setBackgroundColor(profile.background_color || '#0a0a0a');
@@ -119,9 +152,18 @@ export default function Dashboard() {
         bio,
         avatar_url: avatarUrl || null,
         background_url: backgroundUrl || null,
+        background_video_url: backgroundVideoUrl || null,
         background_color: backgroundColor,
         accent_color: accentColor,
+        avatar_shape: avatarShape,
+        occupation: occupation || null,
+        location: location_ || null,
+        name_font: nameFont,
+        text_font: textFont,
+        layout_style: layoutStyle,
+        card_style: cardStyle,
         music_url: musicUrl || null,
+        discord_user_id: discordUserId || null,
         effects_config: effects,
       } as any);
       toast({ title: 'Profile saved!' });
@@ -169,6 +211,11 @@ export default function Dashboard() {
     navigate('/');
   };
 
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    navigate(`/dashboard#${tab}`, { replace: true });
+  };
+
   if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -186,24 +233,86 @@ export default function Dashboard() {
   const layoutStyles = ['stacked', 'floating', 'compact'];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link to="/" className="text-xl font-bold gradient-text">
-            UserVault
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col fixed left-0 top-0">
+        {/* Logo */}
+        <div className="p-6 border-b border-border">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm">UV</span>
+            </div>
+            <span className="text-xl font-bold gradient-text">UserVault</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/${profile.username}`} target="_blank">
-                <Eye className="w-4 h-4 mr-2" />
-                View Profile
-              </Link>
-            </Button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.tab;
+            
+            return (
+              <button
+                key={item.tab}
+                onClick={() => handleTabChange(item.tab)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all text-left',
+                  isActive 
+                    ? 'bg-primary/10 text-primary border-l-2 border-primary' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                )}
+              >
+                <Icon className="w-5 h-5" />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Bottom section */}
+        <div className="p-4 border-t border-border space-y-2">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start gap-3" 
+            asChild
+          >
+            <Link to={`/${profile.username}`} target="_blank">
+              <Eye className="w-4 h-4" />
+              View Profile
+            </Link>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+            onClick={handleSignOut}
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 ml-64">
+        {/* Header */}
+        <header className="border-b border-border bg-card sticky top-0 z-50">
+          <div className="px-8 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              {navItems.find(item => item.tab === activeTab)?.icon && (
+                <span className="text-primary">
+                  {(() => {
+                    const Icon = navItems.find(item => item.tab === activeTab)?.icon;
+                    return Icon ? <Icon className="w-5 h-5" /> : null;
+                  })()}
+                </span>
+              )}
+              <h1 className="text-xl font-semibold capitalize">{activeTab}</h1>
+            </div>
             <Button
               onClick={handleSave}
               disabled={updateProfile.isPending}
-              size="sm"
               className="bg-gradient-to-r from-purple-600 to-purple-500"
             >
               {updateProfile.isPending ? (
@@ -211,129 +320,193 @@ export default function Dashboard() {
               ) : (
                 <Save className="w-4 h-4 mr-2" />
               )}
-              Save
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4" />
+              Save Changes
             </Button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Navigation Tabs */}
-      <div className="border-b border-border bg-card/50">
-        <div className="max-w-6xl mx-auto px-6">
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="h-12 bg-transparent border-0 gap-6">
-              <TabsTrigger value="profile" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0">
-                Profile
-              </TabsTrigger>
-              <TabsTrigger value="appearance" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0">
-                Appearance
-              </TabsTrigger>
-              <TabsTrigger value="links" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0">
-                Links
-              </TabsTrigger>
-              <TabsTrigger value="widgets" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0">
-                Widgets
-              </TabsTrigger>
-              <TabsTrigger value="effects" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent px-0">
-                Effects
-              </TabsTrigger>
-            </TabsList>
+        {/* Content */}
+        <div className="p-8">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <OverviewStats
+                  profileViews={profile.views_count || 0}
+                  userId={profile.id}
+                  username={profile.username}
+                />
 
-            {/* Main Content */}
-            <main className="py-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <p className="text-muted-foreground mb-8">
-                  Customize your profile at{' '}
-                  <Link
-                    to={`/${profile.username}`}
-                    className="text-primary hover:underline"
-                    target="_blank"
-                  >
-                    uservault.app/{profile.username}
-                  </Link>
-                </p>
+                <div className="grid lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <BadgesCarousel badges={badges} totalBadges={10} />
+                  </div>
+                  <div>
+                    <DiscordCard isConnected={!!discordUserId} />
+                  </div>
+                </div>
 
-                {/* Profile Tab */}
-                <TabsContent value="profile" className="space-y-6 mt-0">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Avatar Section */}
-                    <div className="glass-card p-6 space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <User className="w-5 h-5 text-primary" />
-                        <h3 className="font-semibold">Avatar</h3>
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <GiveawaysSection />
+                  <WalletOverview />
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <ProfileVisitorsChart totalVisitors={profile.views_count || 0} />
+                  <TopLinksChart 
+                    links={socialLinks.slice(0, 5).map((link, i) => ({
+                      name: link.title || link.platform,
+                      clicks: Math.floor(Math.random() * 100) + 10,
+                      color: ['#3B82F6', '#22C55E', '#EAB308', '#8B5CF6', '#EC4899'][i],
+                      url: link.url,
+                    }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Profile Tab */}
+            {activeTab === 'profile' && (
+              <div className="space-y-6 max-w-4xl">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Avatar Section */}
+                  <div className="glass-card p-6 space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <User className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold">Avatar</h3>
+                    </div>
+                    
+                    <div className="flex items-start gap-4">
+                      <div className="w-20 h-20 rounded-xl bg-secondary overflow-hidden">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl text-muted-foreground">
+                            {displayName.charAt(0) || '?'}
+                          </div>
+                        )}
                       </div>
-                      
-                      <div className="flex items-start gap-4">
-                        <div className="w-20 h-20 rounded-xl bg-secondary overflow-hidden">
-                          {avatarUrl ? (
-                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-2xl text-muted-foreground">
-                              {displayName.charAt(0) || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 space-y-3">
-                          <Input
-                            value={avatarUrl}
-                            onChange={(e) => setAvatarUrl(e.target.value)}
-                            placeholder="Avatar URL"
-                            className="bg-secondary/50"
-                          />
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Avatar Shape</Label>
-                            <div className="flex gap-2 mt-2">
-                              {['square', 'soft', 'rounded', 'circle'].map((shape) => (
-                                <Button
-                                  key={shape}
-                                  variant={avatarShape === shape ? 'default' : 'outline'}
-                                  size="sm"
-                                  onClick={() => setAvatarShape(shape)}
-                                  className="capitalize"
-                                >
-                                  {shape}
-                                </Button>
-                              ))}
-                            </div>
+                      <div className="flex-1 space-y-3">
+                        <Input
+                          value={avatarUrl}
+                          onChange={(e) => setAvatarUrl(e.target.value)}
+                          placeholder="Avatar URL"
+                          className="bg-secondary/50"
+                        />
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Avatar Shape</Label>
+                          <div className="flex gap-2 mt-2">
+                            {['square', 'soft', 'rounded', 'circle'].map((shape) => (
+                              <Button
+                                key={shape}
+                                variant={avatarShape === shape ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setAvatarShape(shape)}
+                                className="capitalize"
+                              >
+                                {shape}
+                              </Button>
+                            ))}
                           </div>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Basic Info */}
-                    <div className="glass-card p-6 space-y-4">
+                  {/* Basic Info */}
+                  <div className="glass-card p-6 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Display Name</Label>
+                      <Input
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Your display name"
+                        className="bg-secondary/50"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Display Name</Label>
+                        <Label>Occupation</Label>
                         <Input
-                          value={displayName}
-                          onChange={(e) => setDisplayName(e.target.value)}
-                          placeholder="Your display name"
+                          value={occupation}
+                          onChange={(e) => setOccupation(e.target.value)}
+                          placeholder="Developer"
                           className="bg-secondary/50"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Location</Label>
+                        <Input
+                          value={location_}
+                          onChange={(e) => setLocation_(e.target.value)}
+                          placeholder="Germany"
+                          className="bg-secondary/50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Occupation</Label>
+                {/* Bio */}
+                <div className="glass-card p-6 space-y-4">
+                  <Label>Bio</Label>
+                  <Textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell the world about yourself..."
+                    className="bg-secondary/50 resize-none min-h-[100px]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Appearance Tab */}
+            {activeTab === 'appearance' && (
+              <div className="space-y-6 max-w-4xl">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Colors */}
+                  <div className="glass-card p-6 space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Palette className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold">Colors</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Theme Color</Label>
+                        <div className="flex gap-2">
                           <Input
-                            value={occupation}
-                            onChange={(e) => setOccupation(e.target.value)}
-                            placeholder="Developer"
+                            type="color"
+                            value={accentColor}
+                            onChange={(e) => setAccentColor(e.target.value)}
+                            className="w-12 h-10 p-1 bg-transparent cursor-pointer"
+                          />
+                          <Input
+                            value={accentColor}
+                            onChange={(e) => setAccentColor(e.target.value)}
                             className="bg-secondary/50"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>Location</Label>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Background</Label>
+                        <div className="flex gap-2">
                           <Input
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="Germany"
+                            type="color"
+                            value={backgroundColor}
+                            onChange={(e) => setBackgroundColor(e.target.value)}
+                            className="w-12 h-10 p-1 bg-transparent cursor-pointer"
+                          />
+                          <Input
+                            value={backgroundColor}
+                            onChange={(e) => setBackgroundColor(e.target.value)}
                             className="bg-secondary/50"
                           />
                         </div>
@@ -341,377 +514,323 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Bio */}
+                  {/* Fonts */}
                   <div className="glass-card p-6 space-y-4">
-                    <Label>Bio</Label>
-                    <Textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Tell the world about yourself..."
-                      className="bg-secondary/50 resize-none min-h-[100px]"
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-primary font-bold">A</span>
+                      <h3 className="font-semibold">Fonts</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Name Font</Label>
+                        <Select value={nameFont} onValueChange={setNameFont}>
+                          <SelectTrigger className="bg-secondary/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fonts.map((font) => (
+                              <SelectItem key={font} value={font} style={{ fontFamily: font }}>
+                                {font}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Text Font</Label>
+                        <Select value={textFont} onValueChange={setTextFont}>
+                          <SelectTrigger className="bg-secondary/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fonts.map((font) => (
+                              <SelectItem key={font} value={font} style={{ fontFamily: font }}>
+                                {font}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Background Media */}
+                <div className="glass-card p-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Layout className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Background</h3>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Image URL</Label>
+                      <Input
+                        value={backgroundUrl}
+                        onChange={(e) => setBackgroundUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="bg-secondary/50"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Video URL (MP4)</Label>
+                      <Input
+                        value={backgroundVideoUrl}
+                        onChange={(e) => setBackgroundVideoUrl(e.target.value)}
+                        placeholder="https://example.com/video.mp4"
+                        className="bg-secondary/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Layout & Card Style */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="glass-card p-6 space-y-4">
+                    <h3 className="font-semibold">Layout Style</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      {layoutStyles.map((style) => (
+                        <button
+                          key={style}
+                          onClick={() => setLayoutStyle(style)}
+                          className={`p-4 rounded-lg border-2 transition-all capitalize ${
+                            layoutStyle === style
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="glass-card p-6 space-y-4">
+                    <h3 className="font-semibold">Card Style</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      {cardStyles.map((style) => (
+                        <button
+                          key={style}
+                          onClick={() => setCardStyle(style)}
+                          className={`p-4 rounded-lg border-2 transition-all capitalize ${
+                            cardStyle === style
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Links Tab */}
+            {activeTab === 'links' && (
+              <div className="space-y-6 max-w-4xl">
+                <div className="glass-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold">Add New Link</h3>
+                    </div>
+                    <Button onClick={handleAddLink} disabled={createLink.isPending || !newLinkUrl}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Link
+                    </Button>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <Input
+                      value={newLinkPlatform}
+                      onChange={(e) => setNewLinkPlatform(e.target.value)}
+                      placeholder="Platform (Discord, TikTok...)"
+                      className="bg-secondary/50"
+                    />
+                    <Input
+                      value={newLinkTitle}
+                      onChange={(e) => setNewLinkTitle(e.target.value)}
+                      placeholder="Title (optional)"
+                      className="bg-secondary/50"
+                    />
+                    <Input
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      placeholder="URL"
+                      className="bg-secondary/50"
                     />
                   </div>
-                </TabsContent>
+                </div>
 
-                {/* Appearance Tab */}
-                <TabsContent value="appearance" className="space-y-6 mt-0">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Colors */}
-                    <div className="glass-card p-6 space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Palette className="w-5 h-5 text-primary" />
-                        <h3 className="font-semibold">Colors</h3>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Theme Color</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="color"
-                              value={accentColor}
-                              onChange={(e) => setAccentColor(e.target.value)}
-                              className="w-12 h-10 p-1 bg-transparent cursor-pointer"
-                            />
-                            <Input
-                              value={accentColor}
-                              onChange={(e) => setAccentColor(e.target.value)}
-                              className="bg-secondary/50"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Background</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="color"
-                              value={backgroundColor}
-                              onChange={(e) => setBackgroundColor(e.target.value)}
-                              className="w-12 h-10 p-1 bg-transparent cursor-pointer"
-                            />
-                            <Input
-                              value={backgroundColor}
-                              onChange={(e) => setBackgroundColor(e.target.value)}
-                              className="bg-secondary/50"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fonts */}
-                    <div className="glass-card p-6 space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-primary font-bold">A</span>
-                        <h3 className="font-semibold">Font</h3>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Name Font</Label>
-                          <Select value={nameFont} onValueChange={setNameFont}>
-                            <SelectTrigger className="bg-secondary/50">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {fonts.map((font) => (
-                                <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-                                  {font}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Text Font</Label>
-                          <Select value={textFont} onValueChange={setTextFont}>
-                            <SelectTrigger className="bg-secondary/50">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {fonts.map((font) => (
-                                <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-                                  {font}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Background Media */}
-                  <div className="glass-card p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Layout className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Background</h3>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Image URL</Label>
-                        <Input
-                          value={backgroundUrl}
-                          onChange={(e) => setBackgroundUrl(e.target.value)}
-                          placeholder="https://..."
-                          className="bg-secondary/50"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Video URL (MP4)</Label>
-                        <Input
-                          value={backgroundVideoUrl}
-                          onChange={(e) => setBackgroundVideoUrl(e.target.value)}
-                          placeholder="https://example.com/video.mp4"
-                          className="bg-secondary/50"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Layout & Card Style */}
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="glass-card p-6 space-y-4">
-                      <h3 className="font-semibold">Layout Style</h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        {layoutStyles.map((style) => (
-                          <button
-                            key={style}
-                            onClick={() => setLayoutStyle(style)}
-                            className={`p-4 rounded-lg border-2 transition-all capitalize ${
-                              layoutStyle === style
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            {style}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="glass-card p-6 space-y-4">
-                      <h3 className="font-semibold">Card Style</h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        {cardStyles.map((style) => (
-                          <button
-                            key={style}
-                            onClick={() => setCardStyle(style)}
-                            className={`p-4 rounded-lg border-2 transition-all capitalize ${
-                              cardStyle === style
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            {style}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Links Tab */}
-                <TabsContent value="links" className="space-y-6 mt-0">
-                  <div className="glass-card p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
+                <div className="space-y-3">
+                  {socialLinks.map((link) => (
+                    <div
+                      key={link.id}
+                      className="glass-card p-4 flex items-center gap-4"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                         <LinkIcon className="w-5 h-5 text-primary" />
-                        <h3 className="font-semibold">Add New Link</h3>
                       </div>
-                      <Button onClick={handleAddLink} disabled={createLink.isPending || !newLinkUrl}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Link
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{link.title || link.platform}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {link.url}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteLink(link.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
-                    <div className="grid md:grid-cols-3 gap-3">
-                      <Input
-                        value={newLinkPlatform}
-                        onChange={(e) => setNewLinkPlatform(e.target.value)}
-                        placeholder="Platform (Discord, TikTok...)"
-                        className="bg-secondary/50"
-                      />
-                      <Input
-                        value={newLinkTitle}
-                        onChange={(e) => setNewLinkTitle(e.target.value)}
-                        placeholder="Title (optional)"
-                        className="bg-secondary/50"
-                      />
-                      <Input
-                        value={newLinkUrl}
-                        onChange={(e) => setNewLinkUrl(e.target.value)}
-                        placeholder="URL"
-                        className="bg-secondary/50"
-                      />
+                  ))}
+
+                  {socialLinks.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <LinkIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                      <p>No links yet. Add your first link above!</p>
                     </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Widgets Tab */}
+            {activeTab === 'widgets' && (
+              <div className="space-y-6 max-w-4xl">
+                <div className="glass-card p-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Discord RPC</h3>
                   </div>
-
-                  <div className="space-y-3">
-                    {socialLinks.map((link) => (
-                      <div
-                        key={link.id}
-                        className="glass-card p-4 flex items-center gap-4"
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                          <LinkIcon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium">{link.title || link.platform}</p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {link.url}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteLink(link.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-
-                    {socialLinks.length === 0 && (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <LinkIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p>No links yet. Add your first link above!</p>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                {/* Widgets Tab */}
-                <TabsContent value="widgets" className="space-y-6 mt-0">
-                  <div className="glass-card p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <MessageSquare className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Discord RPC</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Show your Discord presence and activity on your profile
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Show your Discord presence and activity on your profile
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Discord User ID</Label>
+                    <Input
+                      value={discordUserId}
+                      onChange={(e) => setDiscordUserId(e.target.value)}
+                      placeholder="Your Discord User ID"
+                      className="bg-secondary/50"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      You can find your Discord User ID in Discord Settings → Advanced → Developer Mode
                     </p>
-                    <div className="space-y-2">
-                      <Label>Discord User ID</Label>
-                      <Input
-                        value={discordUserId}
-                        onChange={(e) => setDiscordUserId(e.target.value)}
-                        placeholder="Your Discord User ID"
-                        className="bg-secondary/50"
+                  </div>
+                </div>
+
+                <div className="glass-card p-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Music className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Profile Music</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Music URL (MP3)</Label>
+                    <Input
+                      value={musicUrl}
+                      onChange={(e) => setMusicUrl(e.target.value)}
+                      placeholder="https://example.com/music.mp3"
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Effects Tab */}
+            {activeTab === 'effects' && (
+              <div className="space-y-6 max-w-4xl">
+                <div className="glass-card p-6 space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Enhancements</h3>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
+                      <div>
+                        <Label>Animate Views</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Animate view counter
+                        </p>
+                      </div>
+                      <Switch
+                        checked={true}
+                        disabled
                       />
-                      <p className="text-xs text-muted-foreground">
-                        You can find your Discord User ID in Discord Settings → Advanced → Developer Mode
-                      </p>
                     </div>
-                  </div>
 
-                  <div className="glass-card p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Music className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Profile Music</h3>
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
+                      <div>
+                        <Label>Tilting Card</Label>
+                        <p className="text-xs text-muted-foreground">
+                          3D tilt effect on hover
+                        </p>
+                      </div>
+                      <Switch
+                        checked={effects.tilt}
+                        onCheckedChange={(checked) =>
+                          setEffects({ ...effects, tilt: checked })
+                        }
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Music URL (MP3)</Label>
-                      <Input
-                        value={musicUrl}
-                        onChange={(e) => setMusicUrl(e.target.value)}
-                        placeholder="https://example.com/music.mp3"
-                        className="bg-secondary/50"
+
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
+                      <div>
+                        <Label>Glowing Icons</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Glow effect on social links
+                        </p>
+                      </div>
+                      <Switch
+                        checked={effects.glow}
+                        onCheckedChange={(checked) =>
+                          setEffects({ ...effects, glow: checked })
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
+                      <div>
+                        <Label>Sparkle Effect</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Sparkles + cursor trail
+                        </p>
+                      </div>
+                      <Switch
+                        checked={effects.sparkles}
+                        onCheckedChange={(checked) =>
+                          setEffects({ ...effects, sparkles: checked })
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
+                      <div>
+                        <Label>Typewriter Effect</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Animated typing for name
+                        </p>
+                      </div>
+                      <Switch
+                        checked={effects.typewriter}
+                        onCheckedChange={(checked) =>
+                          setEffects({ ...effects, typewriter: checked })
+                        }
                       />
                     </div>
                   </div>
-                </TabsContent>
-
-                {/* Effects Tab */}
-                <TabsContent value="effects" className="space-y-6 mt-0">
-                  <div className="glass-card p-6 space-y-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Enhancements</h3>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                        <div>
-                          <Label>Animate Views</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Animate view counter
-                          </p>
-                        </div>
-                        <Switch
-                          checked={true}
-                          disabled
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                        <div>
-                          <Label>Tilting Card</Label>
-                          <p className="text-xs text-muted-foreground">
-                            3D tilt effect on hover
-                          </p>
-                        </div>
-                        <Switch
-                          checked={effects.tilt}
-                          onCheckedChange={(checked) =>
-                            setEffects({ ...effects, tilt: checked })
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                        <div>
-                          <Label>Glowing Icons</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Glow effect on social links
-                          </p>
-                        </div>
-                        <Switch
-                          checked={effects.glow}
-                          onCheckedChange={(checked) =>
-                            setEffects({ ...effects, glow: checked })
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                        <div>
-                          <Label>Sparkle Effect</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Sparkles + cursor trail
-                          </p>
-                        </div>
-                        <Switch
-                          checked={effects.sparkles}
-                          onCheckedChange={(checked) =>
-                            setEffects({ ...effects, sparkles: checked })
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                        <div>
-                          <Label>Typewriter Effect</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Animated typing for name
-                          </p>
-                        </div>
-                        <Switch
-                          checked={effects.typewriter}
-                          onCheckedChange={(checked) =>
-                            setEffects({ ...effects, typewriter: checked })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-              </motion.div>
-            </main>
-          </Tabs>
+                </div>
+              </div>
+            )}
+          </motion.div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
