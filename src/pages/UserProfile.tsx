@@ -10,17 +10,8 @@ import { BackgroundEffects } from '@/components/profile/BackgroundEffects';
 import { CustomCursor } from '@/components/profile/CustomCursor';
 import { DiscordPresence } from '@/components/profile/DiscordPresence';
 import { StartScreen } from '@/components/profile/StartScreen';
-import { ThemeSwitcher, Theme } from '@/components/profile/ThemeSwitcher';
 import { ControlsBar } from '@/components/profile/ControlsBar';
 import { GlitchOverlay } from '@/components/profile/GlitchOverlay';
-
-const defaultThemes: Theme[] = [
-  { id: 'home', name: 'Home', primaryColor: '#8B5CF6', secondaryColor: '#EC4899' },
-  { id: 'hacker', name: 'Hacker', primaryColor: '#22C55E', secondaryColor: '#2DD4BF' },
-  { id: 'ocean', name: 'Ocean', primaryColor: '#0EA5E9', secondaryColor: '#6366F1' },
-  { id: 'sunset', name: 'Sunset', primaryColor: '#F97316', secondaryColor: '#EF4444' },
-  { id: 'gold', name: 'Gold', primaryColor: '#EAB308', secondaryColor: '#F59E0B' },
-];
 
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
@@ -30,16 +21,14 @@ export default function UserProfile() {
   const recordView = useRecordProfileView();
   
   const [showStartScreen, setShowStartScreen] = useState(true);
-  const [currentTheme, setCurrentTheme] = useState('home');
   const [volume, setVolume] = useState(0.3);
   const [transparency, setTransparency] = useState(1);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [enableVideoAudio, setEnableVideoAudio] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Get current theme colors - use profile accent if available, otherwise theme
-  const theme = defaultThemes.find(t => t.id === currentTheme) || defaultThemes[0];
-  const accentColor = profile?.accent_color || theme.primaryColor;
+  // Get accent color from profile
+  const accentColor = profile?.accent_color || '#8B5CF6';
 
   // Record profile view
   useEffect(() => {
@@ -124,8 +113,7 @@ export default function UserProfile() {
         />
       )}
 
-      {/* Glitch overlay effect */}
-      <GlitchOverlay active={currentTheme === 'hacker'} intensity="low" />
+      {/* Glitch overlay effect - disabled for simplicity */}
 
       <BackgroundEffects
         backgroundUrl={profile.background_url}
@@ -174,20 +162,6 @@ export default function UserProfile() {
           )}
         </motion.div>
 
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: showStartScreen ? 0 : 1 }}
-          transition={{ delay: 1 }}
-          className="mt-12 text-center"
-        >
-          <Link
-            to="/"
-            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-          >
-            Create your own bio page →
-          </Link>
-        </motion.div>
       </div>
 
       {/* Controls Bar */}
@@ -198,15 +172,6 @@ export default function UserProfile() {
           transparency={transparency}
           onTransparencyChange={setTransparency}
           accentColor={accentColor}
-        />
-      )}
-
-      {/* Theme Switcher */}
-      {!showStartScreen && (
-        <ThemeSwitcher
-          themes={defaultThemes}
-          currentTheme={currentTheme}
-          onThemeChange={setCurrentTheme}
         />
       )}
     </div>
