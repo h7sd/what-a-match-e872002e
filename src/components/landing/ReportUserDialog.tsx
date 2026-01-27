@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -32,37 +33,18 @@ export function ReportUserDialog() {
 
     setIsSubmitting(true);
     try {
-      // Get webhook URL from environment
-      const webhookUrl = import.meta.env.VITE_DISCORD_REPORT_WEBHOOK;
-      
-      console.log('Report webhook URL:', webhookUrl ? 'Found' : 'Not found');
-      
-      if (!webhookUrl) {
-        console.error('VITE_DISCORD_REPORT_WEBHOOK not configured');
-        toast({ title: 'Report system not configured', description: 'Please contact an administrator.', variant: 'destructive' });
-        setIsSubmitting(false);
-        return;
-      }
+      const payload = {
+        username: username.trim().slice(0, 64),
+        reason: reason.trim().slice(0, 1500),
+      };
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{
-            title: '🚨 User Report',
-            color: 0xFF0000,
-            fields: [
-              { name: 'Reported User', value: `@${username}`, inline: true },
-              { name: 'Reason', value: reason },
-            ],
-            timestamp: new Date().toISOString(),
-          }],
-        }),
+      const { error } = await supabase.functions.invoke('report-user', {
+        body: payload,
       });
 
-      if (!response.ok) {
-        console.error('Webhook response not ok:', response.status);
-        throw new Error(`Webhook failed: ${response.status}`);
+      if (error) {
+        console.error('Report invoke error:', error);
+        throw new Error(error.message || 'Failed to submit report');
       }
 
       toast({ title: 'Report submitted', description: 'Thank you for your report. Our team will review it.' });
@@ -103,6 +85,7 @@ export function ReportUserDialog() {
               placeholder="Enter username to report..."
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              maxLength={64}
             />
           </div>
 
@@ -113,6 +96,7 @@ export function ReportUserDialog() {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={4}
+              maxLength={1500}
             />
           </div>
 
