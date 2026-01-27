@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface BackgroundEffectsProps {
   backgroundUrl?: string | null;
@@ -7,6 +7,7 @@ interface BackgroundEffectsProps {
   accentColor?: string | null;
   enableAudio?: boolean;
   audioVolume?: number;
+  effectType?: 'none' | 'particles' | 'matrix' | 'stars' | 'snow';
 }
 
 export function BackgroundEffects({
@@ -16,10 +17,12 @@ export function BackgroundEffects({
   accentColor = '#8b5cf6',
   enableAudio = true,
   audioVolume = 0.3,
+  effectType = 'particles',
 }: BackgroundEffectsProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const animationRef = useRef<number>(0);
 
   // Handle user interaction to enable audio
   useEffect(() => {
@@ -47,14 +50,50 @@ export function BackgroundEffects({
     }
   }, [audioVolume, hasInteracted, enableAudio]);
 
+  // Optimize video playback
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !backgroundVideoUrl) return;
+
+    // Force hardware acceleration and smooth playback
+    video.style.willChange = 'transform';
+    
+    const handleCanPlay = () => {
+      video.play().catch(() => {});
+    };
+
+    video.addEventListener('canplay', handleCanPlay);
+    
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+    };
+  }, [backgroundVideoUrl]);
+
+  const hexToRgb = useCallback((hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : { r: 139, g: 92, b: 246 };
+  }, []);
+
+  useEffect(() => {
+    if (effectType === 'none') {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      return;
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    let animationId: number;
     const particles: Array<{
       x: number;
       y: number;
@@ -62,6 +101,7 @@ export function BackgroundEffects({
       vx: number;
       vy: number;
       opacity: number;
+      char?: string;
     }> = [];
 
     const resize = () => {
@@ -69,90 +109,119 @@ export function BackgroundEffects({
       canvas.height = window.innerHeight;
     };
 
-    const hexToRgb = (hex: string) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result
-        ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16),
-          }
-        : { r: 139, g: 92, b: 246 };
-    };
+    const color = hexToRgb(accentColor || '#8b5cf6');
 
     const createParticles = () => {
       particles.length = 0;
       const count = Math.floor((canvas.width * canvas.height) / 15000);
+      
       for (let i = 0; i < count; i++) {
-        particles.push({
+        const particle: typeof particles[0] = {
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
           radius: Math.random() * 2 + 0.5,
           vx: (Math.random() - 0.5) * 0.4,
-          vy: (Math.random() - 0.5) * 0.4,
+          vy: effectType === 'snow' ? Math.random() * 0.5 + 0.3 : (Math.random() - 0.5) * 0.4,
           opacity: Math.random() * 0.6 + 0.2,
-        });
+        };
+
+        if (effectType === 'matrix') {
+          particle.char = String.fromCharCode(0x30A0 + Math.random() * 96);
+          particle.vy = Math.random() * 2 + 1;
+        }
+
+        particles.push(particle);
       }
     };
 
-    const color = hexToRgb(accentColor || '#8b5cf6');
-
-    const animate = () => {
+    const drawParticles = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach((particle) => {
         particle.x += particle.vx;
         particle.y += particle.vy;
 
+        // Wrap around
         if (particle.x < 0) particle.x = canvas.width;
         if (particle.x > canvas.width) particle.x = 0;
         if (particle.y < 0) particle.y = canvas.height;
         if (particle.y > canvas.height) particle.y = 0;
 
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity})`;
-        ctx.fill();
-      });
-
-      // Draw connections
-      particles.forEach((p1, i) => {
-        particles.slice(i + 1).forEach((p2) => {
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.15 * (1 - dist / 120)})`;
-            ctx.stroke();
+        if (effectType === 'matrix' && particle.char) {
+          ctx.font = '14px monospace';
+          ctx.fillStyle = `rgba(0, ${180 + Math.random() * 75}, 0, ${particle.opacity})`;
+          ctx.fillText(particle.char, particle.x, particle.y);
+          if (Math.random() > 0.98) {
+            particle.char = String.fromCharCode(0x30A0 + Math.random() * 96);
           }
-        });
+        } else if (effectType === 'stars') {
+          const starSize = particle.radius * 2;
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.beginPath();
+          for (let i = 0; i < 5; i++) {
+            ctx.lineTo(0, -starSize);
+            ctx.rotate(Math.PI / 5);
+            ctx.lineTo(0, -starSize / 2);
+            ctx.rotate(Math.PI / 5);
+          }
+          ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity})`;
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+          ctx.fillStyle = effectType === 'snow' 
+            ? `rgba(255, 255, 255, ${particle.opacity})`
+            : `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity})`;
+          ctx.fill();
+        }
       });
 
-      animationId = requestAnimationFrame(animate);
+      // Draw connections for particles (not for matrix/snow)
+      if (effectType === 'particles') {
+        particles.forEach((p1, i) => {
+          particles.slice(i + 1).forEach((p2) => {
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.15 * (1 - dist / 120)})`;
+              ctx.stroke();
+            }
+          });
+        });
+      }
+
+      animationRef.current = requestAnimationFrame(drawParticles);
     };
 
     resize();
     createParticles();
-    animate();
+    drawParticles();
 
-    window.addEventListener('resize', () => {
+    const handleResize = () => {
       resize();
       createParticles();
-    });
+    };
+
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', handleResize);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
-  }, [accentColor]);
+  }, [accentColor, effectType, hexToRgb]);
 
   return (
     <div className="fixed inset-0 -z-10">
-      {/* Video background with audio support */}
+      {/* Video background with optimized playback */}
       {backgroundVideoUrl && (
         <video
           ref={videoRef}
@@ -165,12 +234,14 @@ export function BackgroundEffects({
           className="absolute inset-0 w-full h-full object-cover"
           style={{
             willChange: 'transform',
-            transform: 'translateZ(0)',
+            transform: 'translate3d(0, 0, 0)',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
+            imageRendering: 'auto',
           }}
         >
           <source src={backgroundVideoUrl} type="video/mp4" />
+          <source src={backgroundVideoUrl} type="video/quicktime" />
         </video>
       )}
 
@@ -200,10 +271,12 @@ export function BackgroundEffects({
       />
 
       {/* Particle canvas */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 opacity-70"
-      />
+      {effectType !== 'none' && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 opacity-70 pointer-events-none"
+        />
+      )}
 
       {/* Noise overlay */}
       <div

@@ -129,6 +129,7 @@ export default function UserProfile() {
         accentColor={accentColor}
         enableAudio={enableVideoAudio && hasInteracted}
         audioVolume={volume}
+        effectType={(profile as any).background_effect || 'particles'}
       />
 
       <div 

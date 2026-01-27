@@ -131,6 +131,8 @@ export default function Dashboard() {
     glow: false,
     typewriter: false,
   });
+  const [backgroundEffect, setBackgroundEffect] = useState('particles');
+  const [audioVolume, setAudioVolume] = useState(0.5);
 
   // Other customization
   const [monochromeIcons, setMonochromeIcons] = useState(false);
@@ -189,6 +191,8 @@ export default function Dashboard() {
       setGlowUsername((profile as any).glow_username ?? false);
       setGlowSocials((profile as any).glow_socials ?? false);
       setGlowBadges((profile as any).glow_badges ?? false);
+      setBackgroundEffect((profile as any).background_effect || 'particles');
+      setAudioVolume((profile as any).audio_volume ?? 0.5);
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -268,6 +272,8 @@ export default function Dashboard() {
         glow_username: glowUsername,
         glow_socials: glowSocials,
         glow_badges: glowBadges,
+        background_effect: backgroundEffect,
+        audio_volume: audioVolume,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -627,6 +633,10 @@ export default function Dashboard() {
                   setGlowSocials={setGlowSocials}
                   glowBadges={glowBadges}
                   setGlowBadges={setGlowBadges}
+                  backgroundEffect={backgroundEffect}
+                  setBackgroundEffect={setBackgroundEffect}
+                  audioVolume={audioVolume}
+                  setAudioVolume={setAudioVolume}
                 />
               </div>
             )}
