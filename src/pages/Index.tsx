@@ -2,11 +2,13 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Sparkles, Zap, Globe, Music } from "lucide-react";
-import { LetterPullup, BlurFadeText } from "@/components/landing/AnimatedText";
 import { FadeIn } from "@/components/landing/FadeIn";
 import { FeatureCard } from "@/components/landing/FeatureCard";
 import { AnimatedButton, NavButton } from "@/components/landing/AnimatedButton";
 import { GradientOrb, GridBackground, NoiseTexture } from "@/components/landing/GradientOrb";
+import { FAQSection } from "@/components/landing/FAQSection";
+import { StatsSection } from "@/components/landing/StatsSection";
+import { Footer } from "@/components/landing/Footer";
 
 export default function Index() {
   const { user } = useAuth();
@@ -78,8 +80,8 @@ export default function Index() {
         </motion.header>
 
         {/* Hero */}
-        <main className="max-w-6xl mx-auto px-6 py-24 md:py-32">
-          <div className="text-center mb-20">
+        <main className="max-w-6xl mx-auto px-6">
+          <div className="py-24 md:py-32 text-center mb-8">
             {/* Main headline */}
             <motion.h1 
               className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight"
@@ -112,7 +114,7 @@ export default function Index() {
           </div>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div id="features" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {features.map((feature, i) => (
               <FeatureCard
                 key={feature.title}
@@ -123,27 +125,18 @@ export default function Index() {
               />
             ))}
           </div>
+
+          {/* Stats Section */}
+          <StatsSection />
+
+          {/* FAQ Section */}
+          <div id="faq">
+            <FAQSection />
+          </div>
         </main>
 
         {/* Footer */}
-        <FadeIn delay={1} className="max-w-6xl mx-auto px-6 py-16">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex flex-wrap justify-center gap-6 text-sm">
-              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
-                Terms of Service
-              </Link>
-              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
-              </Link>
-              <Link to="/imprint" className="text-muted-foreground hover:text-foreground transition-colors">
-                Imprint
-              </Link>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} UserVault. All rights reserved.
-            </p>
-          </div>
-        </FadeIn>
+        <Footer />
       </div>
     </div>
   );
