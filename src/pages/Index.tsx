@@ -114,26 +114,10 @@ export default function Index() {
             ))}
           </motion.div>
 
-          {/* Example Profiles */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="mt-24 text-center"
-          >
-            <p className="text-muted-foreground mb-4">Trusted by thousands of creators</p>
-            <div className="flex justify-center gap-4 flex-wrap">
-              {["yourname.uservault.app", "artist.uservault.app", "gamer.uservault.app"].map((url) => (
-                <span key={url} className="px-4 py-2 glass rounded-full text-sm text-muted-foreground">
-                  {url}
-                </span>
-              ))}
-            </div>
-          </motion.div>
         </main>
 
         <footer className="max-w-6xl mx-auto px-6 py-12 text-center">
-          <p className="text-sm text-muted-foreground">© 2026 UserVault. Built with Lovable.</p>
+          <p className="text-sm text-muted-foreground">© 2026. All rights reserved.</p>
         </footer>
       </div>
     </div>

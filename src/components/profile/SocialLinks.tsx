@@ -125,7 +125,7 @@ export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = tru
       variants={container}
       initial="hidden"
       animate="show"
-      className="w-full max-w-sm space-y-3"
+      className="w-full max-w-sm space-y-3 mx-auto"
     >
       {links.map((link) => {
         const detectedPlatform = detectPlatform(link.url);

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useRef } from 'react';
-import { Eye, MapPin, Briefcase } from 'lucide-react';
+import { Eye, MapPin, Briefcase, AtSign } from 'lucide-react';
 import type { Profile } from '@/hooks/useProfile';
 import { SparkleEffect } from './SparkleEffect';
 import { GlitchText } from './GlitchText';
@@ -157,10 +157,23 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
             )}
           </h1>
 
-          {/* Username with UID */}
-          <p className="text-muted-foreground text-sm mb-3">
-            @{(profile as any).uid_number || '1'}
-          </p>
+          {/* Username with UID tooltip */}
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-muted-foreground text-sm mb-3 cursor-default flex items-center gap-0.5 hover:text-foreground/70 transition-colors">
+                  <AtSign className="w-3.5 h-3.5" />
+                  {profile.username}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="top" 
+                className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
+              >
+                UID: {(profile as any).uid_number || '1'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Badges - Icon only with hover tooltip like feds.lol */}
           {badges.length > 0 && (
