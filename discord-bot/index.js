@@ -1,24 +1,18 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, ActivityType } = require('discord.js');
-const { createClient } = require('@supabase/supabase-js');
 
 // ============================================
 // CONFIGURATION
 // ============================================
 const DISCORD_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const EDGE_FUNCTION_URL = process.env.EDGE_FUNCTION_URL;
 const GUILD_ID = process.env.GUILD_ID;
 
-if (!DISCORD_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_KEY || !GUILD_ID) {
+if (!DISCORD_TOKEN || !EDGE_FUNCTION_URL || !GUILD_ID) {
   console.error('❌ Missing environment variables! Check your .env file.');
+  console.error('Required: DISCORD_BOT_TOKEN, EDGE_FUNCTION_URL, GUILD_ID');
   process.exit(1);
 }
-
-// ============================================
-// SUPABASE CLIENT
-// ============================================
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // ============================================
 // DISCORD CLIENT
@@ -47,25 +41,8 @@ const activityTypeMap = {
 // ============================================
 // PRESENCE UPDATE HANDLER
 // ============================================
-async function updatePresenceInDB(userId, presence, user) {
+async function updatePresence(userId, presence, user) {
   try {
-    // Check if this user has a profile with this discord_user_id
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('discord_user_id', userId)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error(`❌ Error checking profile for ${userId}:`, profileError.message);
-      return;
-    }
-
-    if (!profile) {
-      // User doesn't have a UserVault profile linked, skip
-      return;
-    }
-
     // Get main activity (not custom status)
     const activities = presence?.activities?.filter(a => a.type !== ActivityType.Custom) || [];
     const mainActivity = activities[0];
@@ -87,34 +64,41 @@ async function updatePresenceInDB(userId, presence, user) {
 
     // Build presence data
     const presenceData = {
-      profile_id: profile.id,
-      discord_user_id: userId,
       username: user?.username || null,
       avatar: avatarUrl,
       status: presence?.status || 'offline',
-      activity_name: mainActivity?.name || spotifyActivity?.details || null,
+      activity_name: mainActivity?.name || (spotifyActivity ? spotifyActivity.details : null),
       activity_type: mainActivity ? activityTypeMap[mainActivity.type] : (spotifyActivity ? 'Listening to' : null),
       activity_details: mainActivity?.details || (spotifyActivity ? `${spotifyActivity.details} by ${spotifyActivity.state}` : null),
       activity_state: mainActivity?.state || null,
-      activity_large_image: getActivityImage(mainActivity) || (spotifyActivity?.assets?.largeImage ? `https://i.scdn.co/image/${spotifyActivity.assets.largeImage.replace('spotify:', '')}` : null),
-      updated_at: new Date().toISOString(),
+      activity_large_image: getActivityImage(mainActivity) || getSpotifyImage(spotifyActivity),
     };
 
-    // Upsert presence data
-    const { error: upsertError } = await supabase
-      .from('discord_presence')
-      .upsert(presenceData, { 
-        onConflict: 'profile_id',
-        ignoreDuplicates: false 
-      });
+    // Send to edge function
+    const response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-bot-token': DISCORD_TOKEN,
+      },
+      body: JSON.stringify({
+        action: 'update',
+        discord_user_id: userId,
+        presence_data: presenceData,
+      }),
+    });
 
-    if (upsertError) {
-      console.error(`❌ Error upserting presence for ${userId}:`, upsertError.message);
-    } else {
-      console.log(`✅ Updated presence for ${user?.username || userId}: ${presence?.status} - ${mainActivity?.name || spotifyActivity?.details || 'No activity'}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log(`✅ ${user?.username || userId}: ${presence?.status} - ${presenceData.activity_name || 'No activity'}`);
+    } else if (result.skipped) {
+      // User doesn't have a profile, silently skip
+    } else if (result.error) {
+      console.error(`❌ Error for ${userId}:`, result.error);
     }
   } catch (err) {
-    console.error(`❌ Unexpected error updating presence for ${userId}:`, err);
+    console.error(`❌ Failed to update ${userId}:`, err.message);
   }
 }
 
@@ -135,6 +119,15 @@ function getActivityImage(activity) {
   return null;
 }
 
+function getSpotifyImage(spotifyActivity) {
+  if (!spotifyActivity?.assets?.largeImage) return null;
+  const image = spotifyActivity.assets.largeImage;
+  if (image.startsWith('spotify:')) {
+    return `https://i.scdn.co/image/${image.replace('spotify:', '')}`;
+  }
+  return null;
+}
+
 // ============================================
 // EVENT HANDLERS
 // ============================================
@@ -148,10 +141,10 @@ client.once('ready', async () => {
   console.log('╚════════════════════════════════════════════╝');
   console.log('');
 
-  // Initial sync of all members
+  // Initial sync
   const guild = client.guilds.cache.get(GUILD_ID);
   if (guild) {
-    console.log(`📡 Syncing presence for ${guild.memberCount} members in ${guild.name}...`);
+    console.log(`📡 Syncing ${guild.memberCount} members from ${guild.name}...`);
     
     try {
       const members = await guild.members.fetch({ withPresences: true });
@@ -159,119 +152,73 @@ client.once('ready', async () => {
       
       for (const [memberId, member] of members) {
         if (!member.user.bot) {
-          await updatePresenceInDB(memberId, member.presence, member.user);
+          await updatePresence(memberId, member.presence, member.user);
           synced++;
+          // Small delay to avoid rate limits
+          if (synced % 10 === 0) {
+            await new Promise(r => setTimeout(r, 100));
+          }
         }
       }
       
-      console.log(`✅ Initial sync complete! Synced ${synced} members.`);
+      console.log(`✅ Initial sync complete! Processed ${synced} members.`);
     } catch (err) {
-      console.error('❌ Error during initial sync:', err);
+      console.error('❌ Error during initial sync:', err.message);
     }
   } else {
-    console.error(`❌ Could not find guild with ID: ${GUILD_ID}`);
+    console.error(`❌ Could not find guild: ${GUILD_ID}`);
   }
   
   console.log('');
-  console.log('👀 Now watching for presence updates...');
+  console.log('👀 Watching for presence updates...');
   console.log('');
 });
 
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!newPresence?.member || newPresence.member.user.bot) return;
-  
-  const userId = newPresence.userId;
-  const user = newPresence.member.user;
-  
-  await updatePresenceInDB(userId, newPresence, user);
+  await updatePresence(newPresence.userId, newPresence, newPresence.member.user);
 });
 
 client.on('guildMemberAdd', async (member) => {
   if (member.user.bot) return;
-  console.log(`👋 New member joined: ${member.user.username}`);
-  await updatePresenceInDB(member.id, member.presence, member.user);
+  console.log(`👋 ${member.user.username} joined`);
+  await updatePresence(member.id, member.presence, member.user);
 });
 
 client.on('guildMemberRemove', async (member) => {
   if (member.user.bot) return;
-  console.log(`👋 Member left: ${member.user.username}`);
-  
-  // Set status to offline when they leave
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('discord_user_id', member.id)
-    .maybeSingle();
-    
-  if (profile) {
-    await supabase
-      .from('discord_presence')
-      .update({ status: 'offline', activity_name: null, updated_at: new Date().toISOString() })
-      .eq('profile_id', profile.id);
-  }
+  console.log(`👋 ${member.user.username} left`);
+  // Set offline
+  await updatePresence(member.id, { status: 'offline', activities: [] }, member.user);
 });
 
 // ============================================
-// ERROR HANDLING & RECONNECTION
+// ERROR HANDLING
 // ============================================
-client.on('error', (error) => {
-  console.error('❌ Discord client error:', error);
-});
+client.on('error', (error) => console.error('❌ Client error:', error.message));
+client.on('warn', (warning) => console.warn('⚠️ Warning:', warning));
 
-client.on('warn', (warning) => {
-  console.warn('⚠️ Discord warning:', warning);
-});
-
-client.on('disconnect', () => {
-  console.log('🔌 Bot disconnected. Attempting to reconnect...');
-});
-
-client.on('reconnecting', () => {
-  console.log('🔄 Reconnecting to Discord...');
-});
-
-client.on('shardError', (error) => {
-  console.error('❌ Shard error:', error);
-});
-
-client.on('shardReady', (shardId) => {
-  console.log(`✅ Shard ${shardId} is ready`);
-});
-
-client.on('shardDisconnect', (event, shardId) => {
-  console.log(`🔌 Shard ${shardId} disconnected`);
-});
-
-client.on('shardReconnecting', (shardId) => {
-  console.log(`🔄 Shard ${shardId} reconnecting...`);
-});
-
-// ============================================
-// GRACEFUL SHUTDOWN
-// ============================================
-process.on('SIGINT', async () => {
-  console.log('');
-  console.log('👋 Shutting down gracefully...');
+process.on('SIGINT', () => {
+  console.log('\n👋 Shutting down...');
   client.destroy();
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  console.log('');
-  console.log('👋 Received SIGTERM, shutting down...');
+process.on('SIGTERM', () => {
+  console.log('\n👋 Shutting down...');
   client.destroy();
   process.exit(0);
 });
 
 process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled promise rejection:', error);
+  console.error('❌ Unhandled rejection:', error);
 });
 
 // ============================================
-// START BOT
+// START
 // ============================================
 console.log('🚀 Starting UserVault Discord Presence Bot...');
 client.login(DISCORD_TOKEN).catch((err) => {
-  console.error('❌ Failed to login:', err);
+  console.error('❌ Login failed:', err.message);
   process.exit(1);
 });
