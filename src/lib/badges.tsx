@@ -1,11 +1,14 @@
 import type { ComponentType } from 'react';
-import { Award, Crown, Shield, Star, BadgeCheck } from 'lucide-react';
+import { Award, Crown, Shield, Star, BadgeCheck, Code, Zap } from 'lucide-react';
 import { FaDiscord, FaBug, FaGift, FaSnowflake, FaEgg, FaDollarSign } from 'react-icons/fa6';
 
 // Import custom badge images
 import verifiedBadge from '@/assets/badges/verified.png';
 import staffBadge from '@/assets/badges/staff.png';
 import uservaultBadge from '@/assets/badges/uservault.png';
+import boosterBadge from '@/assets/badges/booster.png';
+import developerBadge from '@/assets/badges/developer.png';
+import earlyBadge from '@/assets/badges/early.png';
 
 export type BadgeIconComponent = ComponentType<{ className?: string; style?: React.CSSProperties }>;
 
@@ -14,9 +17,12 @@ export const badgeImages: Record<string, string> = {
   verified: verifiedBadge,
   staff: staffBadge,
   'uservault.cc': uservaultBadge,
+  'server booster': boosterBadge,
+  developer: developerBadge,
+  early: earlyBadge,
 };
 
-// Central mapping so dashboard + profile render the same icons.
+// Central mapping so dashboard + profile render the same icons (fallback if no image).
 export const badgeIconByName: Record<string, BadgeIconComponent> = {
   staff: Shield,
   helper: FaDiscord,
@@ -37,6 +43,8 @@ export const badgeIconByName: Record<string, BadgeIconComponent> = {
   winner: Crown,
   'second place': Award,
   'third place': Award,
+  developer: Code,
+  early: Zap,
 };
 
 export function getBadgeIcon(name: string): BadgeIconComponent {
