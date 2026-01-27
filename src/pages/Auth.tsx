@@ -17,7 +17,7 @@ const loginSchema = z.object({
 const signupSchema = loginSchema.extend({
   username: z
     .string()
-    .min(3, 'Username must be at least 3 characters')
+    .min(1, 'Username must be at least 1 character')
     .max(20, 'Username must be at most 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
 });
