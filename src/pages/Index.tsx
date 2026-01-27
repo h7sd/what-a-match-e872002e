@@ -39,30 +39,31 @@ export default function Index() {
   ];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Liquid Ether Background */}
-      <div className="fixed inset-0 -z-10">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Liquid Ether Background - covers entire viewport */}
+      <div className="fixed inset-0" style={{ zIndex: -1 }}>
         <LiquidEther
           colors={['#5227FF', '#FF9FFC', '#B19EEF']}
           mouseForce={20}
           cursorSize={100}
-          isViscous
+          isViscous={true}
           viscous={30}
           iterationsViscous={32}
           iterationsPoisson={32}
           resolution={0.5}
           isBounce={false}
-          autoDemo
+          autoDemo={true}
           autoSpeed={0.5}
           autoIntensity={2.2}
           takeoverDuration={0.25}
           autoResumeDelay={3000}
           autoRampDuration={0.6}
+          style={{ width: '100%', height: '100%' }}
         />
       </div>
       
-      {/* Noise texture overlay */}
-      <NoiseTexture />
+      {/* Dark overlay for readability */}
+      <div className="fixed inset-0 bg-black/40 pointer-events-none" style={{ zIndex: 0 }} />
 
       <div className="relative z-10">
         {/* Header */}

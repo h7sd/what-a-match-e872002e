@@ -1,18 +1,19 @@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Volume2 } from 'lucide-react';
+import { forwardRef } from 'react';
 
 interface VolumeControlSettingsProps {
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
 }
 
-export function VolumeControlSettings({
+export const VolumeControlSettings = forwardRef<HTMLDivElement, VolumeControlSettingsProps>(function VolumeControlSettings({
   enabled,
   onEnabledChange,
-}: VolumeControlSettingsProps) {
+}, ref) {
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center">
@@ -41,4 +42,4 @@ export function VolumeControlSettings({
       )}
     </div>
   );
-}
+});

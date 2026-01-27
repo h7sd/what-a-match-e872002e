@@ -2,6 +2,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { forwardRef } from 'react';
 
 interface CardBorderSettingsProps {
   borderEnabled: boolean;
@@ -13,7 +14,7 @@ interface CardBorderSettingsProps {
   onBorderWidthChange: (value: number) => void;
 }
 
-export function CardBorderSettings({
+export const CardBorderSettings = forwardRef<HTMLDivElement, CardBorderSettingsProps>(function CardBorderSettings({
   borderEnabled,
   borderColor,
   borderWidth,
@@ -21,12 +22,12 @@ export function CardBorderSettings({
   onBorderEnabledChange,
   onBorderColorChange,
   onBorderWidthChange,
-}: CardBorderSettingsProps) {
+}, ref) {
   // Use accent color if no custom border color is set
   const effectiveBorderColor = borderColor || accentColor;
 
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       <div>
         <h3 className="text-lg font-semibold mb-2">Profile Card</h3>
         <p className="text-sm text-muted-foreground mb-4">
@@ -112,4 +113,4 @@ export function CardBorderSettings({
       </div>
     </div>
   );
-}
+});

@@ -32,25 +32,37 @@ export function ReportUserDialog() {
 
     setIsSubmitting(true);
     try {
-      // Send to Discord webhook
+      // Get webhook URL from environment
       const webhookUrl = import.meta.env.VITE_DISCORD_REPORT_WEBHOOK;
       
-      if (webhookUrl) {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            embeds: [{
-              title: '🚨 User Report',
-              color: 0xFF0000,
-              fields: [
-                { name: 'Reported User', value: `@${username}`, inline: true },
-                { name: 'Reason', value: reason },
-              ],
-              timestamp: new Date().toISOString(),
-            }],
-          }),
-        });
+      console.log('Report webhook URL:', webhookUrl ? 'Found' : 'Not found');
+      
+      if (!webhookUrl) {
+        console.error('VITE_DISCORD_REPORT_WEBHOOK not configured');
+        toast({ title: 'Report system not configured', description: 'Please contact an administrator.', variant: 'destructive' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [{
+            title: '🚨 User Report',
+            color: 0xFF0000,
+            fields: [
+              { name: 'Reported User', value: `@${username}`, inline: true },
+              { name: 'Reason', value: reason },
+            ],
+            timestamp: new Date().toISOString(),
+          }],
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Webhook response not ok:', response.status);
+        throw new Error(`Webhook failed: ${response.status}`);
       }
 
       toast({ title: 'Report submitted', description: 'Thank you for your report. Our team will review it.' });
@@ -58,7 +70,8 @@ export function ReportUserDialog() {
       setUsername('');
       setReason('');
     } catch (error: any) {
-      toast({ title: 'Error submitting report', variant: 'destructive' });
+      console.error('Report error:', error);
+      toast({ title: 'Error submitting report', description: error.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }

@@ -178,6 +178,9 @@ export default function Dashboard() {
   const [showUsername, setShowUsername] = useState(true);
   const [showBadges, setShowBadges] = useState(true);
   const [showViews, setShowViews] = useState(true);
+  const [showAvatar, setShowAvatar] = useState(true);
+  const [showLinks, setShowLinks] = useState(true);
+  const [showDescription, setShowDescription] = useState(true);
 
   // Card border settings
   const [cardBorderEnabled, setCardBorderEnabled] = useState(true);
@@ -248,6 +251,9 @@ export default function Dashboard() {
       setShowUsername((profile as any).show_username ?? true);
       setShowBadges((profile as any).show_badges ?? true);
       setShowViews((profile as any).show_views ?? true);
+      setShowAvatar((profile as any).show_avatar ?? true);
+      setShowLinks((profile as any).show_links ?? true);
+      setShowDescription((profile as any).show_description ?? true);
       setCardBorderEnabled((profile as any).card_border_enabled ?? true);
       setCardBorderColor((profile as any).card_border_color || '');
       setCardBorderWidth((profile as any).card_border_width ?? 1);
@@ -357,6 +363,9 @@ export default function Dashboard() {
         show_username: showUsername,
         show_badges: showBadges,
         show_views: showViews,
+        show_avatar: showAvatar,
+        show_links: showLinks,
+        show_description: showDescription,
         card_border_enabled: cardBorderEnabled,
         card_border_color: cardBorderColor || null,
         card_border_width: cardBorderWidth,
@@ -859,9 +868,15 @@ export default function Dashboard() {
                     showUsername={showUsername}
                     showBadges={showBadges}
                     showViews={showViews}
+                    showAvatar={showAvatar}
+                    showLinks={showLinks}
+                    showDescription={showDescription}
                     onShowUsernameChange={setShowUsername}
                     onShowBadgesChange={setShowBadges}
                     onShowViewsChange={setShowViews}
+                    onShowAvatarChange={setShowAvatar}
+                    onShowLinksChange={setShowLinks}
+                    onShowDescriptionChange={setShowDescription}
                   />
                 </div>
 

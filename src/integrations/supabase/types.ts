@@ -256,7 +256,10 @@ export type Database = {
           occupation: string | null
           profile_blur: number | null
           profile_opacity: number | null
+          show_avatar: boolean | null
           show_badges: boolean | null
+          show_description: boolean | null
+          show_links: boolean | null
           show_username: boolean | null
           show_views: boolean | null
           show_volume_control: boolean | null
@@ -315,7 +318,10 @@ export type Database = {
           occupation?: string | null
           profile_blur?: number | null
           profile_opacity?: number | null
+          show_avatar?: boolean | null
           show_badges?: boolean | null
+          show_description?: boolean | null
+          show_links?: boolean | null
           show_username?: boolean | null
           show_views?: boolean | null
           show_volume_control?: boolean | null
@@ -374,7 +380,10 @@ export type Database = {
           occupation?: string | null
           profile_blur?: number | null
           profile_opacity?: number | null
+          show_avatar?: boolean | null
           show_badges?: boolean | null
+          show_description?: boolean | null
+          show_links?: boolean | null
           show_username?: boolean | null
           show_views?: boolean | null
           show_volume_control?: boolean | null

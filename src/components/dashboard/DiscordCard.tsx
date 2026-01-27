@@ -1,6 +1,5 @@
 import { SiDiscord } from 'react-icons/si';
 import { Button } from '@/components/ui/button';
-import { Gamepad2 } from 'lucide-react';
 
 interface DiscordCardProps {
   isConnected?: boolean;
@@ -28,14 +27,6 @@ export function DiscordCard({ isConnected = false, discordUrl = 'discord.gg/user
           <SiDiscord className="w-4 h-4 mr-2" />
           {isConnected ? 'Connected to Discord' : 'Connect Discord'}
         </a>
-      </Button>
-
-      <Button 
-        variant="outline"
-        className="w-full border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
-      >
-        <Gamepad2 className="w-4 h-4 mr-2" />
-        Go to Casino
       </Button>
     </div>
   );
