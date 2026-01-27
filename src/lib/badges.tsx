@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { Award, Crown, Shield, Star, Code, Zap } from 'lucide-react';
+import { Award, Crown, Shield, Star, Code, Zap, Wrench } from 'lucide-react';
 import { FaDiscord, FaBug, FaGift, FaSnowflake, FaEgg, FaDollarSign } from 'react-icons/fa6';
 
 // Import custom badge images
@@ -34,7 +34,7 @@ export const badgeImages: Record<string, string> = {
   staff: staffBadge,
   'uservault.cc': uservaultBadge,
   'server booster': boosterBadge,
-  developer: developerBadge,
+  dev: developerBadge,
   early: earlyBadge,
 };
 
@@ -59,8 +59,9 @@ export const badgeIconByName: Record<string, BadgeIconComponent> = {
   winner: Crown,
   'second place': Award,
   'third place': Award,
-  developer: Code,
+  dev: Code,
   early: Zap,
+  moderator: Wrench,
 };
 
 export function getBadgeIcon(name: string): BadgeIconComponent {
