@@ -218,6 +218,7 @@ export type Database = {
       profiles: {
         Row: {
           accent_color: string | null
+          animated_title: boolean | null
           avatar_shape: string | null
           avatar_url: string | null
           background_color: string | null
@@ -227,23 +228,37 @@ export type Database = {
           card_color: string | null
           card_style: string | null
           created_at: string
+          custom_cursor_url: string | null
+          discord_avatar_decoration: boolean | null
           discord_user_id: string | null
           display_name: string | null
           effects_config: Json | null
+          enable_profile_gradient: boolean | null
+          glow_badges: boolean | null
+          glow_socials: boolean | null
+          glow_username: boolean | null
+          icon_color: string | null
           id: string
           layout_style: string | null
           location: string | null
+          monochrome_icons: boolean | null
           music_url: string | null
           name_font: string | null
           occupation: string | null
+          profile_blur: number | null
+          profile_opacity: number | null
+          swap_bio_colors: boolean | null
+          text_color: string | null
           text_font: string | null
           updated_at: string
+          use_discord_avatar: boolean | null
           user_id: string
           username: string
           views_count: number | null
         }
         Insert: {
           accent_color?: string | null
+          animated_title?: boolean | null
           avatar_shape?: string | null
           avatar_url?: string | null
           background_color?: string | null
@@ -253,23 +268,37 @@ export type Database = {
           card_color?: string | null
           card_style?: string | null
           created_at?: string
+          custom_cursor_url?: string | null
+          discord_avatar_decoration?: boolean | null
           discord_user_id?: string | null
           display_name?: string | null
           effects_config?: Json | null
+          enable_profile_gradient?: boolean | null
+          glow_badges?: boolean | null
+          glow_socials?: boolean | null
+          glow_username?: boolean | null
+          icon_color?: string | null
           id?: string
           layout_style?: string | null
           location?: string | null
+          monochrome_icons?: boolean | null
           music_url?: string | null
           name_font?: string | null
           occupation?: string | null
+          profile_blur?: number | null
+          profile_opacity?: number | null
+          swap_bio_colors?: boolean | null
+          text_color?: string | null
           text_font?: string | null
           updated_at?: string
+          use_discord_avatar?: boolean | null
           user_id: string
           username: string
           views_count?: number | null
         }
         Update: {
           accent_color?: string | null
+          animated_title?: boolean | null
           avatar_shape?: string | null
           avatar_url?: string | null
           background_color?: string | null
@@ -279,17 +308,30 @@ export type Database = {
           card_color?: string | null
           card_style?: string | null
           created_at?: string
+          custom_cursor_url?: string | null
+          discord_avatar_decoration?: boolean | null
           discord_user_id?: string | null
           display_name?: string | null
           effects_config?: Json | null
+          enable_profile_gradient?: boolean | null
+          glow_badges?: boolean | null
+          glow_socials?: boolean | null
+          glow_username?: boolean | null
+          icon_color?: string | null
           id?: string
           layout_style?: string | null
           location?: string | null
+          monochrome_icons?: boolean | null
           music_url?: string | null
           name_font?: string | null
           occupation?: string | null
+          profile_blur?: number | null
+          profile_opacity?: number | null
+          swap_bio_colors?: boolean | null
+          text_color?: string | null
           text_font?: string | null
           updated_at?: string
+          use_discord_avatar?: boolean | null
           user_id?: string
           username?: string
           views_count?: number | null

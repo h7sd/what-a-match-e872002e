@@ -28,6 +28,7 @@ import {
   Puzzle,
   Shield,
   Award,
+  Settings,
 } from 'lucide-react';
 import {
   Select,
@@ -44,9 +45,13 @@ import { WalletOverview } from '@/components/dashboard/WalletOverview';
 import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
+import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
+import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
+import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
+import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { cn } from '@/lib/utils';
 
-type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects' | 'badges' | 'admin';
+type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects' | 'badges' | 'admin' | 'settings';
 
 const baseNavItems: { icon: React.ElementType; label: string; tab: TabType }[] = [
   { icon: LayoutDashboard, label: 'Overview', tab: 'overview' },
@@ -56,6 +61,7 @@ const baseNavItems: { icon: React.ElementType; label: string; tab: TabType }[] =
   { icon: Award, label: 'Badges', tab: 'badges' },
   { icon: Puzzle, label: 'Widgets', tab: 'widgets' },
   { icon: Sparkles, label: 'Effects', tab: 'effects' },
+  { icon: Settings, label: 'Settings', tab: 'settings' },
 ];
 
 export default function Dashboard() {
@@ -103,10 +109,15 @@ export default function Dashboard() {
   const [backgroundVideoUrl, setBackgroundVideoUrl] = useState('');
   const [backgroundColor, setBackgroundColor] = useState('#0a0a0a');
   const [accentColor, setAccentColor] = useState('#8b5cf6');
+  const [textColor, setTextColor] = useState('#ffffff');
+  const [iconColor, setIconColor] = useState('#ffffff');
   const [nameFont, setNameFont] = useState('Inter');
   const [textFont, setTextFont] = useState('Inter');
   const [layoutStyle, setLayoutStyle] = useState('stacked');
   const [cardStyle, setCardStyle] = useState('classic');
+  const [customCursorUrl, setCustomCursorUrl] = useState('');
+  const [profileOpacity, setProfileOpacity] = useState(100);
+  const [profileBlur, setProfileBlur] = useState(0);
   
   // Music & Effects state
   const [musicUrl, setMusicUrl] = useState('');
@@ -117,6 +128,17 @@ export default function Dashboard() {
     glow: false,
     typewriter: false,
   });
+
+  // Other customization
+  const [monochromeIcons, setMonochromeIcons] = useState(false);
+  const [animatedTitle, setAnimatedTitle] = useState(false);
+  const [swapBioColors, setSwapBioColors] = useState(false);
+  const [useDiscordAvatar, setUseDiscordAvatar] = useState(false);
+  const [discordAvatarDecoration, setDiscordAvatarDecoration] = useState(false);
+  const [enableProfileGradient, setEnableProfileGradient] = useState(false);
+  const [glowUsername, setGlowUsername] = useState(false);
+  const [glowSocials, setGlowSocials] = useState(false);
+  const [glowBadges, setGlowBadges] = useState(false);
 
   // Links state
   const [newLinkPlatform, setNewLinkPlatform] = useState('');
@@ -143,12 +165,26 @@ export default function Dashboard() {
       setBackgroundVideoUrl((profile as any).background_video_url || '');
       setBackgroundColor(profile.background_color || '#0a0a0a');
       setAccentColor(profile.accent_color || '#8b5cf6');
+      setTextColor((profile as any).text_color || '#ffffff');
+      setIconColor((profile as any).icon_color || '#ffffff');
       setNameFont((profile as any).name_font || 'Inter');
       setTextFont((profile as any).text_font || 'Inter');
       setLayoutStyle((profile as any).layout_style || 'stacked');
       setCardStyle((profile as any).card_style || 'classic');
+      setCustomCursorUrl((profile as any).custom_cursor_url || '');
+      setProfileOpacity((profile as any).profile_opacity ?? 100);
+      setProfileBlur((profile as any).profile_blur ?? 0);
       setMusicUrl(profile.music_url || '');
       setDiscordUserId((profile as any).discord_user_id || '');
+      setMonochromeIcons((profile as any).monochrome_icons ?? false);
+      setAnimatedTitle((profile as any).animated_title ?? false);
+      setSwapBioColors((profile as any).swap_bio_colors ?? false);
+      setUseDiscordAvatar((profile as any).use_discord_avatar ?? false);
+      setDiscordAvatarDecoration((profile as any).discord_avatar_decoration ?? false);
+      setEnableProfileGradient((profile as any).enable_profile_gradient ?? false);
+      setGlowUsername((profile as any).glow_username ?? false);
+      setGlowSocials((profile as any).glow_socials ?? false);
+      setGlowBadges((profile as any).glow_badges ?? false);
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -169,6 +205,8 @@ export default function Dashboard() {
         background_video_url: backgroundVideoUrl || null,
         background_color: backgroundColor,
         accent_color: accentColor,
+        text_color: textColor,
+        icon_color: iconColor,
         avatar_shape: avatarShape,
         occupation: occupation || null,
         location: location_ || null,
@@ -176,9 +214,21 @@ export default function Dashboard() {
         text_font: textFont,
         layout_style: layoutStyle,
         card_style: cardStyle,
+        custom_cursor_url: customCursorUrl || null,
+        profile_opacity: profileOpacity,
+        profile_blur: profileBlur,
         music_url: musicUrl || null,
         discord_user_id: discordUserId || null,
         effects_config: effects,
+        monochrome_icons: monochromeIcons,
+        animated_title: animatedTitle,
+        swap_bio_colors: swapBioColors,
+        use_discord_avatar: useDiscordAvatar,
+        discord_avatar_decoration: discordAvatarDecoration,
+        enable_profile_gradient: enableProfileGradient,
+        glow_username: glowUsername,
+        glow_socials: glowSocials,
+        glow_badges: glowBadges,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -488,163 +538,57 @@ export default function Dashboard() {
 
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
-              <div className="space-y-6 max-w-4xl">
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Colors */}
-                  <div className="glass-card p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Palette className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Colors</h3>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Theme Color</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="color"
-                            value={accentColor}
-                            onChange={(e) => setAccentColor(e.target.value)}
-                            className="w-12 h-10 p-1 bg-transparent cursor-pointer"
-                          />
-                          <Input
-                            value={accentColor}
-                            onChange={(e) => setAccentColor(e.target.value)}
-                            className="bg-secondary/50"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Background</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="color"
-                            value={backgroundColor}
-                            onChange={(e) => setBackgroundColor(e.target.value)}
-                            className="w-12 h-10 p-1 bg-transparent cursor-pointer"
-                          />
-                          <Input
-                            value={backgroundColor}
-                            onChange={(e) => setBackgroundColor(e.target.value)}
-                            className="bg-secondary/50"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fonts */}
-                  <div className="glass-card p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-primary font-bold">A</span>
-                      <h3 className="font-semibold">Fonts</h3>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Name Font</Label>
-                        <Select value={nameFont} onValueChange={setNameFont}>
-                          <SelectTrigger className="bg-secondary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fonts.map((font) => (
-                              <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-                                {font}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Text Font</Label>
-                        <Select value={textFont} onValueChange={setTextFont}>
-                          <SelectTrigger className="bg-secondary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fonts.map((font) => (
-                              <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-                                {font}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Background Media */}
-                <div className="glass-card p-6 space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Layout className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold">Background</h3>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Image URL</Label>
-                      <Input
-                        value={backgroundUrl}
-                        onChange={(e) => setBackgroundUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="bg-secondary/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Video URL (MP4)</Label>
-                      <Input
-                        value={backgroundVideoUrl}
-                        onChange={(e) => setBackgroundVideoUrl(e.target.value)}
-                        placeholder="https://example.com/video.mp4"
-                        className="bg-secondary/50"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Layout & Card Style */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="glass-card p-6 space-y-4">
-                    <h3 className="font-semibold">Layout Style</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {layoutStyles.map((style) => (
-                        <button
-                          key={style}
-                          onClick={() => setLayoutStyle(style)}
-                          className={`p-4 rounded-lg border-2 transition-all capitalize ${
-                            layoutStyle === style
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          {style}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6 space-y-4">
-                    <h3 className="font-semibold">Card Style</h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {cardStyles.map((style) => (
-                        <button
-                          key={style}
-                          onClick={() => setCardStyle(style)}
-                          className={`p-4 rounded-lg border-2 transition-all capitalize ${
-                            cardStyle === style
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          {style}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-6">
+                <CustomizationPanel
+                  backgroundUrl={backgroundUrl}
+                  setBackgroundUrl={setBackgroundUrl}
+                  backgroundVideoUrl={backgroundVideoUrl}
+                  setBackgroundVideoUrl={setBackgroundVideoUrl}
+                  musicUrl={musicUrl}
+                  setMusicUrl={setMusicUrl}
+                  avatarUrl={avatarUrl}
+                  setAvatarUrl={setAvatarUrl}
+                  customCursorUrl={customCursorUrl}
+                  setCustomCursorUrl={setCustomCursorUrl}
+                  bio={bio}
+                  setBio={setBio}
+                  location={location_}
+                  setLocation={setLocation_}
+                  discordUserId={discordUserId}
+                  setDiscordUserId={setDiscordUserId}
+                  profileOpacity={profileOpacity}
+                  setProfileOpacity={setProfileOpacity}
+                  profileBlur={profileBlur}
+                  setProfileBlur={setProfileBlur}
+                  accentColor={accentColor}
+                  setAccentColor={setAccentColor}
+                  textColor={textColor}
+                  setTextColor={setTextColor}
+                  backgroundColor={backgroundColor}
+                  setBackgroundColor={setBackgroundColor}
+                  iconColor={iconColor}
+                  setIconColor={setIconColor}
+                  effects={effects}
+                  setEffects={setEffects}
+                  monochromeIcons={monochromeIcons}
+                  setMonochromeIcons={setMonochromeIcons}
+                  animatedTitle={animatedTitle}
+                  setAnimatedTitle={setAnimatedTitle}
+                  swapBioColors={swapBioColors}
+                  setSwapBioColors={setSwapBioColors}
+                  useDiscordAvatar={useDiscordAvatar}
+                  setUseDiscordAvatar={setUseDiscordAvatar}
+                  discordAvatarDecoration={discordAvatarDecoration}
+                  setDiscordAvatarDecoration={setDiscordAvatarDecoration}
+                  enableProfileGradient={enableProfileGradient}
+                  setEnableProfileGradient={setEnableProfileGradient}
+                  glowUsername={glowUsername}
+                  setGlowUsername={setGlowUsername}
+                  glowSocials={glowSocials}
+                  setGlowSocials={setGlowSocials}
+                  glowBadges={glowBadges}
+                  setGlowBadges={setGlowBadges}
+                />
               </div>
             )}
 
@@ -652,39 +596,28 @@ export default function Dashboard() {
             {activeTab === 'links' && (
               <div className="space-y-6 max-w-4xl">
                 <div className="glass-card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Add New Link</h3>
-                    </div>
-                    <Button onClick={handleAddLink} disabled={createLink.isPending || !newLinkUrl}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Link
-                    </Button>
-                  </div>
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <Input
-                      value={newLinkPlatform}
-                      onChange={(e) => setNewLinkPlatform(e.target.value)}
-                      placeholder="Platform (Discord, TikTok...)"
-                      className="bg-secondary/50"
-                    />
-                    <Input
-                      value={newLinkTitle}
-                      onChange={(e) => setNewLinkTitle(e.target.value)}
-                      placeholder="Title (optional)"
-                      className="bg-secondary/50"
-                    />
-                    <Input
-                      value={newLinkUrl}
-                      onChange={(e) => setNewLinkUrl(e.target.value)}
-                      placeholder="URL"
-                      className="bg-secondary/50"
-                    />
-                  </div>
+                  <SocialLinksGrid
+                    existingLinks={socialLinks.map(l => ({ platform: l.platform }))}
+                    onAddLink={async (platform, url, title) => {
+                      if (!profile) return;
+                      await createLink.mutateAsync({
+                        profile_id: profile.id,
+                        platform,
+                        url,
+                        title: title || null,
+                        icon: null,
+                        description: null,
+                        style: 'card',
+                        display_order: socialLinks.length,
+                        is_visible: true,
+                      });
+                    }}
+                    isLoading={createLink.isPending}
+                  />
                 </div>
 
                 <div className="space-y-3">
+                  <h3 className="font-semibold text-sm text-muted-foreground">Your Links</h3>
                   {socialLinks.map((link) => (
                     <div
                       key={link.id}
@@ -712,7 +645,7 @@ export default function Dashboard() {
                   {socialLinks.length === 0 && (
                     <div className="text-center py-12 text-muted-foreground">
                       <LinkIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p>No links yet. Add your first link above!</p>
+                      <p>No links yet. Click an icon above to add one!</p>
                     </div>
                   )}
                 </div>
@@ -851,96 +784,18 @@ export default function Dashboard() {
 
             {/* Badges Tab */}
             {activeTab === 'badges' && (
-              <div className="space-y-6 max-w-4xl">
+              <div className="space-y-6">
                 <div className="glass-card p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <Award className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold">Your Badges</h3>
+                    <h3 className="font-semibold">All Badges</h3>
                   </div>
-
-                  {userBadges.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {userBadges.map((ub) => (
-                        <motion.div
-                          key={ub.id}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="p-4 rounded-xl border border-border bg-secondary/20 text-center"
-                          style={{ borderColor: `${ub.badge?.color}40` }}
-                        >
-                          <div
-                            className="w-16 h-16 mx-auto mb-3 rounded-xl flex items-center justify-center"
-                            style={{ backgroundColor: `${ub.badge?.color}20` }}
-                          >
-                            {ub.badge?.icon_url ? (
-                              <img src={ub.badge.icon_url} alt={ub.badge.name} className="w-10 h-10" />
-                            ) : (
-                              <Award className="w-8 h-8" style={{ color: ub.badge?.color || '#8B5CF6' }} />
-                            )}
-                          </div>
-                          <p className="font-medium text-sm">{ub.badge?.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{ub.badge?.rarity}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Award className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                      <p>You don't have any badges yet.</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="glass-card p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <Plus className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold">Available Badges</h3>
-                  </div>
-
-                  <div className="grid gap-4">
-                    {globalBadges.filter(gb => !userBadges.some(ub => ub.badge_id === gb.id)).map((badge) => (
-                      <div
-                        key={badge.id}
-                        className="flex items-center gap-4 p-4 rounded-lg border border-border bg-secondary/10"
-                      >
-                        <div
-                          className="w-12 h-12 rounded-lg flex items-center justify-center"
-                          style={{ backgroundColor: `${badge.color}20` }}
-                        >
-                          {badge.icon_url ? (
-                            <img src={badge.icon_url} alt={badge.name} className="w-8 h-8" />
-                          ) : (
-                            <Award className="w-6 h-6" style={{ color: badge.color || '#8B5CF6' }} />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{badge.name}</p>
-                            <span
-                              className="text-xs px-2 py-0.5 rounded-full capitalize"
-                              style={{ backgroundColor: `${badge.color}20`, color: badge.color || '#8B5CF6' }}
-                            >
-                              {badge.rarity}
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{badge.description}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => claimBadge.mutate(badge.id)}
-                          disabled={claimBadge.isPending || (badge.is_limited && (badge.claims_count || 0) >= (badge.max_claims || Infinity))}
-                        >
-                          {claimBadge.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Claim'}
-                        </Button>
-                      </div>
-                    ))}
-
-                    {globalBadges.filter(gb => !userBadges.some(ub => ub.badge_id === gb.id)).length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <p>No more badges available to claim.</p>
-                      </div>
-                    )}
-                  </div>
+                  <BadgesGrid
+                    globalBadges={globalBadges}
+                    userBadgeIds={userBadges.map(ub => ub.badge_id)}
+                    onClaimBadge={(badgeId) => claimBadge.mutate(badgeId)}
+                    isClaimPending={claimBadge.isPending}
+                  />
                 </div>
               </div>
             )}
@@ -952,6 +807,18 @@ export default function Dashboard() {
                   <AdminBadgeManager />
                 </div>
               </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <AccountSettings
+                profile={profile}
+                onUpdateUsername={(username) => {
+                  // Username updates need special handling
+                  toast({ title: 'Username changes require verification', variant: 'destructive' });
+                }}
+                onUpdateDisplayName={setDisplayName}
+              />
             )}
           </motion.div>
         </div>
