@@ -48,6 +48,7 @@ import { GiveawaysSection } from '@/components/dashboard/GiveawaysSection';
 import { EarlyBadgeCountdown } from '@/components/dashboard/EarlyBadgeCountdown';
 import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
+import { StartScreenSettings } from '@/components/dashboard/StartScreenSettings';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
@@ -157,6 +158,13 @@ export default function Dashboard() {
   const [discordShowBadge, setDiscordShowBadge] = useState(true);
   const [discordBadgeColor, setDiscordBadgeColor] = useState('#ec4899');
 
+  // Start Screen settings
+  const [startScreenEnabled, setStartScreenEnabled] = useState(true);
+  const [startScreenText, setStartScreenText] = useState('Click anywhere to enter');
+  const [startScreenFont, setStartScreenFont] = useState('Inter');
+  const [startScreenColor, setStartScreenColor] = useState('#a855f7');
+  const [startScreenBgColor, setStartScreenBgColor] = useState('#000000');
+
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -212,6 +220,11 @@ export default function Dashboard() {
       setDiscordBadgeColor((profile as any).discord_badge_color || '#ec4899');
       setBackgroundEffect((profile as any).background_effect || 'particles');
       setAudioVolume((profile as any).audio_volume ?? 0.5);
+      setStartScreenEnabled((profile as any).start_screen_enabled ?? true);
+      setStartScreenText((profile as any).start_screen_text || 'Click anywhere to enter');
+      setStartScreenFont((profile as any).start_screen_font || 'Inter');
+      setStartScreenColor((profile as any).start_screen_color || '#a855f7');
+      setStartScreenBgColor((profile as any).start_screen_bg_color || '#000000');
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -309,6 +322,11 @@ export default function Dashboard() {
         discord_badge_color: discordBadgeColor,
         background_effect: backgroundEffect,
         audio_volume: audioVolume,
+        start_screen_enabled: startScreenEnabled,
+        start_screen_text: startScreenText,
+        start_screen_font: startScreenFont,
+        start_screen_color: startScreenColor,
+        start_screen_bg_color: startScreenBgColor,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -730,6 +748,26 @@ export default function Dashboard() {
                   audioVolume={audioVolume}
                   setAudioVolume={setAudioVolume}
                 />
+
+                {/* Start Screen Settings */}
+                <div className="glass-card p-6 mt-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Start Screen</h3>
+                  </div>
+                  <StartScreenSettings
+                    enabled={startScreenEnabled}
+                    onEnabledChange={setStartScreenEnabled}
+                    text={startScreenText}
+                    onTextChange={setStartScreenText}
+                    font={startScreenFont}
+                    onFontChange={setStartScreenFont}
+                    textColor={startScreenColor}
+                    onTextColorChange={setStartScreenColor}
+                    bgColor={startScreenBgColor}
+                    onBgColorChange={setStartScreenBgColor}
+                  />
+                </div>
               </div>
             )}
 

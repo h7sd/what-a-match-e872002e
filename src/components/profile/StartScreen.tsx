@@ -4,9 +4,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface StartScreenProps {
   onStart: () => void;
   message?: string;
+  font?: string;
+  textColor?: string;
+  bgColor?: string;
 }
 
-export function StartScreen({ onStart, message = "Click anywhere to enter" }: StartScreenProps) {
+export function StartScreen({ 
+  onStart, 
+  message = "Click anywhere to enter",
+  font = "Inter",
+  textColor = "#a855f7",
+  bgColor = "#000000"
+}: StartScreenProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
@@ -45,7 +54,8 @@ export function StartScreen({ onStart, message = "Click anywhere to enter" }: St
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-[100] bg-black flex items-center justify-center cursor-pointer"
+          className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer"
+          style={{ backgroundColor: bgColor }}
           onClick={handleClick}
         >
           <motion.div
@@ -54,13 +64,20 @@ export function StartScreen({ onStart, message = "Click anywhere to enter" }: St
             transition={{ duration: 0.5 }}
             className="text-center"
           >
-            <p className="text-xl text-muted-foreground font-mono">
+            <p 
+              className="text-xl"
+              style={{ 
+                fontFamily: font,
+                color: textColor,
+              }}
+            >
               {displayedText}
               <span className={cursorVisible ? 'opacity-100' : 'opacity-0'}>|</span>
             </p>
 
             <motion.div
-              className="mt-12 w-16 h-16 mx-auto rounded-full border-2 border-primary/50"
+              className="mt-12 w-16 h-16 mx-auto rounded-full border-2"
+              style={{ borderColor: `${textColor}80` }}
               animate={{ 
                 scale: [1, 1.2, 1],
                 opacity: [0.5, 1, 0.5],

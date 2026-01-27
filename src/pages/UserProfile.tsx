@@ -92,12 +92,21 @@ export default function UserProfile() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Start Screen */}
-      {showStartScreen && (
+      {showStartScreen && (profile as any).start_screen_enabled !== false && (
         <StartScreen 
           onStart={handleStart} 
-          message="Click anywhere to enter" 
+          message={(profile as any).start_screen_text || "Click anywhere to enter"}
+          font={(profile as any).start_screen_font || "Inter"}
+          textColor={(profile as any).start_screen_color || accentColor}
+          bgColor={(profile as any).start_screen_bg_color || "#000000"}
         />
       )}
+      
+      {/* Auto-start if start screen is disabled */}
+      {(profile as any).start_screen_enabled === false && showStartScreen && (() => {
+        setTimeout(() => handleStart(), 100);
+        return null;
+      })()}
 
       {/* Hidden audio element */}
       {profile.music_url && (
