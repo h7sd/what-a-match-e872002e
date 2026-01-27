@@ -24,7 +24,15 @@ export function VideoBackground({ videoUrl, fallbackColor = '#0a0a0a' }: VideoBa
         loop
         muted
         playsInline
+        preload="auto"
+        disablePictureInPicture
         className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          willChange: 'transform',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+        }}
       >
         <source src={videoUrl} type="video/mp4" />
       </video>

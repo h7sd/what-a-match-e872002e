@@ -160,7 +160,15 @@ export function BackgroundEffects({
           loop
           muted={!hasInteracted || !enableAudio}
           playsInline
+          preload="auto"
+          disablePictureInPicture
           className="absolute inset-0 w-full h-full object-cover"
+          style={{
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+          }}
         >
           <source src={backgroundVideoUrl} type="video/mp4" />
         </video>
