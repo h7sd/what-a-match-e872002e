@@ -238,6 +238,18 @@ export default function Dashboard() {
     }
   };
 
+  const handleDisplayNameSave = async (nextDisplayName: string) => {
+    try {
+      await updateProfile.mutateAsync({
+        display_name: nextDisplayName,
+      } as any);
+      setDisplayName(nextDisplayName);
+      toast({ title: 'Display name updated!' });
+    } catch (error: any) {
+      toast({ title: error.message || 'Error updating display name', variant: 'destructive' });
+    }
+  };
+
   const handleSave = async () => {
     try {
       await updateProfile.mutateAsync({
@@ -864,9 +876,9 @@ export default function Dashboard() {
             {/* Settings Tab */}
             {activeTab === 'settings' && (
               <AccountSettings
-                profile={profile ? { ...profile, username } : null}
+                profile={profile ? { ...profile, username, display_name: displayName } : null}
                 onUpdateUsername={handleUsernameChange}
-                onUpdateDisplayName={setDisplayName}
+                onSaveDisplayName={handleDisplayNameSave}
               />
             )}
           </motion.div>

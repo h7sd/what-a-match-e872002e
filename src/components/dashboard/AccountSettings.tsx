@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { z } from 'zod';
 
 interface AccountSettingsProps {
   profile: {
@@ -37,7 +38,7 @@ interface AccountSettingsProps {
     display_name: string | null;
   } | null;
   onUpdateUsername: (username: string) => Promise<void>;
-  onUpdateDisplayName: (displayName: string) => void;
+  onSaveDisplayName: (displayName: string) => Promise<void>;
 }
 
 interface MFAFactor {
@@ -47,7 +48,13 @@ interface MFAFactor {
   status: 'verified' | 'unverified';
 }
 
-export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName }: AccountSettingsProps) {
+const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Display name cannot be empty')
+  .max(32, 'Display name must be at most 32 characters');
+
+export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName }: AccountSettingsProps) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [showEmail, setShowEmail] = useState(false);
@@ -59,6 +66,9 @@ export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [isSavingUsername, setIsSavingUsername] = useState(false);
+
+  const [displayNameDraft, setDisplayNameDraft] = useState('');
+  const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
   
   // MFA State
   const [mfaFactors, setMfaFactors] = useState<MFAFactor[]>([]);
@@ -73,6 +83,10 @@ export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName
       setNewUsername(profile.username);
     }
   }, [profile?.username]);
+
+  useEffect(() => {
+    setDisplayNameDraft(profile?.display_name || '');
+  }, [profile?.display_name]);
 
   useEffect(() => {
     checkMfaStatus();
@@ -196,14 +210,40 @@ export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName
 
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground">Display Name</label>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <Input
-                value={profile?.display_name || ''}
-                onChange={(e) => onUpdateDisplayName(e.target.value)}
-                className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
-                placeholder="Display Name"
-              />
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={displayNameDraft}
+                  onChange={(e) => setDisplayNameDraft(e.target.value)}
+                  className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
+                  placeholder="Display Name"
+                  maxLength={32}
+                />
+              </div>
+
+              {displayNameDraft !== (profile?.display_name || '') && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    const parsed = displayNameSchema.safeParse(displayNameDraft);
+                    if (!parsed.success) {
+                      toast({ title: parsed.error.issues[0]?.message || 'Invalid display name', variant: 'destructive' });
+                      return;
+                    }
+
+                    setIsSavingDisplayName(true);
+                    try {
+                      await onSaveDisplayName(parsed.data);
+                    } finally {
+                      setIsSavingDisplayName(false);
+                    }
+                  }}
+                  disabled={isSavingDisplayName}
+                >
+                  {isSavingDisplayName ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                </Button>
+              )}
             </div>
             <p className="text-xs text-primary">Want more? Unlock with Premium</p>
           </div>
