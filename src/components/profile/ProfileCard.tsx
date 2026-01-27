@@ -22,7 +22,18 @@ interface ProfileCardProps {
 export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
+  const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyUuid = async () => {
+    try {
+      await navigator.clipboard.writeText(profile.user_id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy UUID:', err);
+    }
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !profile.effects_config?.tilt) return;
@@ -157,8 +168,29 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
             )}
           </h1>
 
-          {/* Username */}
-          <p className="text-muted-foreground text-sm mb-3">@{profile.username}</p>
+          {/* Username with UUID tooltip */}
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p 
+                  className="text-muted-foreground text-sm mb-3 cursor-pointer hover:text-foreground transition-colors"
+                  onClick={handleCopyUuid}
+                >
+                  @{profile.username}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent 
+                side="bottom" 
+                className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-mono px-3 py-2 rounded-lg shadow-xl"
+              >
+                {copied ? (
+                  <span className="text-green-400">Copied!</span>
+                ) : (
+                  <span className="text-muted-foreground">{profile.user_id}</span>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Badges - Icon only with hover tooltip like feds.lol */}
           {badges.length > 0 && (
