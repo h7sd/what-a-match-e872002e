@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface LanyardActivity {
   name: string;
@@ -30,27 +31,6 @@ export interface LanyardSpotify {
   song: string;
 }
 
-export interface LanyardData {
-  discord_user: {
-    id: string;
-    username: string;
-    avatar: string;
-    discriminator: string;
-    global_name?: string;
-    avatar_decoration_data?: {
-      asset: string;
-      sku_id: string;
-    };
-  };
-  discord_status: 'online' | 'idle' | 'dnd' | 'offline';
-  activities: LanyardActivity[];
-  spotify?: LanyardSpotify;
-  listening_to_spotify: boolean;
-  active_on_discord_desktop: boolean;
-  active_on_discord_mobile: boolean;
-  active_on_discord_web: boolean;
-}
-
 export interface DiscordPresenceData {
   username: string;
   globalName?: string;
@@ -76,38 +56,65 @@ export function useDiscordPresence(discordUserId: string | null | undefined) {
 
     let ws: WebSocket | null = null;
     let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+    let isMounted = true;
 
-    const connect = () => {
-      setIsLoading(true);
-      
-      // Try REST API first
-      fetch(`https://api.lanyard.rest/v1/users/${discordUserId}`)
-        .then(res => res.json())
-        .then(result => {
-          if (result.success && result.data) {
-            const lanyardData = result.data as LanyardData;
-            setData(transformLanyardData(lanyardData));
-            setIsLoading(false);
-          } else {
-            setError(new Error('User not found on Lanyard'));
-            setIsLoading(false);
-          }
-        })
-        .catch(err => {
-          setError(err);
-          setIsLoading(false);
+    const fetchFromEdgeFunction = async () => {
+      try {
+        const { data: result, error: fetchError } = await supabase.functions.invoke('discord-presence', {
+          body: { discord_user_id: discordUserId }
         });
 
-      // Then connect WebSocket for real-time updates
+        if (fetchError) throw fetchError;
+        
+        if (result && isMounted) {
+          const transformed: DiscordPresenceData = {
+            username: result.user.username,
+            globalName: result.user.global_name,
+            avatar: result.user.avatar,
+            avatarDecoration: result.user.avatar_decoration,
+            status: result.presence?.status || 'offline',
+            activities: result.presence?.activities || [],
+            spotify: result.presence?.spotify,
+            isListeningToSpotify: result.presence?.listening_to_spotify || false,
+          };
+          setData(transformed);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Edge function error, falling back to Lanyard:', err);
+        // Fallback to direct Lanyard if edge function fails
+        fetchFromLanyard();
+      }
+    };
+
+    const fetchFromLanyard = async () => {
+      try {
+        const res = await fetch(`https://api.lanyard.rest/v1/users/${discordUserId}`);
+        const result = await res.json();
+        
+        if (result.success && result.data && isMounted) {
+          setData(transformLanyardData(result.data));
+          setIsLoading(false);
+        } else {
+          setError(new Error('User not found on Lanyard'));
+          setIsLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err as Error);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const connectWebSocket = () => {
       try {
         ws = new WebSocket('wss://api.lanyard.rest/socket');
 
         ws.onopen = () => {
           ws?.send(JSON.stringify({
             op: 2,
-            d: {
-              subscribe_to_id: discordUserId
-            }
+            d: { subscribe_to_id: discordUserId }
           }));
         };
 
@@ -115,48 +122,59 @@ export function useDiscordPresence(discordUserId: string | null | undefined) {
           const message = JSON.parse(event.data);
           
           if (message.op === 1) {
-            // Hello - start heartbeat
             const heartbeatMs = message.d.heartbeat_interval;
             heartbeatInterval = setInterval(() => {
               ws?.send(JSON.stringify({ op: 3 }));
             }, heartbeatMs);
           } else if (message.op === 0) {
-            // Event
             if (message.t === 'INIT_STATE' || message.t === 'PRESENCE_UPDATE') {
-              const lanyardData = message.d as LanyardData;
-              setData(transformLanyardData(lanyardData));
-              setIsLoading(false);
+              if (isMounted) {
+                setData(transformLanyardData(message.d));
+                setIsLoading(false);
+              }
             }
           }
         };
 
-        ws.onerror = () => {
-          // Silently fail WebSocket, we still have REST data
-        };
-
+        ws.onerror = () => {};
         ws.onclose = () => {
-          if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-          }
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
         };
       } catch {
-        // WebSocket failed, but we have REST fallback
+        // WebSocket failed silently
       }
     };
 
-    connect();
+    // First fetch from edge function (bot), then setup WebSocket for real-time
+    fetchFromEdgeFunction();
+    connectWebSocket();
 
     return () => {
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-      }
-      if (ws) {
-        ws.close();
-      }
+      isMounted = false;
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (ws) ws.close();
     };
   }, [discordUserId]);
 
   return { data, isLoading, error };
+}
+
+interface LanyardData {
+  discord_user: {
+    id: string;
+    username: string;
+    avatar: string;
+    discriminator: string;
+    global_name?: string;
+    avatar_decoration_data?: {
+      asset: string;
+      sku_id: string;
+    };
+  };
+  discord_status: 'online' | 'idle' | 'dnd' | 'offline';
+  activities: LanyardActivity[];
+  spotify?: LanyardSpotify;
+  listening_to_spotify: boolean;
 }
 
 function transformLanyardData(lanyardData: LanyardData): DiscordPresenceData {
@@ -176,27 +194,23 @@ function transformLanyardData(lanyardData: LanyardData): DiscordPresenceData {
     avatar: avatarUrl,
     avatarDecoration,
     status: discord_status,
-    activities: activities.filter(a => a.type !== 4), // Filter out custom status
+    activities: activities.filter(a => a.type !== 4),
     spotify,
     isListeningToSpotify: listening_to_spotify
   };
 }
 
-// Helper to get activity asset URL
 export function getActivityAssetUrl(activity: LanyardActivity): string | null {
   if (!activity.assets?.large_image || !activity.application_id) return null;
   
   const image = activity.assets.large_image;
   
   if (image.startsWith('mp:external/')) {
-    // External image
     const externalUrl = image.replace('mp:external/', '');
     return `https://media.discordapp.net/external/${externalUrl}`;
   } else if (image.startsWith('spotify:')) {
-    // Spotify album art
     return `https://i.scdn.co/image/${image.replace('spotify:', '')}`;
   } else {
-    // Discord CDN
     return `https://cdn.discordapp.com/app-assets/${activity.application_id}/${image}.png`;
   }
 }

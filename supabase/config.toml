@@ -1,1 +1,4 @@
 project_id = "cjulgfbmcnmrkvnzkpym"
+
+[functions.discord-presence]
+verify_jwt = false
