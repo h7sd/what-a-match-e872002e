@@ -18,9 +18,10 @@ interface ProfileCardProps {
   badges?: Array<{ id: string; name: string; color: string | null; icon_url?: string | null }>;
   showUsername?: boolean;
   showBadges?: boolean;
+  showViews?: boolean;
 }
 
-export function ProfileCard({ profile, badges = [], showUsername = true, showBadges = true }: ProfileCardProps) {
+export function ProfileCard({ profile, badges = [], showUsername = true, showBadges = true, showViews = true }: ProfileCardProps) {
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -268,16 +269,18 @@ export function ProfileCard({ profile, badges = [], showUsername = true, showBad
           </div>
 
           {/* Views */}
-          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-            <Eye className="w-3.5 h-3.5" />
-            <motion.span
-              key={profile.views_count}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              {profile.views_count.toLocaleString()} views
-            </motion.span>
-          </div>
+          {showViews && (
+            <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+              <Eye className="w-3.5 h-3.5" />
+              <motion.span
+                key={profile.views_count}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {profile.views_count.toLocaleString()} views
+              </motion.span>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

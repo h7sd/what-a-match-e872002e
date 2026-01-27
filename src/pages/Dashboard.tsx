@@ -174,6 +174,7 @@ export default function Dashboard() {
   // Profile visibility settings
   const [showUsername, setShowUsername] = useState(true);
   const [showBadges, setShowBadges] = useState(true);
+  const [showViews, setShowViews] = useState(true);
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -238,6 +239,7 @@ export default function Dashboard() {
       setShowVolumeControl((profile as any).show_volume_control ?? true);
       setShowUsername((profile as any).show_username ?? true);
       setShowBadges((profile as any).show_badges ?? true);
+      setShowViews((profile as any).show_views ?? true);
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -343,6 +345,7 @@ export default function Dashboard() {
         show_volume_control: showVolumeControl,
         show_username: showUsername,
         show_badges: showBadges,
+        show_views: showViews,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -802,8 +805,10 @@ export default function Dashboard() {
                   <ProfileVisibilitySettings
                     showUsername={showUsername}
                     showBadges={showBadges}
+                    showViews={showViews}
                     onShowUsernameChange={setShowUsername}
                     onShowBadgesChange={setShowBadges}
+                    onShowViewsChange={setShowViews}
                   />
                 </div>
               </div>

@@ -221,7 +221,7 @@ export function BackgroundEffects({
 
   return (
     <div className="fixed inset-0 -z-10">
-      {/* Video background with optimized playback */}
+      {/* Video background with optimized 60fps playback */}
       {backgroundVideoUrl && (
         <video
           ref={videoRef}
@@ -237,7 +237,10 @@ export function BackgroundEffects({
             transform: 'translate3d(0, 0, 0)',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            imageRendering: 'auto',
+            perspective: 1000,
+            WebkitPerspective: 1000,
+            transformStyle: 'preserve-3d',
+            WebkitTransformStyle: 'preserve-3d',
           }}
         >
           <source src={backgroundVideoUrl} type="video/mp4" />
