@@ -36,7 +36,7 @@ interface AccountSettingsProps {
     username: string;
     display_name: string | null;
   } | null;
-  onUpdateUsername: (username: string) => void;
+  onUpdateUsername: (username: string) => Promise<void>;
   onUpdateDisplayName: (displayName: string) => void;
 }
 
@@ -55,6 +55,11 @@ export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName
   const [newPassword, setNewPassword] = useState('');
   const [language, setLanguage] = useState('en');
   
+  // Username edit state
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+  
   // MFA State
   const [mfaFactors, setMfaFactors] = useState<MFAFactor[]>([]);
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
@@ -62,6 +67,12 @@ export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName
   const [showMfaSetup, setShowMfaSetup] = useState(false);
   const [showDisableMfa, setShowDisableMfa] = useState(false);
   const [isDisablingMfa, setIsDisablingMfa] = useState(false);
+
+  useEffect(() => {
+    if (profile?.username) {
+      setNewUsername(profile.username);
+    }
+  }, [profile?.username]);
 
   useEffect(() => {
     checkMfaStatus();
@@ -152,15 +163,35 @@ export function AccountSettings({ profile, onUpdateUsername, onUpdateDisplayName
         <div className="glass-card p-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground">Username</label>
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <Input
-                value={profile?.username || ''}
-                onChange={(e) => onUpdateUsername(e.target.value)}
-                className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
-                placeholder="username"
-              />
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
+                  placeholder="username"
+                  maxLength={20}
+                />
+              </div>
+              {newUsername !== profile?.username && newUsername.length > 0 && (
+                <Button 
+                  size="sm" 
+                  onClick={async () => {
+                    setIsSavingUsername(true);
+                    try {
+                      await onUpdateUsername(newUsername);
+                    } finally {
+                      setIsSavingUsername(false);
+                    }
+                  }}
+                  disabled={isSavingUsername}
+                >
+                  {isSavingUsername ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                </Button>
+              )}
             </div>
+            <p className="text-xs text-muted-foreground">1-20 characters, letters, numbers, underscores only</p>
           </div>
 
           <div className="space-y-2">
