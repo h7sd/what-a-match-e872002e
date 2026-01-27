@@ -962,12 +962,10 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  {/* Claimable badges (non-limited, not owned) */}
+                  {/* All badges (display only - no claiming, admin assignment only) */}
                   <BadgesGrid
-                    globalBadges={globalBadges.filter(b => !b.is_limited)}
+                    globalBadges={globalBadges}
                     userBadgeIds={userBadges.map(ub => ub.badge_id)}
-                    onClaimBadge={(badgeId) => claimBadge.mutate(badgeId)}
-                    isClaimPending={claimBadge.isPending}
                   />
                 </div>
               </div>
