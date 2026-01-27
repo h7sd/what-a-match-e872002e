@@ -205,9 +205,46 @@ export function useDeleteSocialLink() {
   });
 }
 
+// Session-based view tracking to prevent refresh spam
+const VIEW_SESSION_KEY = 'profile_views_session';
+
+function getViewedProfiles(): Record<string, number> {
+  try {
+    const data = sessionStorage.getItem(VIEW_SESSION_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
+function markProfileViewed(profileId: string): void {
+  try {
+    const viewed = getViewedProfiles();
+    viewed[profileId] = Date.now();
+    sessionStorage.setItem(VIEW_SESSION_KEY, JSON.stringify(viewed));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function hasViewedRecently(profileId: string): boolean {
+  const viewed = getViewedProfiles();
+  const lastViewed = viewed[profileId];
+  if (!lastViewed) return false;
+  
+  // Consider "recent" as within the last 30 minutes
+  const thirtyMinutes = 30 * 60 * 1000;
+  return Date.now() - lastViewed < thirtyMinutes;
+}
+
 export function useRecordProfileView() {
   return useMutation({
     mutationFn: async (profileId: string) => {
+      // Check if already viewed in this session
+      if (hasViewedRecently(profileId)) {
+        return; // Skip duplicate view
+      }
+
       const { error } = await supabase
         .from('profile_views')
         .insert({
@@ -215,6 +252,9 @@ export function useRecordProfileView() {
         });
 
       if (error) throw error;
+      
+      // Mark as viewed in session
+      markProfileViewed(profileId);
     },
   });
 }

@@ -45,7 +45,7 @@ import { OverviewStats } from '@/components/dashboard/OverviewStats';
 import { BadgesCarousel } from '@/components/dashboard/BadgesCarousel';
 import { DiscordCard } from '@/components/dashboard/DiscordCard';
 import { GiveawaysSection } from '@/components/dashboard/GiveawaysSection';
-import { WalletOverview } from '@/components/dashboard/WalletOverview';
+import { EarlyBadgeCountdown } from '@/components/dashboard/EarlyBadgeCountdown';
 import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
@@ -53,6 +53,7 @@ import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
 import { UserBadgesList } from '@/components/dashboard/UserBadgesList';
 import { LimitedBadgeAssigner } from '@/components/admin/LimitedBadgeAssigner';
+import { AdminBadgeRemover } from '@/components/admin/AdminBadgeRemover';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
@@ -551,7 +552,7 @@ export default function Dashboard() {
 
                 <div className="grid lg:grid-cols-2 gap-6">
                   <GiveawaysSection />
-                  <WalletOverview />
+                  <EarlyBadgeCountdown />
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-6">
@@ -982,6 +983,9 @@ export default function Dashboard() {
                 </div>
                 <div className="glass-card p-6">
                   <LimitedBadgeAssigner />
+                </div>
+                <div className="glass-card p-6">
+                  <AdminBadgeRemover />
                 </div>
               </div>
             )}

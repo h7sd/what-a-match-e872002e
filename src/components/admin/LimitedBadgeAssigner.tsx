@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Loader2, Search, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,8 @@ export function LimitedBadgeAssigner() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
-  // Filter only limited badges
-  const limitedBadges = badges.filter(b => b.is_limited);
+  // Filter only limited badges (excluding EARLY which has its own claiming mechanism)
+  const limitedBadges = badges.filter(b => b.is_limited && b.name.toLowerCase() !== 'early');
 
   const handleBadgeClick = (badge: GlobalBadge) => {
     setSelectedBadge(badge);
@@ -37,9 +37,20 @@ export function LimitedBadgeAssigner() {
     setSelectedUser(null);
   };
 
+  // Live search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim().length >= 1 && isDialogOpen) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isDialogOpen]);
+
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
     setIsSearching(true);
     try {
       const { data, error } = await supabase
@@ -162,26 +173,18 @@ export function LimitedBadgeAssigner() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Search Input */}
-            <div className="flex gap-2">
+            {/* Search Input - Live Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by username..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="pl-10"
               />
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={handleSearch}
-                disabled={isSearching}
-              >
-                {isSearching ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4" />
-                )}
-              </Button>
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+              )}
             </div>
 
             {/* Search Results */}
