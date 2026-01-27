@@ -30,7 +30,10 @@ import {
   Shield,
   Award,
   Settings,
+  Menu,
+  X,
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -146,6 +149,9 @@ export default function Dashboard() {
   const [glowUsername, setGlowUsername] = useState(false);
   const [glowSocials, setGlowSocials] = useState(false);
   const [glowBadges, setGlowBadges] = useState(false);
+
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Links state
   const [newLinkPlatform, setNewLinkPlatform] = useState('');
@@ -355,73 +361,122 @@ export default function Dashboard() {
   const cardStyles = ['classic', 'frosted', 'outlined', 'aurora', 'transparent'];
   const layoutStyles = ['stacked', 'floating', 'compact'];
 
+  const SidebarContent = () => (
+    <>
+      {/* Logo */}
+      <div className="p-4 sm:p-6 border-b border-border">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-sm">UV</span>
+          </div>
+          <span className="text-xl font-bold gradient-text">UserVault</span>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-2 sm:p-4 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.tab;
+          
+          return (
+            <button
+              key={item.tab}
+              onClick={() => {
+                handleTabChange(item.tab);
+                setMobileMenuOpen(false);
+              }}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm transition-all text-left',
+                isActive 
+                  ? 'bg-primary/10 text-primary border-l-2 border-primary' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+              )}
+            >
+              <Icon className="w-5 h-5" />
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Bottom section */}
+      <div className="p-2 sm:p-4 border-t border-border space-y-2">
+        <Button 
+          variant="outline" 
+          className="w-full justify-start gap-3" 
+          asChild
+        >
+          <Link to={`/${profile.username}`} target="_blank">
+            <Eye className="w-4 h-4" />
+            View Profile
+          </Link>
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+          onClick={handleSignOut}
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col fixed left-0 top-0">
-        {/* Logo */}
-        <div className="p-6 border-b border-border">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 min-h-screen bg-card border-r border-border flex-col fixed left-0 top-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
+        <div className="flex items-center justify-between p-3">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">UV</span>
             </div>
-            <span className="text-xl font-bold gradient-text">UserVault</span>
+            <span className="text-lg font-bold gradient-text">UserVault</span>
           </Link>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.tab;
-            
-            return (
-              <button
-                key={item.tab}
-                onClick={() => handleTabChange(item.tab)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all text-left',
-                  isActive 
-                    ? 'bg-primary/10 text-primary border-l-2 border-primary' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Bottom section */}
-        <div className="p-4 border-t border-border space-y-2">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start gap-3" 
-            asChild
-          >
-            <Link to={`/${profile.username}`} target="_blank">
-              <Eye className="w-4 h-4" />
-              View Profile
-            </Link>
-          </Button>
           
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={updateProfile.isPending}
+              className="bg-primary"
+            >
+              {updateProfile.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+            </Button>
+            
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <div className="flex flex-col h-full">
+                  <SidebarContent />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
-      </aside>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64">
-        {/* Header */}
-        <header className="border-b border-border bg-card sticky top-0 z-50">
-          <div className="px-8 py-4 flex justify-between items-center">
+      <main className="flex-1 md:ml-64 mt-14 md:mt-0">
+        {/* Desktop Header */}
+        <header className="hidden md:block border-b border-border bg-card sticky top-0 z-50">
+          <div className="px-4 sm:px-8 py-4 flex justify-between items-center">
             <div className="flex items-center gap-2">
               {navItems.find(item => item.tab === activeTab)?.icon && (
                 <span className="text-primary">
@@ -436,7 +491,7 @@ export default function Dashboard() {
             <Button
               onClick={handleSave}
               disabled={updateProfile.isPending}
-              className="bg-gradient-to-r from-purple-600 to-purple-500"
+              className="bg-primary"
             >
               {updateProfile.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -449,7 +504,7 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-6 md:p-8">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 10 }}

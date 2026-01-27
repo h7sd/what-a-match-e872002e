@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { SiSpotify } from 'react-icons/si';
-import { Circle, Loader2 } from 'lucide-react';
+import { Loader2, Heart } from 'lucide-react';
 import { useDiscordPresence, getActivityAssetUrl, LanyardActivity } from '@/hooks/useDiscordPresence';
 
 interface DiscordPresenceProps {
@@ -13,6 +13,13 @@ const statusColors = {
   idle: '#f59e0b',
   dnd: '#ef4444',
   offline: '#6b7280',
+};
+
+const statusDotStyles = {
+  online: 'bg-green-500',
+  idle: 'bg-yellow-500',
+  dnd: 'bg-red-500',
+  offline: 'bg-gray-500',
 };
 
 const activityTypeLabels: Record<number, string> = {
@@ -31,9 +38,9 @@ export function DiscordPresence({ discordUserId, accentColor = '#8b5cf6' }: Disc
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="w-full max-w-sm overflow-hidden rounded-xl bg-black/40 backdrop-blur-md border border-white/10 p-6 flex items-center justify-center"
+        className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 p-4 flex items-center justify-center"
       >
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <Loader2 className="w-5 h-5 animate-spin text-white/50" />
       </motion.div>
     );
   }
@@ -51,55 +58,56 @@ export function DiscordPresence({ discordUserId, accentColor = '#8b5cf6' }: Disc
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm overflow-hidden rounded-xl bg-black/40 backdrop-blur-md border border-white/10"
+        className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10"
       >
-        <div className="p-4 flex items-center gap-3">
-          {/* Avatar */}
+        <div className="p-3 sm:p-4 flex items-center gap-3">
+          {/* Avatar with status indicator */}
           <div className="relative flex-shrink-0">
             <img 
               src={data.avatar} 
               alt={data.username}
-              className="w-14 h-14 rounded-full object-cover border-2 border-white/20"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-white/20"
             />
             {data.avatarDecoration && (
               <img 
                 src={data.avatarDecoration}
                 alt=""
-                className="absolute -inset-1 w-16 h-16 pointer-events-none"
+                className="absolute -inset-1 w-14 h-14 sm:w-16 sm:h-16 pointer-events-none"
               />
             )}
+            {/* Status dot - bottom left like reference */}
             <div
-              className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-black/50"
-              style={{ backgroundColor: statusColors[data.status] }}
+              className={`absolute -bottom-0.5 -left-0.5 w-4 h-4 rounded-full border-[3px] border-black/80 ${statusDotStyles[data.status]}`}
             />
           </div>
 
           {/* User info and activity */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-semibold text-white text-sm">
                 {data.globalName || data.username}
               </span>
               <span 
-                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                style={{ backgroundColor: accentColor, color: 'white' }}
+                className="text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"
+                style={{ backgroundColor: '#ec4899', color: 'white' }}
               >
+                <Heart className="w-2 h-2 fill-current" />
                 UV
               </span>
             </div>
-            <div className="flex items-center gap-1 text-[#1DB954] text-xs mt-0.5">
+            <div className="flex items-center gap-1.5 text-[#1DB954] text-xs mt-0.5">
               <SiSpotify className="w-3 h-3" />
-              <span>Listening to Spotify</span>
+              <span className="font-medium">Listening to Spotify</span>
             </div>
-            <p className="text-white/80 text-xs truncate mt-0.5">{data.spotify.song}</p>
+            <p className="text-white/90 text-xs truncate mt-0.5">{data.spotify.song}</p>
             <p className="text-white/50 text-xs truncate">by {data.spotify.artist}</p>
           </div>
 
-          {/* Spotify album art */}
+          {/* Spotify album art - larger like reference */}
           <img
             src={data.spotify.album_art_url}
             alt={data.spotify.album}
-            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover flex-shrink-0 shadow-lg"
           />
         </div>
       </motion.div>
@@ -112,60 +120,61 @@ export function DiscordPresence({ discordUserId, accentColor = '#8b5cf6' }: Disc
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm overflow-hidden rounded-xl bg-black/40 backdrop-blur-md border border-white/10"
+        className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10"
       >
-        <div className="p-4 flex items-center gap-3">
-          {/* Avatar */}
+        <div className="p-3 sm:p-4 flex items-center gap-3">
+          {/* Avatar with status indicator */}
           <div className="relative flex-shrink-0">
             <img 
               src={data.avatar} 
               alt={data.username}
-              className="w-14 h-14 rounded-full object-cover border-2 border-white/20"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-white/20"
             />
             {data.avatarDecoration && (
               <img 
                 src={data.avatarDecoration}
                 alt=""
-                className="absolute -inset-1 w-16 h-16 pointer-events-none"
+                className="absolute -inset-1 w-14 h-14 sm:w-16 sm:h-16 pointer-events-none"
               />
             )}
+            {/* Status dot - bottom left like reference */}
             <div
-              className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-black/50"
-              style={{ backgroundColor: statusColors[data.status] }}
+              className={`absolute -bottom-0.5 -left-0.5 w-4 h-4 rounded-full border-[3px] border-black/80 ${statusDotStyles[data.status]}`}
             />
           </div>
 
           {/* User info and activity */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-semibold text-white text-sm">
                 {data.globalName || data.username}
               </span>
               <span 
-                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                style={{ backgroundColor: accentColor, color: 'white' }}
+                className="text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"
+                style={{ backgroundColor: '#ec4899', color: 'white' }}
               >
+                <Heart className="w-2 h-2 fill-current" />
                 UV
               </span>
             </div>
-            <p className="text-white/60 text-xs mt-0.5">
-              <span style={{ color: accentColor }}>{activityTypeLabels[mainActivity.type] || 'Playing'}</span>
+            <p className="text-white/80 text-xs mt-0.5">
+              <span className="text-primary font-medium">{activityTypeLabels[mainActivity.type] || 'Playing'}</span>
               {' '}{mainActivity.name}
             </p>
             {mainActivity.details && (
-              <p className="text-white/50 text-xs truncate">{mainActivity.details}</p>
+              <p className="text-white/60 text-xs truncate">{mainActivity.details}</p>
             )}
             {mainActivity.state && (
               <p className="text-white/40 text-xs truncate">{mainActivity.state}</p>
             )}
           </div>
 
-          {/* Activity image */}
+          {/* Activity image - larger like reference */}
           {activityImage && (
             <img
               src={activityImage}
               alt={mainActivity.name}
-              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover flex-shrink-0 shadow-lg"
             />
           )}
         </div>
@@ -178,50 +187,44 @@ export function DiscordPresence({ discordUserId, accentColor = '#8b5cf6' }: Disc
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-sm overflow-hidden rounded-xl bg-black/40 backdrop-blur-md border border-white/10"
+      className="w-full max-w-sm overflow-hidden rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10"
     >
-      <div className="p-4 flex items-center gap-3">
-        {/* Avatar */}
+      <div className="p-3 sm:p-4 flex items-center gap-3">
+        {/* Avatar with status indicator */}
         <div className="relative flex-shrink-0">
           <img 
             src={data.avatar} 
             alt={data.username}
-            className="w-14 h-14 rounded-full object-cover border-2 border-white/20"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-white/20"
           />
           {data.avatarDecoration && (
             <img 
               src={data.avatarDecoration}
               alt=""
-              className="absolute -inset-1 w-16 h-16 pointer-events-none"
+              className="absolute -inset-1 w-14 h-14 sm:w-16 sm:h-16 pointer-events-none"
             />
           )}
+          {/* Status dot - bottom left like reference */}
           <div
-            className="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-black/50"
-            style={{ backgroundColor: statusColors[data.status] }}
+            className={`absolute -bottom-0.5 -left-0.5 w-4 h-4 rounded-full border-[3px] border-black/80 ${statusDotStyles[data.status]}`}
           />
         </div>
 
         {/* User info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold text-white text-sm">
               {data.globalName || data.username}
             </span>
             <span 
-              className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-              style={{ backgroundColor: accentColor, color: 'white' }}
+              className="text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"
+              style={{ backgroundColor: '#ec4899', color: 'white' }}
             >
+              <Heart className="w-2 h-2 fill-current" />
               UV
             </span>
           </div>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Circle
-              className="w-2 h-2"
-              fill={statusColors[data.status]}
-              stroke={statusColors[data.status]}
-            />
-            <span className="text-white/50 text-xs capitalize">{data.status}</span>
-          </div>
+          <p className="text-white/50 text-xs capitalize mt-0.5">{data.status}</p>
         </div>
       </div>
     </motion.div>
