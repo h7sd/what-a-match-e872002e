@@ -51,6 +51,7 @@ import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChar
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { StartScreenSettings } from '@/components/dashboard/StartScreenSettings';
 import { VolumeControlSettings } from '@/components/dashboard/VolumeControlSettings';
+import { ProfileVisibilitySettings } from '@/components/dashboard/ProfileVisibilitySettings';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
@@ -170,6 +171,10 @@ export default function Dashboard() {
   // Volume control settings
   const [showVolumeControl, setShowVolumeControl] = useState(true);
 
+  // Profile visibility settings
+  const [showUsername, setShowUsername] = useState(true);
+  const [showBadges, setShowBadges] = useState(true);
+
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -231,6 +236,8 @@ export default function Dashboard() {
       setStartScreenColor((profile as any).start_screen_color || '#a855f7');
       setStartScreenBgColor((profile as any).start_screen_bg_color || '#000000');
       setShowVolumeControl((profile as any).show_volume_control ?? true);
+      setShowUsername((profile as any).show_username ?? true);
+      setShowBadges((profile as any).show_badges ?? true);
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -334,6 +341,8 @@ export default function Dashboard() {
         start_screen_color: startScreenColor,
         start_screen_bg_color: startScreenBgColor,
         show_volume_control: showVolumeControl,
+        show_username: showUsername,
+        show_badges: showBadges,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -785,6 +794,16 @@ export default function Dashboard() {
                   <VolumeControlSettings
                     enabled={showVolumeControl}
                     onEnabledChange={setShowVolumeControl}
+                  />
+                </div>
+
+                {/* Profile Visibility Settings */}
+                <div className="glass-card p-6 mt-6">
+                  <ProfileVisibilitySettings
+                    showUsername={showUsername}
+                    showBadges={showBadges}
+                    onShowUsernameChange={setShowUsername}
+                    onShowBadgesChange={setShowBadges}
                   />
                 </div>
               </div>

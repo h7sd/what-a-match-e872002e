@@ -16,9 +16,11 @@ import {
 interface ProfileCardProps {
   profile: Profile;
   badges?: Array<{ id: string; name: string; color: string | null; icon_url?: string | null }>;
+  showUsername?: boolean;
+  showBadges?: boolean;
 }
 
-export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
+export function ProfileCard({ profile, badges = [], showUsername = true, showBadges = true }: ProfileCardProps) {
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -158,25 +160,27 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
           </h1>
 
           {/* Username with UID tooltip */}
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <p className="text-muted-foreground text-sm mb-3 cursor-default flex items-center gap-0.5 hover:text-foreground/70 transition-colors">
-                  <AtSign className="w-3.5 h-3.5" />
-                  {profile.username}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="top" 
-                className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
-              >
-                UID: {(profile as any).uid_number || '1'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {showUsername && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-muted-foreground text-sm mb-3 cursor-default flex items-center gap-0.5 hover:text-foreground/70 transition-colors">
+                    <AtSign className="w-3.5 h-3.5" />
+                    {profile.username}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="top" 
+                  className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
+                >
+                  UID: {(profile as any).uid_number || '1'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {/* Badges - Icon only with hover tooltip like feds.lol */}
-          {badges.length > 0 && (
+          {showBadges && badges.length > 0 && (
             <TooltipProvider delayDuration={100}>
               <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
                 {badges.map((badge) => {
