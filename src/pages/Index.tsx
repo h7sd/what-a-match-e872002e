@@ -9,6 +9,7 @@ import { GradientOrb, GridBackground, NoiseTexture } from "@/components/landing/
 import { FAQSection } from "@/components/landing/FAQSection";
 import { StatsSection } from "@/components/landing/StatsSection";
 import { Footer } from "@/components/landing/Footer";
+import { ReportUserDialog } from "@/components/landing/ReportUserDialog";
 
 export default function Index() {
   const { user } = useAuth();
@@ -64,9 +65,12 @@ export default function Index() {
           transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="p-6 flex justify-between items-center max-w-6xl mx-auto"
         >
-          <Link to="/" className="text-xl font-bold text-primary">
-            UserVault
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="text-xl font-bold text-primary">
+              UserVault
+            </Link>
+            <ReportUserDialog />
+          </div>
           <div className="flex gap-3">
             {user ? (
               <NavButton to="/dashboard">Dashboard</NavButton>
