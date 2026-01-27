@@ -19,6 +19,8 @@ interface ProfileCardProps {
   showUsername?: boolean;
   showBadges?: boolean;
   showViews?: boolean;
+  showAvatar?: boolean;
+  showDescription?: boolean;
   borderEnabled?: boolean;
   borderColor?: string | null;
   borderWidth?: number;
@@ -30,6 +32,8 @@ export function ProfileCard({
   showUsername = true, 
   showBadges = true, 
   showViews = true,
+  showAvatar = true,
+  showDescription = true,
   borderEnabled = true,
   borderColor,
   borderWidth = 1,
@@ -93,15 +97,17 @@ export function ProfileCard({
 
           <div className="relative z-10 flex flex-col items-center text-center">
             {/* Avatar with orbiting effect */}
-            <div className="mb-6">
-              <OrbitingAvatar
-                avatarUrl={profile.avatar_url || undefined}
-                displayName={profile.display_name || profile.username}
-                size={120}
-                accentColor={accentColor}
-                shape={avatarShape as 'circle' | 'rounded' | 'soft' | 'square'}
-              />
-            </div>
+            {showAvatar && (
+              <div className="mb-6">
+                <OrbitingAvatar
+                  avatarUrl={profile.avatar_url || undefined}
+                  displayName={profile.display_name || profile.username}
+                  size={120}
+                  accentColor={accentColor}
+                  shape={avatarShape as 'circle' | 'rounded' | 'soft' | 'square'}
+                />
+              </div>
+            )}
 
             {/* Display Name with glitch effect */}
             <h1 
@@ -192,7 +198,7 @@ export function ProfileCard({
             )}
 
             {/* Bio */}
-            {profile.bio && (
+            {showDescription && profile.bio && (
               <p 
                 className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-4"
                 style={{ fontFamily: (profile as any).text_font || 'Inter' }}
@@ -304,15 +310,17 @@ export function ProfileCard({
 
         <div className="relative z-10 flex flex-col items-center text-center">
           {/* Avatar with orbiting effect */}
-          <div className="mb-6">
-            <OrbitingAvatar
-              avatarUrl={profile.avatar_url || undefined}
-              displayName={profile.display_name || profile.username}
-              size={120}
-              accentColor={accentColor}
-              shape={avatarShape as 'circle' | 'rounded' | 'soft' | 'square'}
-            />
-          </div>
+          {showAvatar && (
+            <div className="mb-6">
+              <OrbitingAvatar
+                avatarUrl={profile.avatar_url || undefined}
+                displayName={profile.display_name || profile.username}
+                size={120}
+                accentColor={accentColor}
+                shape={avatarShape as 'circle' | 'rounded' | 'soft' | 'square'}
+              />
+            </div>
+          )}
 
           {/* Display Name with glitch effect */}
           <h1 
@@ -421,7 +429,7 @@ export function ProfileCard({
           )}
 
           {/* Bio */}
-          {profile.bio && (
+          {showDescription && profile.bio && (
             <p 
               className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-4"
               style={{ fontFamily: (profile as any).text_font || 'Inter' }}
