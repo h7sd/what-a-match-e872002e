@@ -101,11 +101,10 @@ export function ProfileCard({
       />
 
       <div
-        className={`relative rounded-2xl p-8 backdrop-blur-xl overflow-hidden ${borderEnabled ? 'border' : ''}`}
+        className="relative rounded-2xl p-8 backdrop-blur-xl overflow-hidden"
         style={{
           backgroundColor: profile.card_color || 'rgba(0,0,0,0.6)',
-          borderColor: borderEnabled ? `${borderColor || accentColor}30` : 'transparent',
-          borderWidth: borderEnabled ? borderWidth : 0,
+          border: borderEnabled ? `${borderWidth}px solid ${borderColor || accentColor}30` : 'none',
         }}
       >
         {/* Sparkle effects */}
