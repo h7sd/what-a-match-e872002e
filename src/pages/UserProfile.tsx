@@ -152,7 +152,9 @@ export default function UserProfile() {
               name: b.name,
               color: b.color,
               icon_url: b.icon_url,
-            }))} 
+            }))}
+            showUsername={(profile as any).show_username ?? true}
+            showBadges={(profile as any).show_badges ?? true}
           />
 
           {/* Discord Presence Widget - Real-time via Lanyard */}
