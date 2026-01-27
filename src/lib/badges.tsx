@@ -8,7 +8,7 @@ import uservaultBadge from '@/assets/badges/uservault.png';
 import devBadge from '@/assets/badges/dev.png';
 import earlyBadge from '@/assets/badges/early.png';
 import donorBadge from '@/assets/badges/donor.png';
-import moderatorBadge from '@/assets/badges/moderator.png';
+import helperBadge from '@/assets/badges/helper.png';
 
 export type BadgeIconComponent = ComponentType<{ className?: string; style?: React.CSSProperties }>;
 
@@ -37,13 +37,13 @@ export const badgeImages: Record<string, string> = {
   dev: devBadge,
   early: earlyBadge,
   donor: donorBadge,
-  moderator: moderatorBadge,
+  helper: helperBadge,
 };
 
 // Central mapping so dashboard + profile render the same icons (fallback if no image).
 export const badgeIconByName: Record<string, BadgeIconComponent> = {
   staff: Shield,
-  helper: FaDiscord,
+  helper: Wrench,
   premium: Crown,
   verified: VerifiedBadgeIcon,
   donor: FaDollarSign,
@@ -63,7 +63,6 @@ export const badgeIconByName: Record<string, BadgeIconComponent> = {
   'third place': Award,
   dev: Code,
   early: Zap,
-  moderator: Wrench,
 };
 
 export function getBadgeIcon(name: string): BadgeIconComponent {
