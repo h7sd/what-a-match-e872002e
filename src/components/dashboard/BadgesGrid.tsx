@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion';
-import { Award, Gift, Star, Crown, Shield, Check, Lock, Loader2 } from 'lucide-react';
-import {
-  FaDiscord, FaPatreon, FaDollarSign, FaBug, FaGift, FaSnowflake, FaEgg
-} from 'react-icons/fa6';
+import { Award, Check, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlobalBadge } from '@/hooks/useBadges';
+import { getBadgeIcon } from '@/lib/badges';
 
 interface BadgesGridProps {
   globalBadges: GlobalBadge[];
@@ -13,27 +11,18 @@ interface BadgesGridProps {
   isClaimPending?: boolean;
 }
 
-// Badge type to icon/action mapping
-const badgeConfig: Record<string, { icon: React.ElementType; action?: string; actionLabel?: string }> = {
-  staff: { icon: Shield, action: undefined, actionLabel: undefined },
-  helper: { icon: FaDiscord, action: 'join_discord', actionLabel: 'Join Discord' },
-  premium: { icon: Crown, action: 'purchase', actionLabel: 'Purchase' },
-  verified: { icon: Check, action: 'unlock', actionLabel: 'Unlock' },
-  donor: { icon: FaDollarSign, action: 'donate', actionLabel: 'Donate' },
-  gifter: { icon: FaGift, action: 'gift', actionLabel: 'Gift' },
-  'image host': { icon: Award, action: 'purchase', actionLabel: 'Purchase' },
-  'domain legend': { icon: Star, action: 'add_domain', actionLabel: 'Add Domain' },
-  og: { icon: Star, action: undefined, actionLabel: undefined },
-  'server booster': { icon: FaDiscord, action: 'boost', actionLabel: 'Boost' },
-  'hone.gg': { icon: Star, action: 'unlock', actionLabel: 'Unlock' },
-  'bug hunter': { icon: FaBug, action: 'report', actionLabel: 'Report' },
-  'christmas 2025': { icon: FaSnowflake, action: undefined, actionLabel: undefined },
-  'easter 2025': { icon: FaEgg, action: undefined, actionLabel: undefined },
-  'christmas 2024': { icon: FaSnowflake, action: undefined, actionLabel: undefined },
-  'the million': { icon: Crown, action: undefined, actionLabel: undefined },
-  winner: { icon: Crown, action: undefined, actionLabel: undefined },
-  'second place': { icon: Award, action: undefined, actionLabel: undefined },
-  'third place': { icon: Award, action: undefined, actionLabel: undefined },
+// Keep action labels local to dashboard UI
+const badgeActionLabelByName: Record<string, string | undefined> = {
+  helper: 'Join Discord',
+  premium: 'Purchase',
+  verified: 'Unlock',
+  donor: 'Donate',
+  gifter: 'Gift',
+  'image host': 'Purchase',
+  'domain legend': 'Add Domain',
+  'server booster': 'Boost',
+  'hone.gg': 'Unlock',
+  'bug hunter': 'Report',
 };
 
 export function BadgesGrid({ globalBadges, userBadgeIds, onClaimBadge, isClaimPending }: BadgesGridProps) {
@@ -43,8 +32,8 @@ export function BadgesGrid({ globalBadges, userBadgeIds, onClaimBadge, isClaimPe
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {globalBadges.map((badge) => {
         const isOwned = userBadgeSet.has(badge.id);
-        const config = badgeConfig[badge.name.toLowerCase()] || { icon: Award, action: undefined, actionLabel: undefined };
-        const Icon = config.icon;
+        const Icon = getBadgeIcon(badge.name);
+        const actionLabel = badgeActionLabelByName[badge.name.toLowerCase()];
         const isLimited = badge.is_limited && badge.max_claims && (badge.claims_count || 0) >= badge.max_claims;
 
         return (
@@ -96,7 +85,7 @@ export function BadgesGrid({ globalBadges, userBadgeIds, onClaimBadge, isClaimPe
                     <Lock className="w-3 h-3 mr-1" />
                     Sold Out
                   </Button>
-                ) : config.actionLabel ? (
+                ) : actionLabel ? (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -104,7 +93,7 @@ export function BadgesGrid({ globalBadges, userBadgeIds, onClaimBadge, isClaimPe
                     onClick={() => onClaimBadge(badge.id)}
                     disabled={isClaimPending}
                   >
-                    {isClaimPending ? <Loader2 className="w-3 h-3 animate-spin" /> : config.actionLabel}
+                    {isClaimPending ? <Loader2 className="w-3 h-3 animate-spin" /> : actionLabel}
                   </Button>
                 ) : (
                   <Button 

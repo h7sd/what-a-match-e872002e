@@ -7,10 +7,11 @@ import { TypewriterText } from './TypewriterText';
 import { SparkleEffect } from './SparkleEffect';
 import { GlitchText } from './GlitchText';
 import { OrbitingAvatar } from './OrbitingAvatar';
+import { getBadgeIcon } from '@/lib/badges';
 
 interface ProfileCardProps {
   profile: Profile;
-  badges?: Array<{ id: string; name: string; color: string | null }>;
+  badges?: Array<{ id: string; name: string; color: string | null; icon_url?: string | null }>;
 }
 
 export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
@@ -156,17 +157,36 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
 
           {/* Badges */}
           {badges.length > 0 && (
-            <div className="flex flex-wrap gap-2 justify-center mb-4">
-              {badges.map((badge) => (
-                <Badge
-                  key={badge.id}
-                  variant="outline"
-                  className="bg-white/5 border-white/10 text-xs"
-                  style={{ borderColor: badge.color || accentColor }}
-                >
-                  {badge.name}
-                </Badge>
-              ))}
+            <div className="w-full mb-4">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 justify-center">
+                {badges.map((badge) => {
+                  const Icon = getBadgeIcon(badge.name);
+                  const badgeColor = badge.color || accentColor;
+
+                  return (
+                    <Badge
+                      key={badge.id}
+                      variant="outline"
+                      className="shrink-0 bg-secondary/20 border-border/60 text-xs whitespace-nowrap"
+                      style={{ borderColor: badgeColor }}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        {badge.icon_url ? (
+                          <img
+                            src={badge.icon_url}
+                            alt={badge.name}
+                            className="w-3.5 h-3.5"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <Icon className="w-3.5 h-3.5" style={{ color: badgeColor }} />
+                        )}
+                        <span>{badge.name}</span>
+                      </span>
+                    </Badge>
+                  );
+                })}
+              </div>
             </div>
           )}
 
