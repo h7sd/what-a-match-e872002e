@@ -45,6 +45,7 @@ import { WalletOverview } from '@/components/dashboard/WalletOverview';
 import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
+import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
@@ -803,6 +804,9 @@ export default function Dashboard() {
             {/* Admin Tab */}
             {activeTab === 'admin' && isAdmin && (
               <div className="space-y-6 max-w-4xl">
+                <div className="glass-card p-6">
+                  <AdminUserManager />
+                </div>
                 <div className="glass-card p-6">
                   <AdminBadgeManager />
                 </div>
