@@ -435,18 +435,21 @@ export type Database = {
           badge_id: string
           claimed_at: string
           id: string
+          is_enabled: boolean | null
           user_id: string
         }
         Insert: {
           badge_id: string
           claimed_at?: string
           id?: string
+          is_enabled?: boolean | null
           user_id: string
         }
         Update: {
           badge_id?: string
           claimed_at?: string
           id?: string
+          is_enabled?: boolean | null
           user_id?: string
         }
         Relationships: [

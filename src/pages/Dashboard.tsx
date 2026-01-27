@@ -48,6 +48,8 @@ import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
+import { UserBadgesList } from '@/components/dashboard/UserBadgesList';
+import { LimitedBadgeAssigner } from '@/components/admin/LimitedBadgeAssigner';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
@@ -846,13 +848,29 @@ export default function Dashboard() {
             {/* Badges Tab */}
             {activeTab === 'badges' && (
               <div className="space-y-6">
+                {/* My Badges - Toggle Section */}
                 <div className="glass-card p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <Award className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold">All Badges</h3>
+                    <h3 className="font-semibold">My Badges</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Toggle badges on/off to show or hide them on your profile.
+                  </p>
+                  <UserBadgesList 
+                    userBadges={userBadges as any} 
+                    userId={user?.id || ''} 
+                  />
+                </div>
+
+                {/* All Badges - Regular Claim */}
+                <div className="glass-card p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Award className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Available Badges</h3>
                   </div>
                   <BadgesGrid
-                    globalBadges={globalBadges}
+                    globalBadges={globalBadges.filter(b => !b.is_limited)}
                     userBadgeIds={userBadges.map(ub => ub.badge_id)}
                     onClaimBadge={(badgeId) => claimBadge.mutate(badgeId)}
                     isClaimPending={claimBadge.isPending}
@@ -869,6 +887,9 @@ export default function Dashboard() {
                 </div>
                 <div className="glass-card p-6">
                   <AdminBadgeManager />
+                </div>
+                <div className="glass-card p-6">
+                  <LimitedBadgeAssigner />
                 </div>
               </div>
             )}

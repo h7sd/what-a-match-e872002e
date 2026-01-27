@@ -22,6 +22,7 @@ export interface UserBadge {
   user_id: string;
   badge_id: string;
   claimed_at: string;
+  is_enabled: boolean;
   badge?: GlobalBadge;
 }
 
@@ -84,7 +85,7 @@ export function useUserBadges(userId: string) {
   });
 }
 
-// Get badges for a profile
+// Get badges for a profile (only enabled ones)
 export function useProfileBadges(profileId: string) {
   return useQuery({
     queryKey: ['profileBadges', profileId],
@@ -99,14 +100,15 @@ export function useProfileBadges(profileId: string) {
       if (profileError) throw profileError;
       if (!profile) return [];
 
-      // Then get the user's badges
+      // Then get the user's enabled badges only
       const { data, error } = await supabase
         .from('user_badges')
         .select(`
           *,
           badge:global_badges(*)
         `)
-        .eq('user_id', profile.user_id);
+        .eq('user_id', profile.user_id)
+        .eq('is_enabled', true);
       
       if (error) throw error;
       return (data as (UserBadge & { badge: GlobalBadge })[]).map(ub => ub.badge);
