@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -74,9 +75,12 @@ export function ReportUserDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Flag className="w-5 h-5 text-red-500" />
+            <Flag className="w-5 h-5 text-destructive" />
             Report a User
           </DialogTitle>
+          <DialogDescription>
+            Submit a report about a user violating our community guidelines.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
