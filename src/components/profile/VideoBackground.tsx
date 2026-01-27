@@ -35,6 +35,7 @@ export function VideoBackground({ videoUrl, fallbackColor = '#0a0a0a' }: VideoBa
         }}
       >
         <source src={videoUrl} type="video/mp4" />
+        <source src={videoUrl} type="video/quicktime" />
       </video>
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/50" />

@@ -17,7 +17,7 @@ const typeConfig = {
   background: {
     icon: ImageIcon,
     label: 'Background',
-    accept: 'image/*,video/mp4',
+    accept: 'image/*,video/mp4,video/quicktime,.mov',
     folder: 'backgrounds',
     color: 'text-primary',
   },
@@ -153,7 +153,7 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
 
         {currentUrl && type !== 'audio' ? (
           <div className="relative aspect-video">
-            {type === 'background' && currentUrl.includes('.mp4') ? (
+            {type === 'background' && (currentUrl.includes('.mp4') || currentUrl.includes('.mov') || currentUrl.includes('.MOV')) ? (
               <video src={currentUrl} className="w-full h-full object-cover" muted autoPlay loop />
             ) : (
               <img src={currentUrl} alt={config.label} className="w-full h-full object-cover" />

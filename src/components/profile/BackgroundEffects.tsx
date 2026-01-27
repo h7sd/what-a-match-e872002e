@@ -242,6 +242,7 @@ export function BackgroundEffects({
         >
           <source src={backgroundVideoUrl} type="video/mp4" />
           <source src={backgroundVideoUrl} type="video/quicktime" />
+          <source src={backgroundVideoUrl} type="video/x-m4v" />
         </video>
       )}
 
