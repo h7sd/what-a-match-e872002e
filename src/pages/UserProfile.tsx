@@ -151,14 +151,10 @@ export default function UserProfile() {
             }))} 
           />
 
-          {/* Discord Presence Widget */}
+          {/* Discord Presence Widget - Real-time via Lanyard */}
           {(profile as any).discord_user_id && (
             <DiscordPresence
-              username={(profile as any).discord_user_id}
-              status="online"
-              activityName="Visual Studio Code"
-              activityType="Playing"
-              activityDetails="Working on UserVault"
+              discordUserId={(profile as any).discord_user_id}
               accentColor={accentColor}
             />
           )}

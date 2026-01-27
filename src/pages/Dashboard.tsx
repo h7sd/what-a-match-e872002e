@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
 import { useCurrentUserProfile, useUpdateProfile, useSocialLinks, useCreateSocialLink, useDeleteSocialLink } from '@/hooks/useProfile';
 import { useIsAdmin, useUserBadges, useGlobalBadges, useClaimBadge } from '@/hooks/useBadges';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -98,6 +99,7 @@ export default function Dashboard() {
   }, [location.hash, isAdmin]);
 
   // Profile state
+  const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -156,6 +158,7 @@ export default function Dashboard() {
   // Populate form with profile data
   useEffect(() => {
     if (profile) {
+      setUsername(profile.username || '');
       setDisplayName(profile.display_name || '');
       setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || '');
@@ -195,6 +198,41 @@ export default function Dashboard() {
       });
     }
   }, [profile]);
+
+  const handleUsernameChange = async (newUsername: string) => {
+    if (!newUsername || newUsername.length < 1 || newUsername.length > 20) {
+      toast({ title: 'Username must be 1-20 characters', variant: 'destructive' });
+      return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      toast({ title: 'Username can only contain letters, numbers, and underscores', variant: 'destructive' });
+      return;
+    }
+
+    // Check if username is taken
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('username', newUsername.toLowerCase())
+      .neq('user_id', user?.id || '')
+      .maybeSingle();
+
+    if (existingProfile) {
+      toast({ title: 'Username is already taken', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      await updateProfile.mutateAsync({
+        username: newUsername.toLowerCase(),
+      } as any);
+      setUsername(newUsername.toLowerCase());
+      toast({ title: 'Username updated!' });
+    } catch (error: any) {
+      toast({ title: error.message || 'Error updating username', variant: 'destructive' });
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -816,11 +854,8 @@ export default function Dashboard() {
             {/* Settings Tab */}
             {activeTab === 'settings' && (
               <AccountSettings
-                profile={profile}
-                onUpdateUsername={(username) => {
-                  // Username updates need special handling
-                  toast({ title: 'Username changes require verification', variant: 'destructive' });
-                }}
+                profile={profile ? { ...profile, username } : null}
+                onUpdateUsername={handleUsernameChange}
                 onUpdateDisplayName={setDisplayName}
               />
             )}
