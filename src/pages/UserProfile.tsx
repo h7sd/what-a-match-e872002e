@@ -161,8 +161,8 @@ export default function UserProfile() {
             borderWidth={(profile as any).card_border_width ?? 1}
           />
 
-          {/* Discord Presence Widget - Real-time via Lanyard */}
-          {(profile as any).discord_user_id && (
+          {/* Discord Presence Widget - Only show when border/card is enabled */}
+          {(profile as any).discord_user_id && (profile as any).card_border_enabled !== false && (
             <div className="flex justify-center">
               <DiscordPresence
                 discordUserId={(profile as any).discord_user_id}

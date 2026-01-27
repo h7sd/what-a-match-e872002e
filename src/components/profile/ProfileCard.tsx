@@ -70,6 +70,172 @@ export function ProfileCard({
     rounded: 'rounded-2xl',
   };
 
+  // If border is disabled, card should be transparent/invisible
+  if (!borderEnabled) {
+    return (
+      <motion.div
+        ref={cardRef}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+          transition: 'transform 0.1s ease-out',
+        }}
+        className="relative w-full max-w-sm mx-auto"
+      >
+        {/* Transparent mode - no card background, just content */}
+        <div className="relative p-8">
+          {/* Sparkle effects */}
+          {profile.effects_config?.sparkles && <SparkleEffect />}
+
+          <div className="relative z-10 flex flex-col items-center text-center">
+            {/* Avatar with orbiting effect */}
+            <div className="mb-6">
+              <OrbitingAvatar
+                avatarUrl={profile.avatar_url || undefined}
+                displayName={profile.display_name || profile.username}
+                size={120}
+                accentColor={accentColor}
+                shape={avatarShape as 'circle' | 'rounded' | 'soft' | 'square'}
+              />
+            </div>
+
+            {/* Display Name with glitch effect */}
+            <h1 
+              className="text-2xl font-bold mb-1"
+              style={{ 
+                fontFamily: (profile as any).name_font || 'Inter',
+                color: 'white',
+                textShadow: `0 0 10px ${accentColor}40`,
+              }}
+            >
+              {profile.effects_config?.typewriter ? (
+                <GlitchText 
+                  text={profile.display_name || profile.username} 
+                  typewriter 
+                  loop
+                  glitchIntensity={0.05}
+                />
+              ) : (
+                <GlitchText 
+                  text={profile.display_name || profile.username}
+                  glitchIntensity={0.03}
+                />
+              )}
+            </h1>
+
+            {/* Username with UID tooltip */}
+            {showUsername && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="text-muted-foreground text-sm mb-3 cursor-default flex items-center gap-0.5 hover:text-foreground/70 transition-colors">
+                      <AtSign className="w-3.5 h-3.5" />
+                      {profile.username}
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent 
+                    side="top" 
+                    className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
+                  >
+                    UID: {(profile as any).uid_number || '1'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {/* Badges */}
+            {showBadges && badges.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
+                  {badges.map((badge) => {
+                    const Icon = getBadgeIcon(badge.name);
+                    const badgeColor = badge.color || accentColor;
+                    const customImage = getBadgeImage(badge.name);
+
+                    return (
+                      <Tooltip key={badge.id}>
+                        <TooltipTrigger asChild>
+                          <motion.div
+                            className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                            whileHover={{ 
+                              scale: 1.3,
+                              filter: `drop-shadow(0 0 8px ${badgeColor})`,
+                            }}
+                            whileTap={{ scale: 0.95 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                          >
+                            {badge.icon_url ? (
+                              <img src={badge.icon_url} alt={badge.name} className="w-6 h-6 object-contain" loading="lazy" />
+                            ) : customImage ? (
+                              <img src={customImage} alt={badge.name} className="w-6 h-6 object-contain" loading="lazy" />
+                            ) : (
+                              <Icon className="w-6 h-6 transition-all duration-200" style={{ color: badgeColor, filter: `drop-shadow(0 0 4px ${badgeColor}50)` }} />
+                            )}
+                          </motion.div>
+                        </TooltipTrigger>
+                        <TooltipContent 
+                          side="top" 
+                          className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl"
+                          style={{ boxShadow: `0 4px 20px ${badgeColor}40` }}
+                        >
+                          {badge.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
+            )}
+
+            {/* Bio */}
+            {profile.bio && (
+              <p 
+                className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-4"
+                style={{ fontFamily: (profile as any).text_font || 'Inter' }}
+              >
+                {profile.bio}
+              </p>
+            )}
+
+            {/* Location & Occupation */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mb-4">
+              {(profile as any).occupation && (
+                <div className="flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" />
+                  <span>{(profile as any).occupation}</span>
+                </div>
+              )}
+              {(profile as any).location && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>{(profile as any).location}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Views */}
+            {showViews && (
+              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                <Eye className="w-3.5 h-3.5" />
+                <motion.span
+                  key={profile.views_count}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  {profile.views_count.toLocaleString()} views
+                </motion.span>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       ref={cardRef}
@@ -84,29 +250,27 @@ export function ProfileCard({
       }}
       className="relative w-full max-w-sm mx-auto"
     >
-      {/* Animated glow effect behind card - only show when border is enabled */}
-      {borderEnabled && (
-        <motion.div
-          className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
-          style={{
-            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
-          }}
-          animate={{
-            opacity: [0.4, 0.6, 0.4],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-      )}
+      {/* Animated glow effect behind card */}
+      <motion.div
+        className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
+        style={{
+          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
+        }}
+        animate={{
+          opacity: [0.4, 0.6, 0.4],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
 
       <div
         className="relative rounded-2xl p-8 backdrop-blur-xl overflow-hidden"
         style={{
           backgroundColor: profile.card_color || 'rgba(0,0,0,0.6)',
-          border: borderEnabled ? `${borderWidth}px solid ${borderColor || accentColor}30` : 'none',
+          border: `${borderWidth}px solid ${borderColor || accentColor}30`,
         }}
       >
         {/* Sparkle effects */}

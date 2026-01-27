@@ -59,6 +59,8 @@ import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
 import { UserBadgesList } from '@/components/dashboard/UserBadgesList';
 import { LimitedBadgeAssigner } from '@/components/admin/LimitedBadgeAssigner';
 import { AdminBadgeRemover } from '@/components/admin/AdminBadgeRemover';
+import { AllBadgeAssigner } from '@/components/admin/AllBadgeAssigner';
+import { UserBanManager } from '@/components/admin/UserBanManager';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
@@ -1120,17 +1122,34 @@ export default function Dashboard() {
             {/* Admin Tab */}
             {activeTab === 'admin' && isAdmin && (
               <div className="space-y-6 max-w-4xl">
-                <div className="glass-card p-6">
-                  <LimitedBadgeAssigner />
+                {/* Top Row - Badge Assigners */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="glass-card p-6">
+                    <LimitedBadgeAssigner />
+                  </div>
+                  <div className="glass-card p-6">
+                    <AdminBadgeRemover />
+                  </div>
                 </div>
+
+                {/* All Badge Assigner */}
                 <div className="glass-card p-6">
-                  <AdminBadgeRemover />
+                  <AllBadgeAssigner />
                 </div>
+
+                {/* User Management Row */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="glass-card p-6">
+                    <UserBanManager />
+                  </div>
+                  <div className="glass-card p-6">
+                    <AdminUserManager />
+                  </div>
+                </div>
+
+                {/* Badge Management - Collapsible */}
                 <div className="glass-card p-6">
                   <AdminBadgeManager />
-                </div>
-                <div className="glass-card p-6">
-                  <AdminUserManager />
                 </div>
               </div>
             )}
