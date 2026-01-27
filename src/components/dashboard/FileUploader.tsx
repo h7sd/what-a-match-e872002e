@@ -38,7 +38,7 @@ const typeConfig = {
   cursor: {
     icon: MousePointer2,
     label: 'Custom Cursor',
-    accept: 'image/png,image/gif,image/cur',
+    accept: 'image/png,image/gif,.cur,.ani',
     folder: 'cursors',
     color: 'text-purple-400',
   },

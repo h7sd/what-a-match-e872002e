@@ -52,6 +52,7 @@ import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { StartScreenSettings } from '@/components/dashboard/StartScreenSettings';
 import { VolumeControlSettings } from '@/components/dashboard/VolumeControlSettings';
 import { ProfileVisibilitySettings } from '@/components/dashboard/ProfileVisibilitySettings';
+import { CardBorderSettings } from '@/components/dashboard/CardBorderSettings';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
@@ -176,6 +177,11 @@ export default function Dashboard() {
   const [showBadges, setShowBadges] = useState(true);
   const [showViews, setShowViews] = useState(true);
 
+  // Card border settings
+  const [cardBorderEnabled, setCardBorderEnabled] = useState(true);
+  const [cardBorderColor, setCardBorderColor] = useState('');
+  const [cardBorderWidth, setCardBorderWidth] = useState(1);
+
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -240,6 +246,9 @@ export default function Dashboard() {
       setShowUsername((profile as any).show_username ?? true);
       setShowBadges((profile as any).show_badges ?? true);
       setShowViews((profile as any).show_views ?? true);
+      setCardBorderEnabled((profile as any).card_border_enabled ?? true);
+      setCardBorderColor((profile as any).card_border_color || '');
+      setCardBorderWidth((profile as any).card_border_width ?? 1);
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -346,6 +355,9 @@ export default function Dashboard() {
         show_username: showUsername,
         show_badges: showBadges,
         show_views: showViews,
+        card_border_enabled: cardBorderEnabled,
+        card_border_color: cardBorderColor || null,
+        card_border_width: cardBorderWidth,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -809,6 +821,19 @@ export default function Dashboard() {
                     onShowUsernameChange={setShowUsername}
                     onShowBadgesChange={setShowBadges}
                     onShowViewsChange={setShowViews}
+                  />
+                </div>
+
+                {/* Card Border Settings */}
+                <div className="glass-card p-6 mt-6">
+                  <CardBorderSettings
+                    borderEnabled={cardBorderEnabled}
+                    borderColor={cardBorderColor}
+                    borderWidth={cardBorderWidth}
+                    accentColor={accentColor}
+                    onBorderEnabledChange={setCardBorderEnabled}
+                    onBorderColorChange={setCardBorderColor}
+                    onBorderWidthChange={setCardBorderWidth}
                   />
                 </div>
               </div>

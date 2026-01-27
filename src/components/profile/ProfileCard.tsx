@@ -19,9 +19,21 @@ interface ProfileCardProps {
   showUsername?: boolean;
   showBadges?: boolean;
   showViews?: boolean;
+  borderEnabled?: boolean;
+  borderColor?: string | null;
+  borderWidth?: number;
 }
 
-export function ProfileCard({ profile, badges = [], showUsername = true, showBadges = true, showViews = true }: ProfileCardProps) {
+export function ProfileCard({ 
+  profile, 
+  badges = [], 
+  showUsername = true, 
+  showBadges = true, 
+  showViews = true,
+  borderEnabled = true,
+  borderColor,
+  borderWidth = 1,
+}: ProfileCardProps) {
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -89,10 +101,11 @@ export function ProfileCard({ profile, badges = [], showUsername = true, showBad
       />
 
       <div
-        className="relative rounded-2xl p-8 backdrop-blur-xl border overflow-hidden"
+        className={`relative rounded-2xl p-8 backdrop-blur-xl overflow-hidden ${borderEnabled ? 'border' : ''}`}
         style={{
           backgroundColor: profile.card_color || 'rgba(0,0,0,0.6)',
-          borderColor: `${accentColor}30`,
+          borderColor: borderEnabled ? `${borderColor || accentColor}30` : 'transparent',
+          borderWidth: borderEnabled ? borderWidth : 0,
         }}
       >
         {/* Sparkle effects */}

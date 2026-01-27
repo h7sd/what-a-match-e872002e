@@ -227,6 +227,9 @@ export type Database = {
           background_url: string | null
           background_video_url: string | null
           bio: string | null
+          card_border_color: string | null
+          card_border_enabled: boolean | null
+          card_border_width: number | null
           card_color: string | null
           card_style: string | null
           created_at: string
@@ -283,6 +286,9 @@ export type Database = {
           background_url?: string | null
           background_video_url?: string | null
           bio?: string | null
+          card_border_color?: string | null
+          card_border_enabled?: boolean | null
+          card_border_width?: number | null
           card_color?: string | null
           card_style?: string | null
           created_at?: string
@@ -339,6 +345,9 @@ export type Database = {
           background_url?: string | null
           background_video_url?: string | null
           bio?: string | null
+          card_border_color?: string | null
+          card_border_enabled?: boolean | null
+          card_border_width?: number | null
           card_color?: string | null
           card_style?: string | null
           created_at?: string

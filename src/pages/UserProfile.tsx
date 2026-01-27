@@ -156,6 +156,9 @@ export default function UserProfile() {
             showUsername={(profile as any).show_username ?? true}
             showBadges={(profile as any).show_badges ?? true}
             showViews={(profile as any).show_views ?? true}
+            borderEnabled={(profile as any).card_border_enabled ?? true}
+            borderColor={(profile as any).card_border_color}
+            borderWidth={(profile as any).card_border_width ?? 1}
           />
 
           {/* Discord Presence Widget - Real-time via Lanyard */}
