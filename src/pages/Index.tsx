@@ -126,10 +126,23 @@ export default function Index() {
         </main>
 
         {/* Footer */}
-        <FadeIn delay={1} className="max-w-6xl mx-auto px-6 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()}. All rights reserved.
-          </p>
+        <FadeIn delay={1} className="max-w-6xl mx-auto px-6 py-16">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-wrap justify-center gap-6 text-sm">
+              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                Privacy Policy
+              </Link>
+              <Link to="/imprint" className="text-muted-foreground hover:text-foreground transition-colors">
+                Imprint
+              </Link>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} UserVault. All rights reserved.
+            </p>
+          </div>
         </FadeIn>
       </div>
     </div>
