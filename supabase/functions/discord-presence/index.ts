@@ -12,23 +12,26 @@ serve(async (req) => {
   }
 
   try {
-    // Verify bot token
-    const botToken = req.headers.get('x-bot-token');
-    const expectedToken = Deno.env.get('DISCORD_BOT_TOKEN');
-    
-    if (!botToken || botToken !== expectedToken) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const body = await req.json();
     const { action, discord_user_id, presence_data } = body;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // For UPDATE action, verify bot token (only bot can update)
+    if (action === 'update') {
+      const botToken = req.headers.get('x-bot-token');
+      const expectedToken = Deno.env.get('DISCORD_BOT_TOKEN');
+      
+      if (!botToken || botToken !== expectedToken) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
 
     // GET PRESENCE - for frontend
     if (action === 'get' || !action) {
