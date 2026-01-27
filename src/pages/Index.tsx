@@ -5,11 +5,12 @@ import { Sparkles, Zap, Globe, Music } from "lucide-react";
 import { FadeIn } from "@/components/landing/FadeIn";
 import { FeatureCard } from "@/components/landing/FeatureCard";
 import { AnimatedButton, NavButton } from "@/components/landing/AnimatedButton";
-import { GradientOrb, GridBackground, NoiseTexture } from "@/components/landing/GradientOrb";
+import { NoiseTexture } from "@/components/landing/GradientOrb";
 import { FAQSection } from "@/components/landing/FAQSection";
 import { StatsSection } from "@/components/landing/StatsSection";
 import { Footer } from "@/components/landing/Footer";
 import { ReportUserDialog } from "@/components/landing/ReportUserDialog";
+import { LiquidEther } from "@/components/landing/LiquidEther";
 
 export default function Index() {
   const { user } = useAuth();
@@ -39,23 +40,11 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background elements */}
-      <GridBackground />
-      <NoiseTexture />
+      {/* Liquid Ether Background */}
+      <LiquidEther />
       
-      {/* Gradient orbs */}
-      <GradientOrb 
-        className="top-0 left-1/4 -translate-x-1/2 -translate-y-1/4" 
-        color="purple" 
-        size="lg" 
-        delay={0.2}
-      />
-      <GradientOrb 
-        className="bottom-0 right-1/4 translate-x-1/2 translate-y-1/4" 
-        color="pink" 
-        size="md" 
-        delay={0.4}
-      />
+      {/* Noise texture overlay */}
+      <NoiseTexture />
 
       <div className="relative z-10">
         {/* Header */}
