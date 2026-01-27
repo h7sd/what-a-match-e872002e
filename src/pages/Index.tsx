@@ -105,7 +105,7 @@ export default function Index() {
               <AnimatedButton to="/auth" variant="primary" icon delay={0.45}>
                 Create Your Page
               </AnimatedButton>
-              <AnimatedButton to="/demo" variant="secondary" delay={0.55}>
+              <AnimatedButton to="/uservault" variant="secondary" delay={0.55}>
                 See Demo
               </AnimatedButton>
             </div>
