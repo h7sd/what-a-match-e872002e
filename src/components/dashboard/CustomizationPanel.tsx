@@ -166,17 +166,7 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
         </div>
       </section>
 
-      {/* Premium Banner */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-4 rounded-xl bg-gradient-to-r from-primary/20 via-pink-500/20 to-primary/20 border border-primary/30 text-center"
-      >
-        <p className="text-sm">
-          Want exclusive features? Unlock more with{' '}
-          <span className="text-primary font-semibold">💎 Premium</span>
-        </p>
-      </motion.div>
+      {/* Premium Banner - Coming Soon */}
 
       {/* General Customization */}
       <section className="space-y-4">

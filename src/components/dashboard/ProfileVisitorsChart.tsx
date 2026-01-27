@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { Eye, TrendingUp } from 'lucide-react';
 import {
   Select,
@@ -7,28 +8,102 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-
-interface VisitorData {
-  date: string;
-  visitors: number;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 
 interface ProfileVisitorsChartProps {
-  data?: VisitorData[];
   totalVisitors?: number;
-  dailyAverage?: number;
+  profileId?: string;
+}
+
+interface ViewData {
+  date: string;
+  views: number;
 }
 
 export function ProfileVisitorsChart({ 
-  data = [], 
   totalVisitors = 0,
-  dailyAverage = 0 
+  profileId 
 }: ProfileVisitorsChartProps) {
   const [timeRange, setTimeRange] = useState('30');
+  const [data, setData] = useState<ViewData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Generate sample data if none provided
-  const chartData = data.length > 0 ? data : generateSampleData(parseInt(timeRange));
+  useEffect(() => {
+    const fetchViewData = async () => {
+      if (!profileId && !user) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // Get profile ID if not provided
+        let targetProfileId = profileId;
+        if (!targetProfileId && user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+          targetProfileId = profile?.id;
+        }
+
+        if (!targetProfileId) {
+          setIsLoading(false);
+          return;
+        }
+
+        const daysAgo = parseInt(timeRange);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysAgo);
+
+        const { data: views, error } = await supabase
+          .from('profile_views')
+          .select('viewed_at')
+          .eq('profile_id', targetProfileId)
+          .gte('viewed_at', startDate.toISOString())
+          .order('viewed_at', { ascending: true });
+
+        if (error) throw error;
+
+        // Group views by date
+        const viewsByDate: Record<string, number> = {};
+        
+        // Initialize all dates with 0
+        for (let i = 0; i < daysAgo; i++) {
+          const date = new Date();
+          date.setDate(date.getDate() - (daysAgo - 1 - i));
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          viewsByDate[dateStr] = 0;
+        }
+
+        // Count actual views
+        views?.forEach((view) => {
+          const date = new Date(view.viewed_at);
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          viewsByDate[dateStr] = (viewsByDate[dateStr] || 0) + 1;
+        });
+
+        const chartData = Object.entries(viewsByDate).map(([date, views]) => ({
+          date,
+          views,
+        }));
+
+        setData(chartData);
+      } catch (err) {
+        console.error('Error fetching view data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchViewData();
+  }, [timeRange, profileId, user]);
+
+  const totalInRange = data.reduce((sum, item) => sum + item.views, 0);
+  const dailyAverage = data.length > 0 ? Math.round(totalInRange / data.length * 10) / 10 : 0;
 
   return (
     <div className="glass-card p-5 space-y-4">
@@ -38,7 +113,7 @@ export function ProfileVisitorsChart({
           <h3 className="font-semibold">Profile Visitors</h3>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[140px] bg-secondary/50 border-border">
+          <SelectTrigger className="w-[130px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -49,53 +124,53 @@ export function ProfileVisitorsChart({
         </Select>
       </div>
 
-      <div className="h-[200px] w-full">
+      <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData}>
+          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <defs>
-              <linearGradient id="colorVisitors" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+              <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
               </linearGradient>
             </defs>
             <XAxis 
               dataKey="date" 
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.toLocaleDateString('en-US', { month: 'short' })} ${date.getDate()}`;
-              }}
+              interval="preserveStartEnd"
             />
             <YAxis 
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+              allowDecimals={false}
             />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
                 borderRadius: '8px',
+                fontSize: '12px',
               }}
               labelStyle={{ color: 'hsl(var(--foreground))' }}
             />
             <Area
               type="monotone"
-              dataKey="visitors"
+              dataKey="views"
               stroke="hsl(var(--primary))"
               strokeWidth={2}
-              fill="url(#colorVisitors)"
+              fillOpacity={1}
+              fill="url(#colorViews)"
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="flex items-center gap-4 text-sm">
+      <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <span>Visitors last {timeRange} days:</span>
-          <span className="font-bold">{totalVisitors}</span>
+          <span className="text-muted-foreground">Visitors last {timeRange} days:</span>
+          <span className="font-semibold">{totalInRange}</span>
           <TrendingUp className="w-4 h-4 text-green-500" />
         </div>
         <div className="text-muted-foreground">
@@ -104,20 +179,4 @@ export function ProfileVisitorsChart({
       </div>
     </div>
   );
-}
-
-function generateSampleData(days: number): VisitorData[] {
-  const data: VisitorData[] = [];
-  const now = new Date();
-  
-  for (let i = days; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - i);
-    data.push({
-      date: date.toISOString().split('T')[0],
-      visitors: Math.floor(Math.random() * 10),
-    });
-  }
-  
-  return data;
 }

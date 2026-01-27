@@ -84,21 +84,23 @@ export function ProfileCard({
       }}
       className="relative w-full max-w-sm mx-auto"
     >
-      {/* Animated glow effect behind card */}
-      <motion.div
-        className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
-        style={{
-          background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
-        }}
-        animate={{
-          opacity: [0.4, 0.6, 0.4],
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      />
+      {/* Animated glow effect behind card - only show when border is enabled */}
+      {borderEnabled && (
+        <motion.div
+          className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
+          }}
+          animate={{
+            opacity: [0.4, 0.6, 0.4],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+      )}
 
       <div
         className="relative rounded-2xl p-8 backdrop-blur-xl overflow-hidden"

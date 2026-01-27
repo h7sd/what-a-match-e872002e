@@ -45,7 +45,7 @@ import {
 import { OverviewStats } from '@/components/dashboard/OverviewStats';
 import { BadgesCarousel } from '@/components/dashboard/BadgesCarousel';
 import { DiscordCard } from '@/components/dashboard/DiscordCard';
-import { GiveawaysSection } from '@/components/dashboard/GiveawaysSection';
+import { RegisteredUsersList } from '@/components/dashboard/RegisteredUsersList';
 import { EarlyBadgeCountdown } from '@/components/dashboard/EarlyBadgeCountdown';
 import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
@@ -421,7 +421,43 @@ export default function Dashboard() {
     return null;
   }
 
-  const fonts = ['Inter', 'Poppins', 'Roboto', 'Montserrat', 'Cinzel', 'Playfair Display', 'Space Grotesk'];
+  const fonts = [
+    'Inter', 
+    'Poppins', 
+    'Roboto', 
+    'Montserrat', 
+    'Cinzel', 
+    'Playfair Display', 
+    'Space Grotesk',
+    'Satoshi',
+    'Outfit',
+    'Sora',
+    'Manrope',
+    'DM Sans',
+    'Archivo',
+    'Lexend',
+    'Plus Jakarta Sans',
+    'Red Hat Display',
+    'Urbanist',
+    'Nunito',
+    'Quicksand',
+    'Work Sans',
+    'Raleway',
+    'Oswald',
+    'Lato',
+    'Open Sans',
+    'Ubuntu',
+    'Fira Sans',
+    'Source Sans Pro',
+    'Overpass',
+    'Barlow',
+    'Comfortaa',
+    'Righteous',
+    'Orbitron',
+    'Audiowide',
+    'Press Start 2P',
+    'VT323',
+  ];
   const cardStyles = ['classic', 'frosted', 'outlined', 'aurora', 'transparent'];
   const layoutStyles = ['stacked', 'floating', 'compact'];
 
@@ -580,7 +616,7 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <OverviewStats
                   profileViews={profile.views_count || 0}
-                  userId={profile.id}
+                  uidNumber={(profile as any).uid_number || 1}
                   username={profile.username}
                 />
 
@@ -600,16 +636,19 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <GiveawaysSection />
+                  <RegisteredUsersList />
                   <EarlyBadgeCountdown />
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-6">
-                  <ProfileVisitorsChart totalVisitors={profile.views_count || 0} />
+                  <ProfileVisitorsChart 
+                    totalVisitors={profile.views_count || 0} 
+                    profileId={profile.id}
+                  />
                   <TopLinksChart 
                     links={socialLinks.slice(0, 5).map((link, i) => ({
                       name: link.title || link.platform,
-                      clicks: Math.floor(Math.random() * 100) + 10,
+                      clicks: 0,
                       color: ['#3B82F6', '#22C55E', '#EAB308', '#8B5CF6', '#EC4899'][i],
                       url: link.url,
                     }))}
@@ -1082,16 +1121,16 @@ export default function Dashboard() {
             {activeTab === 'admin' && isAdmin && (
               <div className="space-y-6 max-w-4xl">
                 <div className="glass-card p-6">
-                  <AdminUserManager />
+                  <LimitedBadgeAssigner />
+                </div>
+                <div className="glass-card p-6">
+                  <AdminBadgeRemover />
                 </div>
                 <div className="glass-card p-6">
                   <AdminBadgeManager />
                 </div>
                 <div className="glass-card p-6">
-                  <LimitedBadgeAssigner />
-                </div>
-                <div className="glass-card p-6">
-                  <AdminBadgeRemover />
+                  <AdminUserManager />
                 </div>
               </div>
             )}

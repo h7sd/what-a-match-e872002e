@@ -163,14 +163,16 @@ export default function UserProfile() {
 
           {/* Discord Presence Widget - Real-time via Lanyard */}
           {(profile as any).discord_user_id && (
-            <DiscordPresence
-              discordUserId={(profile as any).discord_user_id}
-              accentColor={accentColor}
-              cardStyle={(profile as any).discord_card_style || 'glass'}
-              cardOpacity={(profile as any).discord_card_opacity ?? 100}
-              showBadge={(profile as any).discord_show_badge ?? true}
-              badgeColor={(profile as any).discord_badge_color || '#ec4899'}
-            />
+            <div className="flex justify-center">
+              <DiscordPresence
+                discordUserId={(profile as any).discord_user_id}
+                accentColor={accentColor}
+                cardStyle={(profile as any).discord_card_style || 'glass'}
+                cardOpacity={(profile as any).discord_card_opacity ?? 100}
+                showBadge={(profile as any).discord_show_badge ?? true}
+                badgeColor={(profile as any).discord_badge_color || '#ec4899'}
+              />
+            </div>
           )}
 
           {socialLinks.length > 0 && (

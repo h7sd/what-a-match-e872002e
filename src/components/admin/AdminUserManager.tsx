@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Shield, Loader2, UserPlus, Search } from 'lucide-react';
+import { Plus, Trash2, Shield, Loader2, UserPlus, Search, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +32,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 
 type AppRole = 'admin' | 'moderator' | 'user';
 
@@ -44,6 +50,7 @@ interface UserRole {
     username: string;
     display_name: string | null;
     avatar_url: string | null;
+    uid_number: number;
   };
 }
 
@@ -53,22 +60,24 @@ interface UserProfile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
+  uid_number: number;
 }
 
 export function AdminUserManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [searchEmail, setSearchEmail] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [uidSearch, setUidSearch] = useState('');
   const [selectedRole, setSelectedRole] = useState<AppRole>('admin');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchMode, setSearchMode] = useState<'username' | 'uid'>('username');
 
   // Fetch all user roles with profile info
   const { data: userRoles = [], isLoading } = useQuery({
     queryKey: ['adminUserRoles'],
     queryFn: async () => {
-      // First get all user roles
       const { data: roles, error } = await supabase
         .from('user_roles')
         .select('*')
@@ -76,14 +85,12 @@ export function AdminUserManager() {
 
       if (error) throw error;
 
-      // Then get profiles for these users
       const userIds = roles.map(r => r.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, user_id, username, display_name, avatar_url')
+        .select('id, user_id, username, display_name, avatar_url, uid_number')
         .in('user_id', userIds);
 
-      // Merge profiles with roles
       return roles.map(role => ({
         ...role,
         profile: profiles?.find(p => p.user_id === role.user_id),
@@ -91,17 +98,41 @@ export function AdminUserManager() {
     },
   });
 
-  // Search for users by username
+  // Live search with debounce
+  useEffect(() => {
+    const query = searchMode === 'username' ? searchQuery : uidSearch;
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleSearch();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, uidSearch, searchMode]);
+
   const handleSearch = async () => {
-    if (!searchEmail.trim()) return;
+    const query = searchMode === 'username' ? searchQuery : uidSearch;
+    if (!query.trim()) return;
     
     setIsSearching(true);
     try {
-      const { data, error } = await supabase
+      let queryBuilder = supabase
         .from('profiles')
-        .select('id, user_id, username, display_name, avatar_url')
-        .ilike('username', `%${searchEmail}%`)
-        .limit(10);
+        .select('id, user_id, username, display_name, avatar_url, uid_number');
+
+      if (searchMode === 'uid') {
+        const uid = parseInt(query);
+        if (!isNaN(uid)) {
+          queryBuilder = queryBuilder.eq('uid_number', uid);
+        }
+      } else {
+        queryBuilder = queryBuilder.ilike('username', `%${query}%`);
+      }
+
+      const { data, error } = await queryBuilder.limit(10);
 
       if (error) throw error;
       setSearchResults(data || []);
@@ -128,7 +159,8 @@ export function AdminUserManager() {
       queryClient.invalidateQueries({ queryKey: ['adminUserRoles'] });
       toast({ title: 'Role added successfully!' });
       setIsDialogOpen(false);
-      setSearchEmail('');
+      setSearchQuery('');
+      setUidSearch('');
       setSearchResults([]);
     },
     onError: (error: any) => {
@@ -197,24 +229,45 @@ export function AdminUserManager() {
               <DialogTitle>Add User Role</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Search User by Username</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={searchEmail}
-                    onChange={(e) => setSearchEmail(e.target.value)}
-                    placeholder="Enter username..."
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                  <Button onClick={handleSearch} disabled={isSearching}>
-                    {isSearching ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4" />
+              <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as 'username' | 'uid')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="username">By Username</TabsTrigger>
+                  <TabsTrigger value="uid">By User ID</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="username" className="space-y-2">
+                  <Label>Search User by Username</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Enter username..."
+                      className="pl-10"
+                    />
+                    {isSearching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" />
                     )}
-                  </Button>
-                </div>
-              </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="uid" className="space-y-2">
+                  <Label>Search User by UID</Label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      value={uidSearch}
+                      onChange={(e) => setUidSearch(e.target.value)}
+                      placeholder="Enter User ID (e.g. 1)"
+                      className="pl-10"
+                    />
+                    {isSearching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" />
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
 
               <div className="space-y-2">
                 <Label>Role</Label>
@@ -240,14 +293,19 @@ export function AdminUserManager() {
                         className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden">
-                            {user.avatar_url ? (
-                              <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                {user.username[0]?.toUpperCase()}
-                              </div>
-                            )}
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                  {user.username[0]?.toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <span className="absolute -bottom-1 -right-1 text-[9px] bg-primary px-1 rounded text-white">
+                              #{user.uid_number}
+                            </span>
                           </div>
                           <div>
                             <p className="font-medium">{user.display_name || user.username}</p>
@@ -271,9 +329,9 @@ export function AdminUserManager() {
                 </div>
               )}
 
-              {searchResults.length === 0 && searchEmail && !isSearching && (
+              {searchResults.length === 0 && (searchQuery || uidSearch) && !isSearching && (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No users found. Try a different username.
+                  No users found.
                 </p>
               )}
             </div>
@@ -289,17 +347,24 @@ export function AdminUserManager() {
             animate={{ opacity: 1, y: 0 }}
             className="glass-card p-4 flex items-center gap-4"
           >
-            <div className="w-12 h-12 rounded-full bg-secondary overflow-hidden">
-              {userRole.profile?.avatar_url ? (
-                <img
-                  src={userRole.profile.avatar_url}
-                  alt={userRole.profile.username}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-lg">
-                  {userRole.profile?.username?.[0]?.toUpperCase() || '?'}
-                </div>
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full bg-secondary overflow-hidden">
+                {userRole.profile?.avatar_url ? (
+                  <img
+                    src={userRole.profile.avatar_url}
+                    alt={userRole.profile.username}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-lg">
+                    {userRole.profile?.username?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+              </div>
+              {userRole.profile?.uid_number && (
+                <span className="absolute -bottom-1 -right-1 text-[9px] bg-primary px-1 rounded text-white">
+                  #{userRole.profile.uid_number}
+                </span>
               )}
             </div>
 

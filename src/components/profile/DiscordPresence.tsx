@@ -68,7 +68,7 @@ export function DiscordPresence({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses} p-4 flex items-center justify-center`}
+        className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses} p-4 flex items-center justify-center mx-auto`}
         style={opacityStyle}
       >
         <Loader2 className="w-5 h-5 animate-spin text-white/50" />
@@ -99,7 +99,7 @@ export function DiscordPresence({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses}`}
+        className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses} mx-auto`}
         style={opacityStyle}
       >
         <div className="p-3 sm:p-4 flex items-center gap-3">
@@ -156,7 +156,7 @@ export function DiscordPresence({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses}`}
+        className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses} mx-auto`}
         style={opacityStyle}
       >
         <div className="p-3 sm:p-4 flex items-center gap-3">
@@ -218,7 +218,7 @@ export function DiscordPresence({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses}`}
+      className={`w-full max-w-sm overflow-hidden rounded-2xl ${cardClasses} mx-auto`}
       style={opacityStyle}
     >
       <div className="p-3 sm:p-4 flex items-center gap-3">
