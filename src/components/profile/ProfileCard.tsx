@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { useState, useRef } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Eye, MapPin, Briefcase } from 'lucide-react';
 import type { Profile } from '@/hooks/useProfile';
 import { TypewriterText } from './TypewriterText';
@@ -8,6 +7,12 @@ import { SparkleEffect } from './SparkleEffect';
 import { GlitchText } from './GlitchText';
 import { OrbitingAvatar } from './OrbitingAvatar';
 import { getBadgeIcon } from '@/lib/badges';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ProfileCardProps {
   profile: Profile;
@@ -155,33 +160,58 @@ export function ProfileCard({ profile, badges = [] }: ProfileCardProps) {
           {/* Username */}
           <p className="text-muted-foreground text-sm mb-3">@{profile.username}</p>
 
-          {/* Badges - Icon only like feds.lol */}
+          {/* Badges - Icon only with hover tooltip like feds.lol */}
           {badges.length > 0 && (
-            <div className="flex items-center justify-center gap-1.5 mb-3 flex-wrap">
-              {badges.map((badge) => {
-                const Icon = getBadgeIcon(badge.name);
-                const badgeColor = badge.color || accentColor;
+            <TooltipProvider delayDuration={100}>
+              <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
+                {badges.map((badge) => {
+                  const Icon = getBadgeIcon(badge.name);
+                  const badgeColor = badge.color || accentColor;
 
-                return (
-                  <div
-                    key={badge.id}
-                    className="w-5 h-5 flex items-center justify-center"
-                    title={badge.name}
-                  >
-                    {badge.icon_url ? (
-                      <img
-                        src={badge.icon_url}
-                        alt={badge.name}
-                        className="w-5 h-5"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <Icon className="w-5 h-5" style={{ color: badgeColor }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  return (
+                    <Tooltip key={badge.id}>
+                      <TooltipTrigger asChild>
+                        <motion.div
+                          className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                          whileHover={{ 
+                            scale: 1.3,
+                            filter: `drop-shadow(0 0 8px ${badgeColor})`,
+                          }}
+                          whileTap={{ scale: 0.95 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                        >
+                          {badge.icon_url ? (
+                            <img
+                              src={badge.icon_url}
+                              alt={badge.name}
+                              className="w-6 h-6 object-contain"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <Icon 
+                              className="w-6 h-6 transition-all duration-200" 
+                              style={{ 
+                                color: badgeColor,
+                                filter: `drop-shadow(0 0 4px ${badgeColor}50)`,
+                              }} 
+                            />
+                          )}
+                        </motion.div>
+                      </TooltipTrigger>
+                      <TooltipContent 
+                        side="top" 
+                        className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl"
+                        style={{
+                          boxShadow: `0 4px 20px ${badgeColor}40`,
+                        }}
+                      >
+                        {badge.name}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </TooltipProvider>
           )}
 
           {/* Bio */}
