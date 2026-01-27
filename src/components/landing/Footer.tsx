@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FadeIn } from './FadeIn';
 
 interface FooterLink {
   label: string;
   to: string;
   external?: boolean;
+  scrollTo?: string;
 }
 
 interface FooterColumn {
@@ -24,8 +25,8 @@ const footerColumns: FooterColumn[] = [
   {
     title: 'Resources',
     links: [
-      { label: 'FAQ', to: '/#faq' },
-      { label: 'Features', to: '/#features' },
+      { label: 'FAQ', to: '/', scrollTo: 'faq' },
+      { label: 'Features', to: '/', scrollTo: 'features' },
     ],
   },
   {
@@ -44,6 +45,61 @@ const footerColumns: FooterColumn[] = [
   },
 ];
 
+function FooterLinkItem({ link }: { link: FooterLink }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (link.scrollTo) {
+      e.preventDefault();
+      
+      if (location.pathname !== '/') {
+        navigate('/');
+        setTimeout(() => {
+          const element = document.getElementById(link.scrollTo!);
+          element?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        const element = document.getElementById(link.scrollTo);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
+  if (link.external) {
+    return (
+      <a
+        href={link.to}
+        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {link.label}
+      </a>
+    );
+  }
+
+  if (link.scrollTo) {
+    return (
+      <button
+        onClick={handleClick}
+        className="text-sm text-muted-foreground hover:text-primary transition-colors text-left"
+      >
+        {link.label}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      to={link.to}
+      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+    >
+      {link.label}
+    </Link>
+  );
+}
+
 export function Footer() {
   return (
     <footer className="border-t border-border/50 mt-16">
@@ -58,23 +114,7 @@ export function Footer() {
                 <ul className="space-y-3">
                   {column.links.map((link) => (
                     <li key={link.label}>
-                      {link.external ? (
-                        <a
-                          href={link.to}
-                          className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {link.label}
-                        </a>
-                      ) : (
-                        <Link
-                          to={link.to}
-                          className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          {link.label}
-                        </Link>
-                      )}
+                      <FooterLinkItem link={link} />
                     </li>
                   ))}
                 </ul>
