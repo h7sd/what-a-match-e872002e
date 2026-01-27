@@ -1,8 +1,8 @@
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/lib/auth';
-import { ArrowRight, Sparkles, Zap, Globe, Music } from 'lucide-react';
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import { ArrowRight, Sparkles, Zap, Globe, Music } from "lucide-react";
 
 export default function Index() {
   const { user } = useAuth();
@@ -10,23 +10,23 @@ export default function Index() {
   const features = [
     {
       icon: Sparkles,
-      title: 'Stunning Effects',
-      description: 'Sparkles, glows, tilt effects, and more to make your page unique.',
+      title: "Stunning Effects",
+      description: "Sparkles, glows, tilt effects, and more to make your page unique.",
     },
     {
       icon: Music,
-      title: 'Profile Music',
-      description: 'Add background music to your page for an immersive experience.',
+      title: "Profile Music",
+      description: "Add background music to your page for an immersive experience.",
     },
     {
       icon: Globe,
-      title: 'Social Links',
-      description: 'Connect all your socials in one beautiful, shareable page.',
+      title: "Social Links",
+      description: "Connect all your socials in one beautiful, shareable page.",
     },
     {
       icon: Zap,
-      title: 'Live Integrations',
-      description: 'Show your Spotify activity, Discord status, and more.',
+      title: "Live Integrations",
+      description: "Show your Spotify activity, Discord status, and more.",
     },
   ];
 
@@ -74,8 +74,8 @@ export default function Index() {
               <span className="text-foreground">for everything</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Create your personalized bio page with stunning effects, social links,
-              music, and live integrations. Share who you are with the world.
+              Create your personalized bio page with stunning effects, social links, music, and live integrations. Share
+              who you are with the world.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="text-lg px-8">
@@ -123,11 +123,8 @@ export default function Index() {
           >
             <p className="text-muted-foreground mb-4">Trusted by thousands of creators</p>
             <div className="flex justify-center gap-4 flex-wrap">
-              {['yourname.uservault.app', 'artist.uservault.app', 'gamer.uservault.app'].map((url) => (
-                <span
-                  key={url}
-                  className="px-4 py-2 glass rounded-full text-sm text-muted-foreground"
-                >
+              {["yourname.uservault.app", "artist.uservault.app", "gamer.uservault.app"].map((url) => (
+                <span key={url} className="px-4 py-2 glass rounded-full text-sm text-muted-foreground">
                   {url}
                 </span>
               ))}
@@ -136,9 +133,7 @@ export default function Index() {
         </main>
 
         <footer className="max-w-6xl mx-auto px-6 py-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            © 2024 UserVault. Built with Lovable.
-          </p>
+          <p className="text-sm text-muted-foreground">© 2026 UserVault. Built with Lovable.</p>
         </footer>
       </div>
     </div>
