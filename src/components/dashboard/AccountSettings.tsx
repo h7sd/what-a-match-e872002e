@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   User, Mail, Shield, Key, LogOut, Loader2, Eye, EyeOff, 
-  Languages, MessageSquare, RefreshCw, Lock, ShieldCheck, ShieldOff
+  Languages, MessageSquare, RefreshCw, Lock, ShieldCheck, ShieldOff,
+  Trash2, AlertTriangle
 } from 'lucide-react';
 import { FaDiscord } from 'react-icons/fa6';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { z } from 'zod';
 
 interface AccountSettingsProps {
@@ -84,6 +98,17 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
   const [showDisableMfa, setShowDisableMfa] = useState(false);
   const [isDisablingMfa, setIsDisablingMfa] = useState(false);
 
+  // Delete Account State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteCodeInput, setShowDeleteCodeInput] = useState(false);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [isSendingDeleteCode, setIsSendingDeleteCode] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Discord Connection State
+  const [discordIntegration, setDiscordIntegration] = useState<any>(null);
+  const [isConnectingDiscord, setIsConnectingDiscord] = useState(false);
+
   useEffect(() => {
     if (profile?.username) {
       setNewUsername(profile.username);
@@ -100,6 +125,7 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
 
   useEffect(() => {
     checkMfaStatus();
+    fetchDiscordIntegration();
   }, []);
 
   const checkMfaStatus = async () => {
@@ -159,7 +185,134 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
     } catch (error: any) {
       toast({ title: error.message, variant: 'destructive' });
     } finally {
-      setIsChangingPassword(false);
+    setIsChangingPassword(false);
+    }
+  };
+
+  const fetchDiscordIntegration = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('discord_integrations')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data && !error) {
+        setDiscordIntegration(data);
+      }
+    } catch (error) {
+      console.error('Error fetching discord integration:', error);
+    }
+  };
+
+  const handleConnectDiscord = async () => {
+    setIsConnectingDiscord(true);
+    try {
+      // Discord OAuth URL - redirect to Discord for authorization
+      const discordClientId = '1285371693300551781'; // Your Discord app client ID
+      const redirectUri = `${window.location.origin}/dashboard`;
+      const scope = 'identify';
+      
+      const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`;
+      
+      // Open Discord OAuth in a popup
+      const popup = window.open(discordAuthUrl, 'discord-auth', 'width=500,height=700,left=100,top=100');
+      
+      if (!popup) {
+        toast({ 
+          title: 'Please allow popups for this site', 
+          variant: 'destructive' 
+        });
+        setIsConnectingDiscord(false);
+        return;
+      }
+
+      // Listen for the popup to close or redirect
+      const checkPopup = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopup);
+          setIsConnectingDiscord(false);
+          fetchDiscordIntegration();
+        }
+      }, 500);
+    } catch (error: any) {
+      console.error('Discord connect error:', error);
+      toast({ title: 'Failed to connect Discord', variant: 'destructive' });
+      setIsConnectingDiscord(false);
+    }
+  };
+
+  const handleDisconnectDiscord = async () => {
+    try {
+      const { error } = await supabase
+        .from('discord_integrations')
+        .delete()
+        .eq('user_id', user?.id);
+      
+      if (error) throw error;
+      
+      setDiscordIntegration(null);
+      toast({ title: 'Discord disconnected successfully' });
+    } catch (error: any) {
+      toast({ title: 'Failed to disconnect Discord', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteAccountRequest = async () => {
+    setShowDeleteConfirm(false);
+    setIsSendingDeleteCode(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { action: 'send-code' }
+      });
+      
+      if (error) throw error;
+      
+      toast({ title: 'Verification code sent to your email' });
+      setShowDeleteCodeInput(true);
+    } catch (error: any) {
+      console.error('Error sending delete code:', error);
+      toast({ 
+        title: 'Failed to send verification code', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSendingDeleteCode(false);
+    }
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    if (deleteCode.length !== 6) {
+      toast({ title: 'Please enter the 6-digit code', variant: 'destructive' });
+      return;
+    }
+    
+    setIsDeletingAccount(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { action: 'verify-and-delete', code: deleteCode }
+      });
+      
+      if (error) throw error;
+      
+      toast({ title: 'Account deleted successfully' });
+      setShowDeleteCodeInput(false);
+      
+      // Sign out and redirect
+      await signOut();
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast({ 
+        title: 'Failed to delete account', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -448,10 +601,30 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
             </div>
           </div>
 
-          <Button variant="outline" className="w-full opacity-50" disabled>
-            <FaDiscord className="w-4 h-4 mr-2" />
-            Connect Discord (Coming Soon)
-          </Button>
+          {discordIntegration ? (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleDisconnectDiscord}
+            >
+              <FaDiscord className="w-4 h-4 mr-2 text-[#5865F2]" />
+              Disconnect Discord (@{discordIntegration.username})
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleConnectDiscord}
+              disabled={isConnectingDiscord}
+            >
+              {isConnectingDiscord ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FaDiscord className="w-4 h-4 mr-2 text-[#5865F2]" />
+              )}
+              Connect Discord
+            </Button>
+          )}
 
           <Button 
             variant="destructive" 
@@ -461,6 +634,17 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
             <LogOut className="w-4 h-4 mr-2" />
             Logout
           </Button>
+
+          <div className="border-t border-border pt-4 mt-4">
+            <Button 
+              variant="ghost" 
+              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Account
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -499,6 +683,96 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Account Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Your Account?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>This action is <strong>permanent</strong> and cannot be undone.</p>
+              <p>All your data will be deleted including:</p>
+              <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                <li>Your profile and all customizations</li>
+                <li>All social links</li>
+                <li>Badges and achievements</li>
+                <li>View statistics</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteAccountRequest}
+              disabled={isSendingDeleteCode}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSendingDeleteCode ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Send Verification Code
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Account Code Input */}
+      <Dialog open={showDeleteCodeInput} onOpenChange={setShowDeleteCodeInput}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Confirm Account Deletion
+            </DialogTitle>
+            <DialogDescription>
+              We've sent a 6-digit verification code to your email. Enter it below to permanently delete your account.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center gap-4 py-4">
+            <InputOTP
+              maxLength={6}
+              value={deleteCode}
+              onChange={setDeleteCode}
+            >
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+            <p className="text-xs text-muted-foreground">Code expires in 15 minutes</p>
+          </div>
+          
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteCodeInput(false);
+                setDeleteCode('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDeleteAccount}
+              disabled={isDeletingAccount || deleteCode.length !== 6}
+            >
+              {isDeletingAccount ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Delete My Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
