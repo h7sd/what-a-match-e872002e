@@ -45,9 +45,6 @@ declare global {
   }
 }
 
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -186,44 +183,35 @@ export default function Auth() {
     }
   };
 
-  const sendVerificationEmail = async (targetEmail: string, code: string, type: 'signup' | 'email_change') => {
-    const response = await supabase.functions.invoke('send-verification-email', {
-      body: { email: targetEmail, code, type },
+  // Generate verification code via edge function (uses service role)
+  const generateVerificationCode = async (targetEmail: string, type: 'signup' | 'password_reset') => {
+    const response = await supabase.functions.invoke('generate-verification-code', {
+      body: { email: targetEmail.toLowerCase(), type },
     });
     
-    if (response.error) {
-      throw new Error(response.error.message || 'Error sending email');
+    if (response.error || response.data?.error) {
+      throw new Error(response.data?.error || response.error?.message || 'Error generating verification code');
+    }
+    
+    return response.data;
+  };
+
+  // Verify code via edge function (uses service role)
+  const verifyCodeViaEdge = async (targetEmail: string, code: string, type: 'signup' | 'password_reset') => {
+    const response = await supabase.functions.invoke('verify-code', {
+      body: { email: targetEmail.toLowerCase(), code, type },
+    });
+    
+    if (response.error || response.data?.error) {
+      throw new Error(response.data?.error || response.error?.message || 'Invalid or expired code');
     }
     
     return response.data;
   };
 
   const sendPasswordResetEmail = async (targetEmail: string) => {
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    
-    const { error: codeError } = await supabase
-      .from('verification_codes')
-      .insert({
-        email: targetEmail.toLowerCase(),
-        code,
-        type: 'password_reset',
-        expires_at: expiresAt,
-      });
-
-    if (codeError) {
-      throw new Error('Error creating reset code');
-    }
-
-    const resetUrl = `${window.location.origin}/auth?type=recovery&email=${encodeURIComponent(targetEmail)}&code=${code}`;
-    
-    const response = await supabase.functions.invoke('send-password-reset', {
-      body: { email: targetEmail, resetUrl },
-    });
-    
-    if (response.error) {
-      throw new Error(response.error.message || 'Error sending email');
-    }
+    // Use edge function to generate code and send email
+    await generateVerificationCode(targetEmail, 'password_reset');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -307,22 +295,8 @@ export default function Auth() {
           return;
         }
 
-        const code = generateCode();
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-        const { error: codeError } = await supabase
-          .from('verification_codes')
-          .insert({
-            email: email.toLowerCase(),
-            code,
-            type: 'signup',
-            expires_at: expiresAt,
-          });
-
-        if (codeError) {
-          throw new Error('Error creating verification code');
-        }
-
-        await sendVerificationEmail(email, code, 'signup');
+        // Use edge function to generate code and send email (bypasses RLS)
+        await generateVerificationCode(email, 'signup');
         
         toast({ 
           title: 'Verification code sent!', 
@@ -408,31 +382,8 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { data: codes, error: fetchError } = await supabase
-        .from('verification_codes')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .eq('code', verificationCode)
-        .eq('type', 'signup')
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (fetchError || !codes || codes.length === 0) {
-        toast({ 
-          title: 'Invalid or expired code', 
-          description: 'Please request a new code.',
-          variant: 'destructive' 
-        });
-        setLoading(false);
-        return;
-      }
-
-      await supabase
-        .from('verification_codes')
-        .update({ used_at: new Date().toISOString() })
-        .eq('id', codes[0].id);
+      // Verify code via edge function (uses service role to bypass RLS)
+      await verifyCodeViaEdge(email, verificationCode, 'signup');
 
       const { data: signUpData, error: signUpError } = await signUp(email, password, username);
       
@@ -472,19 +423,8 @@ export default function Auth() {
   const handleResendCode = async () => {
     setLoading(true);
     try {
-      const code = generateCode();
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-      
-      await supabase
-        .from('verification_codes')
-        .insert({
-          email: email.toLowerCase(),
-          code,
-          type: 'signup',
-          expires_at: expiresAt,
-        });
-
-      await sendVerificationEmail(email, code, 'signup');
+      // Use edge function to generate code and send email (bypasses RLS)
+      await generateVerificationCode(email, 'signup');
       
       toast({ title: 'New code sent!', description: 'Check your email.' });
     } catch (err: any) {

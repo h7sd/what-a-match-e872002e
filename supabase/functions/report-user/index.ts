@@ -23,6 +23,22 @@ function safeString(v: unknown) {
   return typeof v === "string" ? v : "";
 }
 
+// Sanitize Discord mentions and markdown to prevent abuse
+function sanitizeForDiscord(text: string): string {
+  return text
+    // Escape @everyone and @here mentions (insert zero-width space)
+    .replace(/@everyone/gi, '@\u200Beveryone')
+    .replace(/@here/gi, '@\u200Bhere')
+    // Escape user/role mentions like <@123456789> or <@&123456789>
+    .replace(/<@[!&]?\d+>/g, '[mention]')
+    // Escape channel mentions like <#123456789>
+    .replace(/<#\d+>/g, '[channel]')
+    // Escape Discord markdown characters
+    .replace(/[*_~`|]/g, '\\$&')
+    // Remove any potential embed links
+    .replace(/\[.*?\]\(.*?\)/g, '[link removed]');
+}
+
 serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -64,15 +80,20 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as ReportBody;
-    const username = safeString(body.username).trim();
-    const reason = safeString(body.reason).trim();
+    const rawUsername = safeString(body.username).trim();
+    const rawReason = safeString(body.reason).trim();
 
-    if (!username) return json(400, { error: "username is required" });
-    if (!reason) return json(400, { error: "reason is required" });
+    if (!rawUsername) return json(400, { error: "username is required" });
+    if (!rawReason) return json(400, { error: "reason is required" });
 
     // Basic length limits to prevent abuse
-    if (username.length > 64) return json(400, { error: "username too long" });
-    if (reason.length > 1500) return json(400, { error: "reason too long" });
+    if (rawUsername.length > 64) return json(400, { error: "username too long" });
+    if (rawReason.length > 1500) return json(400, { error: "reason too long" });
+
+    // Sanitize inputs to prevent Discord markdown/mention injection
+    const username = sanitizeForDiscord(rawUsername);
+    const reason = sanitizeForDiscord(rawReason);
+    const safeReporterEmail = userEmail ? sanitizeForDiscord(userEmail) : userId;
 
     const userAgent = req.headers.get("user-agent") || "unknown";
     const now = new Date().toISOString();
@@ -86,9 +107,10 @@ serve(async (req) => {
             title: "User Report",
             color: 0xff0000,
             fields: [
-              { name: "Reported User", value: `@${username}`, inline: true },
-              { name: "Reporter", value: userEmail || userId, inline: true },
-              { name: "Reason", value: reason },
+              { name: "Reported User", value: username, inline: true },
+              { name: "Reporter", value: safeReporterEmail, inline: true },
+              { name: "Reporter ID", value: userId, inline: true },
+              { name: "Reason", value: reason.slice(0, 1024) },
               { name: "User-Agent", value: userAgent.slice(0, 256) },
             ],
             timestamp: now,

@@ -62,20 +62,26 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ used_at: new Date().toISOString() })
       .eq("id", codes[0].id);
 
-    // Get user by email
+    // Get user by email - return generic error for security (prevent enumeration)
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (userError) {
       console.error("Error listing users:", userError);
-      throw new Error("Failed to find user");
+      // Return same error as invalid code to prevent enumeration
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired reset code" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const user = userData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
     
     if (!user) {
+      // Return same error as invalid code to prevent user enumeration
+      console.log("User not found for email:", email);
       return new Response(
-        JSON.stringify({ error: "User not found" }),
-        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: "Invalid or expired reset code" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
