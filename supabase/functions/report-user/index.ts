@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +34,29 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return json(401, { error: "Authentication required to submit reports" });
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth verification failed:', claimsError);
+      return json(401, { error: "Invalid authentication" });
+    }
+
+    const userId = claimsData.claims.sub;
+    const userEmail = claimsData.claims.email as string | undefined;
+
     const webhookUrl = Deno.env.get("VITE_DISCORD_REPORT_WEBHOOK");
     if (!webhookUrl) {
       console.error("VITE_DISCORD_REPORT_WEBHOOK not configured");
@@ -63,6 +87,7 @@ serve(async (req) => {
             color: 0xff0000,
             fields: [
               { name: "Reported User", value: `@${username}`, inline: true },
+              { name: "Reporter", value: userEmail || userId, inline: true },
               { name: "Reason", value: reason },
               { name: "User-Agent", value: userAgent.slice(0, 256) },
             ],
@@ -83,6 +108,7 @@ serve(async (req) => {
       return json(502, { error: "Webhook failed", status: discordResponse.status });
     }
 
+    console.log(`Report submitted by ${userEmail || userId} for user @${username}`);
     return json(200, { ok: true });
   } catch (error) {
     console.error("report-user error", error);

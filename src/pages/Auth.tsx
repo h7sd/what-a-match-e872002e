@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
-const TURNSTILE_SITE_KEY = '0x4AAAAAACVEg1JAQ99IiFFG';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),

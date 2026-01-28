@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Flag, Loader2, Send } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Flag, Loader2, Send, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 import {
   Dialog,
   DialogContent,
@@ -16,12 +17,17 @@ import {
 
 export function ReportUserDialog() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    if (!user) {
+      toast({ title: 'Login required', description: 'You must be logged in to submit a report.', variant: 'destructive' });
+      return;
+    }
     if (!username.trim()) {
       toast({ title: 'Please enter a username', variant: 'destructive' });
       return;
@@ -78,41 +84,60 @@ export function ReportUserDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Username</label>
-            <Input
-              placeholder="Enter username to report..."
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              maxLength={64}
-            />
+        {!user ? (
+          <div className="py-4 text-center space-y-4">
+            <div className="text-muted-foreground text-sm">
+              You must be logged in to submit a report.
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              className="w-full"
+              asChild
+            >
+              <a href="/auth">
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign in to continue
+              </a>
+            </Button>
           </div>
+        ) : (
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Username</label>
+              <Input
+                placeholder="Enter username to report..."
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                maxLength={64}
+              />
+            </div>
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Reason</label>
-            <Textarea
-              placeholder="Describe why you're reporting this user..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={4}
-              maxLength={1500}
-            />
+            <div>
+              <label className="text-sm font-medium mb-2 block">Reason</label>
+              <Textarea
+                placeholder="Describe why you're reporting this user..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={4}
+                maxLength={1500}
+              />
+            </div>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !username.trim() || !reason.trim()}
+              className="w-full"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              Submit Report
+            </Button>
           </div>
-
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || !username.trim() || !reason.trim()}
-            className="w-full"
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
-            )}
-            Submit Report
-          </Button>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );
