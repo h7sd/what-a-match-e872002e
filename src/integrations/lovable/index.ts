@@ -5,6 +5,13 @@ import { supabase } from "../supabase/client";
 
 const lovableAuth = createLovableAuth({});
 
+// Helper to generate username from email
+function generateUsername(email: string): string {
+  const base = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const random = Math.floor(Math.random() * 1000);
+  return `${base}${random}`;
+}
+
 export const lovable = {
   auth: {
     signInWithOAuth: async (provider: "google" | "apple", opts?: { redirect_uri?: string }) => {
@@ -22,7 +29,36 @@ export const lovable = {
 
       try {
         await supabase.auth.setSession(result.tokens);
+        
+        // Get the user after setting session
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Check if profile exists
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+          
+          // Create profile if it doesn't exist
+          if (!existingProfile) {
+            const email = user.email || '';
+            const username = generateUsername(email);
+            const displayName = user.user_metadata?.full_name || user.user_metadata?.name || username;
+            
+            await supabase
+              .from('profiles')
+              .insert({
+                user_id: user.id,
+                username: username,
+                display_name: displayName,
+                email_verified: true, // OAuth users are already verified
+              });
+          }
+        }
       } catch (e) {
+        console.error('OAuth session/profile error:', e);
         return { error: e instanceof Error ? e : new Error(String(e)) };
       }
       return result;

@@ -68,9 +68,16 @@ export default function Auth() {
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
-  const { signIn, signUp, verifyMfa } = useAuth();
+  const { signIn, signUp, verifyMfa, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already logged in (e.g., after OAuth callback)
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   // Load Turnstile script
   useEffect(() => {
@@ -525,16 +532,24 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
       
-      if (error) {
+      // If redirected, the page will reload after OAuth flow
+      if (result.redirected) {
+        return;
+      }
+      
+      if (result.error) {
         toast({
           title: 'Google Sign-In failed',
-          description: error.message || 'Please try again.',
+          description: result.error.message || 'Please try again.',
           variant: 'destructive',
         });
+      } else {
+        toast({ title: 'Welcome!' });
+        navigate('/dashboard');
       }
     } catch (err: any) {
       toast({
@@ -550,16 +565,24 @@ export default function Auth() {
   const handleAppleSignIn = async () => {
     setAppleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("apple", {
+      const result = await lovable.auth.signInWithOAuth("apple", {
         redirect_uri: window.location.origin,
       });
       
-      if (error) {
+      // If redirected, the page will reload after OAuth flow
+      if (result.redirected) {
+        return;
+      }
+      
+      if (result.error) {
         toast({
           title: 'Apple Sign-In failed',
-          description: error.message || 'Please try again.',
+          description: result.error.message || 'Please try again.',
           variant: 'destructive',
         });
+      } else {
+        toast({ title: 'Welcome!' });
+        navigate('/dashboard');
       }
     } catch (err: any) {
       toast({
