@@ -12,16 +12,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 const loginSchema = z.object({
-  email: z.string().email('Ungültige E-Mail-Adresse'),
-  password: z.string().min(6, 'Passwort muss mindestens 6 Zeichen haben'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 const signupSchema = loginSchema.extend({
   username: z
     .string()
-    .min(1, 'Username muss mindestens 1 Zeichen haben')
-    .max(20, 'Username darf maximal 20 Zeichen haben')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Username darf nur Buchstaben, Zahlen und Unterstriche enthalten'),
+    .min(1, 'Username must be at least 1 character')
+    .max(20, 'Username must be at most 20 characters')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
 });
 
 type AuthStep = 'login' | 'signup' | 'verify' | 'forgot-password' | 'reset-password' | 'mfa-verify';
@@ -67,7 +67,7 @@ export default function Auth() {
     });
     
     if (response.error) {
-      throw new Error(response.error.message || 'Fehler beim Senden der E-Mail');
+      throw new Error(response.error.message || 'Error sending email');
     }
     
     return response.data;
@@ -89,7 +89,7 @@ export default function Auth() {
       });
 
     if (codeError) {
-      throw new Error('Fehler beim Erstellen des Reset-Codes');
+      throw new Error('Error creating reset code');
     }
 
     // Build the reset URL with the code
@@ -101,7 +101,7 @@ export default function Auth() {
     });
     
     if (response.error) {
-      throw new Error(response.error.message || 'Fehler beim Senden der E-Mail');
+      throw new Error(response.error.message || 'Error sending email');
     }
   };
 
@@ -128,9 +128,9 @@ export default function Auth() {
         const { error, needsMfa, factorId } = await signIn(email, password);
         if (error) {
           toast({
-            title: 'Fehler beim Anmelden',
+            title: 'Login failed',
             description: error.message === 'Invalid login credentials' 
-              ? 'E-Mail oder Passwort falsch'
+              ? 'Invalid email or password'
               : error.message,
             variant: 'destructive',
           });
@@ -138,9 +138,9 @@ export default function Auth() {
           // User has 2FA enabled, need to verify
           setMfaFactorId(factorId);
           setStep('mfa-verify');
-          toast({ title: '2FA erforderlich', description: 'Bitte gib deinen Authenticator-Code ein.' });
+          toast({ title: '2FA Required', description: 'Please enter your authenticator code.' });
         } else {
-          toast({ title: 'Willkommen zurück!' });
+          toast({ title: 'Welcome back!' });
           navigate('/dashboard');
         }
       } else if (step === 'signup') {
@@ -172,20 +172,20 @@ export default function Auth() {
           });
 
         if (codeError) {
-          throw new Error('Fehler beim Erstellen des Codes');
+          throw new Error('Error creating verification code');
         }
 
         // Send verification email
         await sendVerificationEmail(email, code, 'signup');
         
         toast({ 
-          title: 'Verifizierungscode gesendet!', 
-          description: 'Prüfe deine E-Mails und gib den 6-stelligen Code ein.' 
+          title: 'Verification code sent!', 
+          description: 'Check your email and enter the 6-digit code.' 
         });
         
         setStep('verify');
       } else if (step === 'forgot-password') {
-        const emailResult = z.string().email('Ungültige E-Mail-Adresse').safeParse(email);
+        const emailResult = z.string().email('Invalid email address').safeParse(email);
         if (!emailResult.success) {
           setErrors({ email: emailResult.error.errors[0].message });
           setLoading(false);
@@ -195,14 +195,14 @@ export default function Auth() {
         await sendPasswordResetEmail(email);
         
         toast({ 
-          title: 'E-Mail gesendet!', 
-          description: 'Falls ein Account existiert, erhältst du einen Link zum Zurücksetzen.' 
+          title: 'Email sent!', 
+          description: 'If an account exists, you will receive a reset link.' 
         });
         
         setStep('login');
       } else if (step === 'reset-password') {
         if (newPassword.length < 6) {
-          setErrors({ newPassword: 'Passwort muss mindestens 6 Zeichen haben' });
+          setErrors({ newPassword: 'Password must be at least 6 characters' });
           setLoading(false);
           return;
         }
@@ -213,8 +213,8 @@ export default function Auth() {
         
         if (!codeParam || !emailParam) {
           toast({
-            title: 'Ungültiger Link',
-            description: 'Bitte fordere einen neuen Passwort-Reset an.',
+            title: 'Invalid link',
+            description: 'Please request a new password reset.',
             variant: 'destructive',
           });
           setStep('forgot-password');
@@ -233,12 +233,12 @@ export default function Auth() {
 
         if (response.error || response.data?.error) {
           toast({
-            title: 'Fehler beim Zurücksetzen',
-            description: response.data?.error || response.error?.message || 'Bitte versuche es erneut.',
+            title: 'Reset failed',
+            description: response.data?.error || response.error?.message || 'Please try again.',
             variant: 'destructive',
           });
         } else {
-          toast({ title: 'Passwort geändert!', description: 'Du kannst dich jetzt einloggen.' });
+          toast({ title: 'Password changed!', description: 'You can now log in.' });
           setStep('login');
           navigate('/auth');
         }
@@ -246,8 +246,8 @@ export default function Auth() {
     } catch (err: any) {
       console.error('Auth error:', err);
       toast({
-        title: 'Ein Fehler ist aufgetreten',
-        description: err.message || 'Bitte versuche es später erneut.',
+        title: 'An error occurred',
+        description: err.message || 'Please try again later.',
         variant: 'destructive',
       });
     } finally {
@@ -257,7 +257,7 @@ export default function Auth() {
 
   const handleVerifyCode = async () => {
     if (verificationCode.length !== 6) {
-      toast({ title: 'Bitte gib den 6-stelligen Code ein', variant: 'destructive' });
+      toast({ title: 'Please enter the 6-digit code', variant: 'destructive' });
       return;
     }
 
@@ -278,8 +278,8 @@ export default function Auth() {
 
       if (fetchError || !codes || codes.length === 0) {
         toast({ 
-          title: 'Ungültiger oder abgelaufener Code', 
-          description: 'Bitte fordere einen neuen Code an.',
+          title: 'Invalid or expired code', 
+          description: 'Please request a new code.',
           variant: 'destructive' 
         });
         setLoading(false);
@@ -297,7 +297,7 @@ export default function Auth() {
       
       if (signUpError) {
         toast({
-          title: 'Fehler beim Erstellen des Accounts',
+          title: 'Error creating account',
           description: signUpError.message,
           variant: 'destructive',
         });
@@ -316,13 +316,13 @@ export default function Auth() {
           .eq('user_id', signUpData.user.id);
       }
 
-      toast({ title: 'Account erstellt!', description: 'Willkommen bei UserVault!' });
+      toast({ title: 'Account created!', description: 'Welcome to UserVault!' });
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Verification error:', err);
       toast({
-        title: 'Fehler bei der Verifizierung',
-        description: err.message || 'Bitte versuche es erneut.',
+        title: 'Verification failed',
+        description: err.message || 'Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -347,11 +347,11 @@ export default function Auth() {
 
       await sendVerificationEmail(email, code, 'signup');
       
-      toast({ title: 'Neuer Code gesendet!', description: 'Prüfe deine E-Mails.' });
+      toast({ title: 'New code sent!', description: 'Check your email.' });
     } catch (err: any) {
       toast({
-        title: 'Fehler beim Senden',
-        description: err.message || 'Bitte versuche es erneut.',
+        title: 'Error sending code',
+        description: err.message || 'Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -361,7 +361,7 @@ export default function Auth() {
 
   const handleMfaVerify = async () => {
     if (mfaCode.length !== 6 || !mfaFactorId) {
-      toast({ title: 'Bitte gib den 6-stelligen Code ein', variant: 'destructive' });
+      toast({ title: 'Please enter the 6-digit code', variant: 'destructive' });
       return;
     }
 
@@ -371,18 +371,18 @@ export default function Auth() {
       
       if (error) {
         toast({
-          title: 'Ungültiger Code',
-          description: 'Bitte überprüfe deinen Authenticator-Code.',
+          title: 'Invalid code',
+          description: 'Please check your authenticator code.',
           variant: 'destructive',
         });
       } else {
-        toast({ title: 'Erfolgreich angemeldet!' });
+        toast({ title: 'Successfully logged in!' });
         navigate('/dashboard');
       }
     } catch (err: any) {
       toast({
-        title: 'Fehler bei der Verifizierung',
-        description: err.message || 'Bitte versuche es erneut.',
+        title: 'Verification failed',
+        description: err.message || 'Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -392,24 +392,24 @@ export default function Auth() {
 
   const renderTitle = () => {
     switch (step) {
-      case 'login': return 'Willkommen zurück';
-      case 'signup': return 'Account erstellen';
-      case 'verify': return 'E-Mail verifizieren';
-      case 'forgot-password': return 'Passwort vergessen';
-      case 'reset-password': return 'Neues Passwort';
-      case 'mfa-verify': return 'Zwei-Faktor-Authentifizierung';
+      case 'login': return 'Welcome back';
+      case 'signup': return 'Create account';
+      case 'verify': return 'Verify email';
+      case 'forgot-password': return 'Forgot password';
+      case 'reset-password': return 'New password';
+      case 'mfa-verify': return 'Two-Factor Authentication';
       default: return 'Auth';
     }
   };
 
   const renderDescription = () => {
     switch (step) {
-      case 'login': return 'Melde dich an, um deine Bio-Page zu verwalten';
-      case 'signup': return 'Erstelle deine eigene personalisierte Bio-Page';
-      case 'verify': return `Wir haben einen 6-stelligen Code an ${email} gesendet`;
-      case 'forgot-password': return 'Gib deine E-Mail ein, um dein Passwort zurückzusetzen';
-      case 'reset-password': return 'Wähle ein neues, sicheres Passwort';
-      case 'mfa-verify': return 'Gib den 6-stelligen Code aus deiner Authenticator-App ein';
+      case 'login': return 'Sign in to manage your bio page';
+      case 'signup': return 'Create your own personalized bio page';
+      case 'verify': return `We sent a 6-digit code to ${email}`;
+      case 'forgot-password': return 'Enter your email to reset your password';
+      case 'reset-password': return 'Choose a new, secure password';
+      case 'mfa-verify': return 'Enter the 6-digit code from your authenticator app';
       default: return '';
     }
   };
@@ -426,7 +426,7 @@ export default function Auth() {
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-white transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
-          Zurück zur Startseite
+          Back to home
         </Link>
 
         <div className="glass-card p-8">
@@ -448,11 +448,11 @@ export default function Auth() {
           {step === 'login' && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">E-Mail</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="du@beispiel.de"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-secondary/50 border-border"
@@ -464,13 +464,13 @@ export default function Auth() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Passwort</Label>
+                  <Label htmlFor="password">Password</Label>
                   <button
                     type="button"
                     onClick={() => setStep('forgot-password')}
                     className="text-xs text-primary hover:underline"
                   >
-                    Vergessen?
+                    Forgot?
                   </button>
                 </div>
                 <Input
@@ -492,7 +492,7 @@ export default function Auth() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Anmelden
+                Sign in
               </Button>
             </form>
           )}
@@ -516,11 +516,11 @@ export default function Auth() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">E-Mail</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="du@beispiel.de"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-secondary/50 border-border"
@@ -531,7 +531,7 @@ export default function Auth() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Passwort</Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -551,7 +551,7 @@ export default function Auth() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Weiter
+                Continue
               </Button>
             </form>
           )}
@@ -582,7 +582,7 @@ export default function Auth() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Verifizieren
+                Verify
               </Button>
 
               <div className="text-center">
@@ -592,7 +592,7 @@ export default function Auth() {
                   disabled={loading}
                   className="text-sm text-muted-foreground hover:text-white transition-colors"
                 >
-                  Keinen Code erhalten? Erneut senden
+                  Didn't receive a code? Resend
                 </button>
               </div>
             </div>
@@ -602,11 +602,11 @@ export default function Auth() {
           {step === 'forgot-password' && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">E-Mail</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="du@beispiel.de"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-secondary/50 border-border"
@@ -622,7 +622,7 @@ export default function Auth() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Link senden
+                Send link
               </Button>
 
               <button
@@ -630,7 +630,7 @@ export default function Auth() {
                 onClick={() => setStep('login')}
                 className="w-full text-sm text-muted-foreground hover:text-white transition-colors"
               >
-                Zurück zum Login
+                Back to login
               </button>
             </form>
           )}
@@ -639,7 +639,7 @@ export default function Auth() {
           {step === 'reset-password' && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="newPassword">Neues Passwort</Label>
+                <Label htmlFor="newPassword">New password</Label>
                 <Input
                   id="newPassword"
                   type="password"
@@ -659,7 +659,7 @@ export default function Auth() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Passwort speichern
+                Save password
               </Button>
             </form>
           )}
@@ -694,7 +694,7 @@ export default function Auth() {
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Verifizieren
+                Verify
               </Button>
 
               <div className="text-center">
@@ -707,7 +707,7 @@ export default function Auth() {
                   }}
                   className="text-sm text-muted-foreground hover:text-white transition-colors"
                 >
-                  ← Zurück zum Login
+                  ← Back to login
                 </button>
               </div>
             </div>
@@ -725,8 +725,8 @@ export default function Auth() {
                 className="text-sm text-muted-foreground hover:text-white transition-colors"
               >
                 {step === 'login'
-                  ? 'Noch kein Account? Registrieren'
-                  : 'Bereits einen Account? Anmelden'}
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Sign in'}
               </button>
             </div>
           )}
@@ -741,7 +741,7 @@ export default function Auth() {
                 }}
                 className="text-sm text-muted-foreground hover:text-white transition-colors"
               >
-                ← Zurück zur Registrierung
+                ← Back to sign up
               </button>
             </div>
           )}

@@ -74,26 +74,26 @@ const handler = async (req: Request): Promise<Response> => {
                 <tr>
                   <td style="background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px;">
                     <h2 style="color: #ffffff; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
-                      Passwort zurücksetzen
+                      Reset Your Password
                     </h2>
                     <p style="color: #a1a1aa; margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; text-align: center;">
-                      Du hast angefordert, dein Passwort zurückzusetzen. Klicke auf den Button unten, um ein neues Passwort zu erstellen.
+                      You requested to reset your password. Click the button below to create a new password.
                     </p>
                     
                     <!-- CTA Button -->
                     <div style="text-align: center; margin-bottom: 30px;">
                       <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-                        Passwort zurücksetzen
+                        Reset Password
                       </a>
                     </div>
                     
                     <p style="color: #71717a; margin: 0 0 20px 0; font-size: 14px; text-align: center;">
-                      Dieser Link ist <strong style="color: #a1a1aa;">1 Stunde</strong> gültig.
+                      This link is valid for <strong style="color: #a1a1aa;">1 hour</strong>.
                     </p>
                     
                     <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
                       <p style="color: #52525b; font-size: 12px; margin: 0; text-align: center;">
-                        Falls der Button nicht funktioniert, kopiere diesen Link:<br>
+                        If the button doesn't work, copy this link:<br>
                         <a href="${resetUrl}" style="color: #8b5cf6; word-break: break-all;">${resetUrl}</a>
                       </p>
                     </div>
@@ -104,10 +104,10 @@ const handler = async (req: Request): Promise<Response> => {
                 <tr>
                   <td style="padding-top: 30px; text-align: center;">
                     <p style="color: #52525b; font-size: 12px; margin: 0;">
-                      Falls du diese E-Mail nicht angefordert hast, kannst du sie ignorieren.
+                      If you didn't request this email, you can safely ignore it.
                     </p>
                     <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
-                      © ${new Date().getFullYear()} UserVault. Alle Rechte vorbehalten.
+                      © ${new Date().getFullYear()} UserVault. All rights reserved.
                     </p>
                   </td>
                 </tr>
@@ -119,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const emailResponse = await sendEmail(email, "Passwort zurücksetzen - UserVault", html);
+    const emailResponse = await sendEmail(email, "Reset Your Password - UserVault", html);
 
     console.log("Password reset email sent successfully:", emailResponse);
 

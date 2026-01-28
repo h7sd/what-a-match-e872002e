@@ -50,8 +50,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const subject = type === "email_change" 
-      ? "Bestätige deine neue E-Mail-Adresse - UserVault"
-      : "Verifiziere deine E-Mail-Adresse - UserVault";
+      ? "Confirm your new email address - UserVault"
+      : "Verify your email address - UserVault";
 
     const html = `
       <!DOCTYPE html>
@@ -79,12 +79,12 @@ const handler = async (req: Request): Promise<Response> => {
                 <tr>
                   <td style="background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px;">
                     <h2 style="color: #ffffff; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
-                      ${type === "email_change" ? "Neue E-Mail bestätigen" : "E-Mail verifizieren"}
+                      ${type === "email_change" ? "Confirm New Email" : "Verify Your Email"}
                     </h2>
                     <p style="color: #a1a1aa; margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; text-align: center;">
                       ${type === "email_change" 
-                        ? "Gib diesen Code ein, um deine neue E-Mail-Adresse zu bestätigen:" 
-                        : "Willkommen bei UserVault! Gib diesen Code ein, um deine E-Mail zu verifizieren:"}
+                        ? "Enter this code to confirm your new email address:" 
+                        : "Welcome to UserVault! Enter this code to verify your email:"}
                     </p>
                     
                     <!-- Code Box -->
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
                     </div>
                     
                     <p style="color: #71717a; margin: 0; font-size: 14px; text-align: center;">
-                      Dieser Code ist <strong style="color: #a1a1aa;">15 Minuten</strong> gültig.
+                      This code is valid for <strong style="color: #a1a1aa;">15 minutes</strong>.
                     </p>
                   </td>
                 </tr>
@@ -102,10 +102,10 @@ const handler = async (req: Request): Promise<Response> => {
                 <tr>
                   <td style="padding-top: 30px; text-align: center;">
                     <p style="color: #52525b; font-size: 12px; margin: 0;">
-                      Falls du diese E-Mail nicht angefordert hast, kannst du sie ignorieren.
+                      If you didn't request this email, you can safely ignore it.
                     </p>
                     <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
-                      © ${new Date().getFullYear()} UserVault. Alle Rechte vorbehalten.
+                      © ${new Date().getFullYear()} UserVault. All rights reserved.
                     </p>
                   </td>
                 </tr>
