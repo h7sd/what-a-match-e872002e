@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShuffleText, FuzzyText, DecryptedText, ASCIIText } from './TextAnimations';
+import ASCIITextEffect from './ASCIITextEffect';
+import DecryptedTextEffect from './DecryptedTextEffect';
+import FuzzyTextEffect from './FuzzyTextEffect';
 
 interface StartScreenProps {
   onStart: () => void;
@@ -33,8 +36,48 @@ function AnimatedText({
       return <DecryptedText text={text} style={style} className="text-xl" />;
     case 'ascii':
       return <ASCIIText text={text} style={style} className="text-xl" />;
+    case 'ascii-3d':
+      return (
+        <div className="w-[400px] h-[150px] relative">
+          <ASCIITextEffect 
+            text={text}
+            textColor={color}
+            enableWaves={true}
+            asciiFontSize={8}
+            textFontSize={120}
+          />
+        </div>
+      );
+    case 'decrypted-advanced':
+      return (
+        <DecryptedTextEffect 
+          text={text}
+          speed={50}
+          sequential={true}
+          revealDirection="start"
+          animateOn="view"
+          className="text-xl"
+          style={style}
+        />
+      );
+    case 'fuzzy-canvas':
+      return (
+        <FuzzyTextEffect
+          fontSize="clamp(1.5rem, 4vw, 3rem)"
+          fontWeight={700}
+          color={color}
+          baseIntensity={0.15}
+          hoverIntensity={0.4}
+          enableHover={true}
+          glitchMode={true}
+          glitchInterval={4000}
+          glitchDuration={300}
+        >
+          {text}
+        </FuzzyTextEffect>
+      );
     default:
-      return null; // Will use typewriter fallback
+      return null;
   }
 }
 
@@ -101,7 +144,7 @@ export function StartScreen({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="text-center"
+            className="text-center flex items-center justify-center"
           >
             {useTypewriter ? (
               <p 

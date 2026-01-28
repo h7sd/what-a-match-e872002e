@@ -10,6 +10,9 @@ import {
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import { ShuffleText, FuzzyText, DecryptedText, ASCIIText, TextAnimationType } from '@/components/profile/TextAnimations';
+import ASCIITextEffect from '@/components/profile/ASCIITextEffect';
+import DecryptedTextEffect from '@/components/profile/DecryptedTextEffect';
+import FuzzyTextEffect from '@/components/profile/FuzzyTextEffect';
 
 const FONTS = [
   'Inter',
@@ -52,12 +55,17 @@ const FONTS = [
   'Shadows Into Light',
 ];
 
-const TEXT_ANIMATIONS: { value: TextAnimationType; label: string; description: string }[] = [
+export type AdvancedTextAnimationType = 'none' | 'shuffle' | 'fuzzy' | 'decrypted' | 'ascii' | 'ascii-3d' | 'decrypted-advanced' | 'fuzzy-canvas';
+
+const TEXT_ANIMATIONS: { value: AdvancedTextAnimationType; label: string; description: string }[] = [
   { value: 'none', label: 'None', description: 'Static text with typewriter cursor' },
   { value: 'shuffle', label: 'Shuffle', description: 'Characters shuffle into place' },
   { value: 'fuzzy', label: 'Fuzzy', description: 'Glitchy chromatic aberration effect' },
   { value: 'decrypted', label: 'Decrypted', description: 'Matrix-style decrypt animation' },
   { value: 'ascii', label: 'ASCII', description: 'ASCII art glitch on hover' },
+  { value: 'ascii-3d', label: 'ASCII 3D', description: '3D rotating ASCII art with waves' },
+  { value: 'decrypted-advanced', label: 'Decrypted Pro', description: 'Advanced decrypt with directions' },
+  { value: 'fuzzy-canvas', label: 'Fuzzy Canvas', description: 'High-performance fuzzy with glitch mode' },
 ];
 
 interface StartScreenSettingsProps {
@@ -79,12 +87,14 @@ function AnimatedPreviewText({
   text, 
   animation, 
   font, 
-  color 
+  color,
+  bgColor
 }: { 
   text: string; 
   animation: string; 
   font: string; 
   color: string;
+  bgColor: string;
 }) {
   const style = { fontFamily: font, color };
   const displayText = text || 'Click anywhere to enter';
@@ -98,6 +108,48 @@ function AnimatedPreviewText({
       return <DecryptedText text={displayText} style={style} className="text-lg" />;
     case 'ascii':
       return <ASCIIText text={displayText} style={style} className="text-lg" />;
+    case 'ascii-3d':
+      return (
+        <div className="w-full h-32 relative">
+          <ASCIITextEffect 
+            text={displayText}
+            textColor={color}
+            enableWaves={true}
+            asciiFontSize={6}
+            textFontSize={80}
+          />
+        </div>
+      );
+    case 'decrypted-advanced':
+      return (
+        <DecryptedTextEffect 
+          text={displayText}
+          speed={50}
+          sequential={true}
+          revealDirection="start"
+          animateOn="view"
+          className="text-lg"
+          style={style}
+        />
+      );
+    case 'fuzzy-canvas':
+      return (
+        <div className="flex items-center justify-center">
+          <FuzzyTextEffect
+            fontSize="1.5rem"
+            fontWeight={600}
+            color={color}
+            baseIntensity={0.2}
+            hoverIntensity={0.5}
+            enableHover={true}
+            glitchMode={true}
+            glitchInterval={3000}
+            glitchDuration={200}
+          >
+            {displayText}
+          </FuzzyTextEffect>
+        </div>
+      );
     default:
       return (
         <span className="text-lg" style={style}>
@@ -151,6 +203,7 @@ export function StartScreenSettings({
               animation={textAnimation}
               font={font}
               color={textColor}
+              bgColor={bgColor}
             />
           </div>
 
