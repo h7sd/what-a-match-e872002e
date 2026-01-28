@@ -798,6 +798,7 @@ export default function Dashboard() {
                   showViews={showViews}
                   showAvatar={showAvatar}
                   showDescription={showDescription}
+                  showLinks={showLinks}
                   viewsCount={profile?.views_count || 0}
                   badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
                     const badge = globalBadges.find(gb => gb.id === ub.badge_id);
@@ -808,11 +809,14 @@ export default function Dashboard() {
                       icon_url: badge.icon_url,
                     } : null;
                   }).filter(Boolean) as any[]}
+                  socialLinks={socialLinks}
                   cardBorderEnabled={cardBorderEnabled}
                   cardBorderColor={cardBorderColor}
                   cardBorderWidth={cardBorderWidth}
                   nameFont={nameFont}
                   textFont={textFont}
+                  iconColor={iconColor}
+                  monochromeIcons={monochromeIcons}
                 />
 
                 <CustomizationPanel
