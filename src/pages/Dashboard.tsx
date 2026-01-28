@@ -64,6 +64,7 @@ import { UserBanManager } from '@/components/admin/UserBanManager';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
+import { LiveProfilePreview } from '@/components/dashboard/LiveProfilePreview';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects' | 'badges' | 'admin' | 'settings';
@@ -779,6 +780,41 @@ export default function Dashboard() {
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
               <div className="space-y-6">
+                {/* Live Profile Preview */}
+                <LiveProfilePreview
+                  username={username}
+                  displayName={displayName}
+                  bio={bio}
+                  avatarUrl={avatarUrl}
+                  avatarShape={avatarShape}
+                  backgroundColor={backgroundColor}
+                  accentColor={accentColor}
+                  textColor={textColor}
+                  backgroundUrl={backgroundUrl}
+                  backgroundVideoUrl={backgroundVideoUrl}
+                  showUsername={showUsername}
+                  showDisplayName={showDisplayName}
+                  showBadges={showBadges}
+                  showViews={showViews}
+                  showAvatar={showAvatar}
+                  showDescription={showDescription}
+                  viewsCount={profile?.views_count || 0}
+                  badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
+                    const badge = globalBadges.find(gb => gb.id === ub.badge_id);
+                    return badge ? {
+                      id: badge.id,
+                      name: badge.name,
+                      color: badge.color,
+                      icon_url: badge.icon_url,
+                    } : null;
+                  }).filter(Boolean) as any[]}
+                  cardBorderEnabled={cardBorderEnabled}
+                  cardBorderColor={cardBorderColor}
+                  cardBorderWidth={cardBorderWidth}
+                  nameFont={nameFont}
+                  textFont={textFont}
+                />
+
                 <CustomizationPanel
                   backgroundUrl={backgroundUrl}
                   setBackgroundUrl={setBackgroundUrl}
