@@ -831,6 +831,10 @@ export default function Dashboard() {
                   setBackgroundEffect={setBackgroundEffect}
                   audioVolume={audioVolume}
                   setAudioVolume={setAudioVolume}
+                  nameFont={nameFont}
+                  setNameFont={setNameFont}
+                  textFont={textFont}
+                  setTextFont={setTextFont}
                 />
 
                 {/* Start Screen Settings */}

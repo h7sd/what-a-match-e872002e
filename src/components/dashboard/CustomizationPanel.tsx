@@ -25,6 +25,47 @@ import {
 import { FileUploader } from './FileUploader';
 import { ColorPicker } from './ColorPicker';
 
+const FONTS = [
+  'Inter',
+  'JetBrains Mono',
+  'Satoshi',
+  'Outfit',
+  'Space Grotesk',
+  'Sora',
+  'Poppins',
+  'Manrope',
+  'Orbitron',
+  'Press Start 2P',
+  'VT323',
+  'Fira Code',
+  'IBM Plex Mono',
+  'Source Code Pro',
+  'Roboto Mono',
+  'Ubuntu Mono',
+  'Inconsolata',
+  'Playfair Display',
+  'Crimson Text',
+  'Lora',
+  'Merriweather',
+  'DM Serif Display',
+  'Abril Fatface',
+  'Bebas Neue',
+  'Oswald',
+  'Montserrat',
+  'Raleway',
+  'Quicksand',
+  'Comfortaa',
+  'Righteous',
+  'Audiowide',
+  'Russo One',
+  'Bungee',
+  'Permanent Marker',
+  'Pacifico',
+  'Dancing Script',
+  'Caveat',
+  'Shadows Into Light',
+];
+
 interface CustomizationPanelProps {
   backgroundUrl: string;
   setBackgroundUrl: (url: string) => void;
@@ -98,6 +139,12 @@ interface CustomizationPanelProps {
   setBackgroundEffect?: (effect: string) => void;
   audioVolume?: number;
   setAudioVolume?: (volume: number) => void;
+  
+  // Font settings
+  nameFont?: string;
+  setNameFont?: (font: string) => void;
+  textFont?: string;
+  setTextFont?: (font: string) => void;
 }
 
 export function CustomizationPanel(props: CustomizationPanelProps) {
@@ -171,6 +218,48 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
       {/* General Customization */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-primary">General Customization</h2>
+        
+        {/* Font Settings Row */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Name Font</Label>
+            <Select 
+              value={props.nameFont || 'Inter'} 
+              onValueChange={(v) => props.setNameFont?.(v)}
+            >
+              <SelectTrigger className="bg-secondary/30">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {FONTS.map((f) => (
+                  <SelectItem key={f} value={f} style={{ fontFamily: f }}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Text Font</Label>
+            <Select 
+              value={props.textFont || 'Inter'} 
+              onValueChange={(v) => props.setTextFont?.(v)}
+            >
+              <SelectTrigger className="bg-secondary/30">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {FONTS.map((f) => (
+                  <SelectItem key={f} value={f} style={{ fontFamily: f }}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="space-y-2">
