@@ -4,7 +4,6 @@ import { FaDiscord, FaBug, FaGift, FaSnowflake, FaEgg, FaDollarSign } from 'reac
 
 // Import custom badge images
 import staffBadge from '@/assets/badges/staff.png';
-import uservaultBadge from '@/assets/badges/uservault.png';
 import devBadge from '@/assets/badges/dev.png';
 import earlyBadge from '@/assets/badges/early.png';
 import donorBadge from '@/assets/badges/donor.png';
@@ -30,10 +29,51 @@ export const VerifiedBadgeIcon: BadgeIconComponent = ({ className, style }) => (
   </svg>
 );
 
+// Custom UserVault Badge Icon (Blue U + Purple V)
+export const UserVaultBadgeIcon: BadgeIconComponent = ({ className, style }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    style={style}
+  >
+    {/* Background circle with gradient */}
+    <defs>
+      <linearGradient id="uvGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#3B82F6" />
+        <stop offset="100%" stopColor="#8B5CF6" />
+      </linearGradient>
+    </defs>
+    <circle cx="12" cy="12" r="11" fill="url(#uvGradient)" />
+    {/* U letter - Blue */}
+    <text 
+      x="5" 
+      y="16.5" 
+      fontFamily="Arial, sans-serif" 
+      fontSize="11" 
+      fontWeight="bold" 
+      fill="#60A5FA"
+    >
+      U
+    </text>
+    {/* V letter - Purple */}
+    <text 
+      x="12" 
+      y="16.5" 
+      fontFamily="Arial, sans-serif" 
+      fontSize="11" 
+      fontWeight="bold" 
+      fill="#C084FC"
+    >
+      V
+    </text>
+  </svg>
+);
+
 // Badges that use custom images instead of icons
 export const badgeImages: Record<string, string> = {
   staff: staffBadge,
-  'uservault.cc': uservaultBadge,
   dev: devBadge,
   early: earlyBadge,
   donor: donorBadge,
@@ -52,7 +92,7 @@ export const badgeIconByName: Record<string, BadgeIconComponent> = {
   'domain legend': Star,
   og: Star,
   'server booster': FaDiscord,
-  'uservault.cc': Star,
+  'uservault.cc': UserVaultBadgeIcon,
   'bug hunter': FaBug,
   'christmas 2025': FaSnowflake,
   'easter 2025': FaEgg,
