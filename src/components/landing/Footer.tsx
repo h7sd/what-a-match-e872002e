@@ -1,11 +1,13 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FadeIn } from './FadeIn';
+import { useAuth } from '@/lib/auth';
 
 interface FooterLink {
   label: string;
-  to: string;
+  to?: string;
   external?: boolean;
   scrollTo?: string;
+  isLogout?: boolean;
 }
 
 interface FooterColumn {
@@ -20,6 +22,7 @@ const footerColumns: FooterColumn[] = [
       { label: 'Login', to: '/auth' },
       { label: 'Sign Up', to: '/auth' },
       { label: 'Dashboard', to: '/dashboard' },
+      { label: 'Logout', isLogout: true },
     ],
   },
   {
@@ -45,7 +48,7 @@ const footerColumns: FooterColumn[] = [
   },
 ];
 
-function FooterLinkItem({ link }: { link: FooterLink }) {
+function FooterLinkItem({ link, onLogout }: { link: FooterLink; onLogout?: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -65,6 +68,17 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
       }
     }
   };
+
+  if (link.isLogout) {
+    return (
+      <button
+        onClick={onLogout}
+        className="text-sm text-muted-foreground hover:text-primary transition-colors text-left"
+      >
+        {link.label}
+      </button>
+    );
+  }
 
   if (link.external) {
     return (
@@ -92,7 +106,7 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 
   return (
     <Link
-      to={link.to}
+      to={link.to || '/'}
       className="text-sm text-muted-foreground hover:text-primary transition-colors"
     >
       {link.label}
@@ -101,12 +115,31 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 }
 
 export function Footer() {
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  // Filter out logout link if user is not logged in
+  const filteredColumns = footerColumns.map(column => {
+    if (column.title === 'General') {
+      return {
+        ...column,
+        links: column.links.filter(link => !link.isLogout || user)
+      };
+    }
+    return column;
+  });
+
   return (
     <footer className="border-t border-border/50 mt-16">
       <div className="max-w-6xl mx-auto px-6 py-12">
         <FadeIn>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            {footerColumns.map((column) => (
+            {filteredColumns.map((column) => (
               <div key={column.title}>
                 <h3 className="text-sm font-semibold text-foreground mb-4">
                   {column.title}
@@ -114,7 +147,7 @@ export function Footer() {
                 <ul className="space-y-3">
                   {column.links.map((link) => (
                     <li key={link.label}>
-                      <FooterLinkItem link={link} />
+                      <FooterLinkItem link={link} onLogout={handleLogout} />
                     </li>
                   ))}
                 </ul>
