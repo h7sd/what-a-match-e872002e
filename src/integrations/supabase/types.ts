@@ -596,6 +596,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_record_view: {
+        Args: { p_ip_hash: string; p_profile_id: string }
+        Returns: boolean
+      }
       cleanup_expired_verification_codes: { Args: never; Returns: undefined }
       has_role: {
         Args: {

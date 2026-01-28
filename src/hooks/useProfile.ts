@@ -205,7 +205,7 @@ export function useDeleteSocialLink() {
   });
 }
 
-// Session-based view tracking to prevent refresh spam
+// Session-based view tracking to prevent refresh spam (client-side layer)
 const VIEW_SESSION_KEY = 'profile_views_session';
 
 function getViewedProfiles(): Record<string, number> {
@@ -240,21 +240,28 @@ function hasViewedRecently(profileId: string): boolean {
 export function useRecordProfileView() {
   return useMutation({
     mutationFn: async (profileId: string) => {
-      // Check if already viewed in this session
+      // Client-side check first (reduces unnecessary server calls)
       if (hasViewedRecently(profileId)) {
         return; // Skip duplicate view
       }
 
-      const { error } = await supabase
-        .from('profile_views')
-        .insert({
-          profile_id: profileId,
+      // Use edge function for server-side IP-based rate limiting
+      try {
+        const response = await supabase.functions.invoke('record-view', {
+          body: { profile_id: profileId }
         });
-
-      if (error) throw error;
-      
-      // Mark as viewed in session
-      markProfileViewed(profileId);
+        
+        if (response.error) {
+          console.error('Error recording view:', response.error);
+        }
+        
+        // Mark as viewed in session regardless of server response
+        markProfileViewed(profileId);
+      } catch (error) {
+        console.error('Error calling record-view function:', error);
+        // Still mark as viewed to prevent spam attempts
+        markProfileViewed(profileId);
+      }
     },
   });
 }

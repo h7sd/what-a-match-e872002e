@@ -5,3 +5,15 @@ verify_jwt = false
 
 [functions.report-user]
 verify_jwt = false
+
+[functions.record-view]
+verify_jwt = false
+
+[functions.send-verification-email]
+verify_jwt = false
+
+[functions.send-password-reset]
+verify_jwt = false
+
+[functions.reset-password]
+verify_jwt = false
