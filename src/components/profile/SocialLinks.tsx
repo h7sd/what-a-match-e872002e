@@ -102,9 +102,10 @@ interface SocialLinksProps {
   links: SocialLink[];
   accentColor?: string;
   glowingIcons?: boolean;
+  iconOnly?: boolean;
 }
 
-export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = true }: SocialLinksProps) {
+export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = true, iconOnly = false }: SocialLinksProps) {
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -120,6 +121,51 @@ export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = tru
     show: { opacity: 1, y: 0, scale: 1 },
   };
 
+  // Icon-only mode: render as a grid of icons
+  if (iconOnly) {
+    return (
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="flex flex-wrap justify-center gap-3 mx-auto"
+      >
+        {links.map((link) => {
+          const detectedPlatform = detectPlatform(link.url);
+          const platform = link.platform.toLowerCase() || detectedPlatform;
+          const Icon = platformIcons[platform] || Link2;
+          const color = platformColors[platform] || accentColor;
+
+          return (
+            <motion.a
+              key={link.id}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              variants={item}
+              whileHover={{ scale: 1.15, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 rounded-xl flex items-center justify-center backdrop-blur-xl bg-black/40 border border-white/10 transition-all duration-300 hover:bg-black/50 hover:border-white/20"
+              style={{
+                boxShadow: glowingIcons ? `0 0 20px ${color}40, 0 0 40px ${color}20` : undefined,
+              }}
+              title={link.title || link.platform || detectedPlatform}
+            >
+              <Icon
+                className="w-6 h-6 transition-all duration-300"
+                style={{ 
+                  color,
+                  filter: glowingIcons ? `drop-shadow(0 0 8px ${color})` : undefined,
+                }}
+              />
+            </motion.a>
+          );
+        })}
+      </motion.div>
+    );
+  }
+
+  // Default card mode
   return (
     <motion.div
       variants={container}
@@ -156,7 +202,10 @@ export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = tru
             >
               <Icon
                 className="w-6 h-6 transition-all duration-300"
-                style={{ color }}
+                style={{ 
+                  color,
+                  filter: glowingIcons ? `drop-shadow(0 0 6px ${color})` : undefined,
+                }}
               />
             </div>
             <div className="flex-1 min-w-0">

@@ -158,6 +158,7 @@ export default function Dashboard() {
   const [glowUsername, setGlowUsername] = useState(false);
   const [glowSocials, setGlowSocials] = useState(false);
   const [glowBadges, setGlowBadges] = useState(false);
+  const [iconOnlyLinks, setIconOnlyLinks] = useState(false);
 
   // Discord Card customization
   const [discordCardStyle, setDiscordCardStyle] = useState('glass');
@@ -241,6 +242,7 @@ export default function Dashboard() {
       setGlowUsername((profile as any).glow_username ?? false);
       setGlowSocials((profile as any).glow_socials ?? false);
       setGlowBadges((profile as any).glow_badges ?? false);
+      setIconOnlyLinks((profile as any).icon_only_links ?? false);
       setDiscordCardStyle((profile as any).discord_card_style || 'glass');
       setDiscordCardOpacity((profile as any).discord_card_opacity ?? 100);
       setDiscordShowBadge((profile as any).discord_show_badge ?? true);
@@ -357,6 +359,7 @@ export default function Dashboard() {
         glow_username: glowUsername,
         glow_socials: glowSocials,
         glow_badges: glowBadges,
+        icon_only_links: iconOnlyLinks,
         discord_card_style: discordCardStyle,
         discord_card_opacity: discordCardOpacity,
         discord_show_badge: discordShowBadge,
@@ -829,6 +832,8 @@ export default function Dashboard() {
                   setGlowSocials={setGlowSocials}
                   glowBadges={glowBadges}
                   setGlowBadges={setGlowBadges}
+                  iconOnlyLinks={iconOnlyLinks}
+                  setIconOnlyLinks={setIconOnlyLinks}
                   discordCardStyle={discordCardStyle}
                   setDiscordCardStyle={setDiscordCardStyle}
                   discordCardOpacity={discordCardOpacity}
@@ -890,6 +895,8 @@ export default function Dashboard() {
                   occupation={occupation}
                   location={location_}
                   uidNumber={(profile as any)?.uid_number || 1}
+                  glowSocials={glowSocials}
+                  iconOnlyLinks={iconOnlyLinks}
                 />
 
                 {/* Start Screen Settings */}

@@ -124,6 +124,8 @@ interface CustomizationPanelProps {
   setGlowSocials: (value: boolean) => void;
   glowBadges: boolean;
   setGlowBadges: (value: boolean) => void;
+  iconOnlyLinks: boolean;
+  setIconOnlyLinks: (value: boolean) => void;
   
   // Discord card customization
   discordCardStyle?: string;
@@ -662,6 +664,14 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
             <Switch
               checked={props.swapBioColors}
               onCheckedChange={props.setSwapBioColors}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+            <Label className="text-sm">Icon-Only Links</Label>
+            <Switch
+              checked={props.iconOnlyLinks}
+              onCheckedChange={props.setIconOnlyLinks}
             />
           </div>
 
