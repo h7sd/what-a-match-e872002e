@@ -533,7 +533,7 @@ export default function Auth() {
     setGoogleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth`,
       });
       
       // If redirected, the page will reload after OAuth flow
@@ -542,6 +542,7 @@ export default function Auth() {
       }
       
       if (result.error) {
+        console.error('Google OAuth error:', result.error);
         toast({
           title: 'Google Sign-In failed',
           description: result.error.message || 'Please try again.',
@@ -552,6 +553,7 @@ export default function Auth() {
         navigate('/dashboard');
       }
     } catch (err: any) {
+      console.error('Google Sign-In catch error:', err);
       toast({
         title: 'Google Sign-In failed',
         description: err.message || 'Please try again.',
@@ -566,7 +568,7 @@ export default function Auth() {
     setAppleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth`,
       });
       
       // If redirected, the page will reload after OAuth flow
@@ -575,6 +577,7 @@ export default function Auth() {
       }
       
       if (result.error) {
+        console.error('Apple OAuth error:', result.error);
         toast({
           title: 'Apple Sign-In failed',
           description: result.error.message || 'Please try again.',
@@ -585,6 +588,7 @@ export default function Auth() {
         navigate('/dashboard');
       }
     } catch (err: any) {
+      console.error('Apple Sign-In catch error:', err);
       toast({
         title: 'Apple Sign-In failed',
         description: err.message || 'Please try again.',
