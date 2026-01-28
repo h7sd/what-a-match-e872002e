@@ -249,6 +249,7 @@ export type Database = {
           glow_socials: boolean | null
           glow_username: boolean | null
           icon_color: string | null
+          icon_links_opacity: number | null
           icon_only_links: boolean | null
           id: string
           layout_style: string | null
@@ -316,6 +317,7 @@ export type Database = {
           glow_socials?: boolean | null
           glow_username?: boolean | null
           icon_color?: string | null
+          icon_links_opacity?: number | null
           icon_only_links?: boolean | null
           id?: string
           layout_style?: string | null
@@ -383,6 +385,7 @@ export type Database = {
           glow_socials?: boolean | null
           glow_username?: boolean | null
           icon_color?: string | null
+          icon_links_opacity?: number | null
           icon_only_links?: boolean | null
           id?: string
           layout_style?: string | null

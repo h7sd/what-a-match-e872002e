@@ -56,6 +56,7 @@ interface LiveProfilePreviewProps {
   uidNumber?: number;
   glowSocials?: boolean;
   iconOnlyLinks?: boolean;
+  iconLinksOpacity?: number;
 }
 
 export function LiveProfilePreview({
@@ -94,6 +95,7 @@ export function LiveProfilePreview({
   uidNumber = 1,
   glowSocials = false,
   iconOnlyLinks = false,
+  iconLinksOpacity = 100,
 }: LiveProfilePreviewProps) {
   const isMobile = useIsMobile();
 
@@ -195,6 +197,7 @@ export function LiveProfilePreview({
                       accentColor={accentColor}
                       glowingIcons={glowSocials}
                       iconOnly={iconOnlyLinks}
+                      iconOpacity={iconLinksOpacity}
                     />
                   </div>
                 )}
@@ -306,6 +309,7 @@ export function LiveProfilePreview({
                   accentColor={accentColor}
                   glowingIcons={glowSocials}
                   iconOnly={iconOnlyLinks}
+                  iconOpacity={iconLinksOpacity}
                 />
               )}
             </div>

@@ -126,6 +126,8 @@ interface CustomizationPanelProps {
   setGlowBadges: (value: boolean) => void;
   iconOnlyLinks: boolean;
   setIconOnlyLinks: (value: boolean) => void;
+  iconLinksOpacity: number;
+  setIconLinksOpacity: (value: number) => void;
   
   // Discord card customization
   discordCardStyle?: string;
@@ -674,6 +676,20 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
               onCheckedChange={props.setIconOnlyLinks}
             />
           </div>
+
+          {props.iconOnlyLinks && (
+            <div className="space-y-2 p-3 rounded-lg bg-secondary/30 border border-border">
+              <Label className="text-sm">Icon Links Opacity</Label>
+              <Slider
+                value={[props.iconLinksOpacity]}
+                onValueChange={(value) => props.setIconLinksOpacity(value[0])}
+                min={0}
+                max={100}
+                step={5}
+              />
+              <span className="text-xs text-muted-foreground">{props.iconLinksOpacity}%</span>
+            </div>
+          )}
 
           <div className="space-y-2 p-3 rounded-lg bg-secondary/30 border border-border">
             <Label className="text-sm">Volume Control</Label>

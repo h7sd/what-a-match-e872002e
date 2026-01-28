@@ -103,9 +103,10 @@ interface SocialLinksProps {
   accentColor?: string;
   glowingIcons?: boolean;
   iconOnly?: boolean;
+  iconOpacity?: number;
 }
 
-export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = true, iconOnly = false }: SocialLinksProps) {
+export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = true, iconOnly = false, iconOpacity = 100 }: SocialLinksProps) {
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -136,6 +137,8 @@ export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = tru
           const Icon = platformIcons[platform] || Link2;
           const color = platformColors[platform] || accentColor;
 
+          const bgOpacity = (iconOpacity / 100) * 0.4; // Scale 0-100 to 0-0.4 for bg
+          
           return (
             <motion.a
               key={link.id}
@@ -145,8 +148,9 @@ export function SocialLinks({ links, accentColor = '#8b5cf6', glowingIcons = tru
               variants={item}
               whileHover={{ scale: 1.15, y: -2 }}
               whileTap={{ scale: 0.95 }}
-              className="w-12 h-12 rounded-xl flex items-center justify-center backdrop-blur-xl bg-black/40 border border-white/10 transition-all duration-300 hover:bg-black/50 hover:border-white/20"
+              className="w-12 h-12 rounded-xl flex items-center justify-center backdrop-blur-xl border border-white/10 transition-all duration-300 hover:border-white/20"
               style={{
+                backgroundColor: `rgba(0, 0, 0, ${bgOpacity})`,
                 boxShadow: glowingIcons ? `0 0 20px ${color}40, 0 0 40px ${color}20` : undefined,
               }}
               title={link.title || link.platform || detectedPlatform}

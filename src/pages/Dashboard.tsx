@@ -159,6 +159,7 @@ export default function Dashboard() {
   const [glowSocials, setGlowSocials] = useState(false);
   const [glowBadges, setGlowBadges] = useState(false);
   const [iconOnlyLinks, setIconOnlyLinks] = useState(false);
+  const [iconLinksOpacity, setIconLinksOpacity] = useState(100);
 
   // Discord Card customization
   const [discordCardStyle, setDiscordCardStyle] = useState('glass');
@@ -243,6 +244,7 @@ export default function Dashboard() {
       setGlowSocials((profile as any).glow_socials ?? false);
       setGlowBadges((profile as any).glow_badges ?? false);
       setIconOnlyLinks((profile as any).icon_only_links ?? false);
+      setIconLinksOpacity((profile as any).icon_links_opacity ?? 100);
       setDiscordCardStyle((profile as any).discord_card_style || 'glass');
       setDiscordCardOpacity((profile as any).discord_card_opacity ?? 100);
       setDiscordShowBadge((profile as any).discord_show_badge ?? true);
@@ -360,6 +362,7 @@ export default function Dashboard() {
         glow_socials: glowSocials,
         glow_badges: glowBadges,
         icon_only_links: iconOnlyLinks,
+        icon_links_opacity: iconLinksOpacity,
         discord_card_style: discordCardStyle,
         discord_card_opacity: discordCardOpacity,
         discord_show_badge: discordShowBadge,
@@ -834,6 +837,8 @@ export default function Dashboard() {
                   setGlowBadges={setGlowBadges}
                   iconOnlyLinks={iconOnlyLinks}
                   setIconOnlyLinks={setIconOnlyLinks}
+                  iconLinksOpacity={iconLinksOpacity}
+                  setIconLinksOpacity={setIconLinksOpacity}
                   discordCardStyle={discordCardStyle}
                   setDiscordCardStyle={setDiscordCardStyle}
                   discordCardOpacity={discordCardOpacity}
@@ -897,6 +902,7 @@ export default function Dashboard() {
                   uidNumber={(profile as any)?.uid_number || 1}
                   glowSocials={glowSocials}
                   iconOnlyLinks={iconOnlyLinks}
+                  iconLinksOpacity={iconLinksOpacity}
                 />
 
                 {/* Start Screen Settings */}

@@ -188,6 +188,7 @@ export default function UserProfile() {
               accentColor={accentColor}
               glowingIcons={(profile as any).glow_socials ?? false}
               iconOnly={(profile as any).icon_only_links ?? false}
+              iconOpacity={(profile as any).icon_links_opacity ?? 100}
             />
           )}
         </motion.div>
