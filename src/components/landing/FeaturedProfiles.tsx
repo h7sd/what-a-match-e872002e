@@ -22,9 +22,9 @@ function useRandomProfiles() {
       
       if (error) throw error;
       
-      // Shuffle and take 8 random profiles
+      // Shuffle and take 12 random profiles for smoother infinite scroll
       const shuffled = (data || []).sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, 8) as Profile[];
+      return shuffled.slice(0, 12) as Profile[];
     },
     staleTime: 0,
     gcTime: 0,
@@ -86,16 +86,33 @@ export function FeaturedProfiles() {
     return null;
   }
 
+  // Duplicate profiles for seamless infinite scroll
+  const duplicatedProfiles = [...profiles, ...profiles];
+
   return (
     <FadeIn delay={0.4}>
       <section className="py-16">
-        {/* Horizontal scrolling profile list */}
-        <div className="overflow-x-auto no-scrollbar">
-          <div className="flex items-center justify-center gap-10 md:gap-14 px-6 min-w-max mx-auto">
-            {profiles.map((profile, index) => (
-              <ProfileCard key={profile.id} profile={profile} index={index} />
+        {/* Infinite scroll container with fade edges */}
+        <div 
+          className="relative flex items-center justify-center overflow-hidden max-w-7xl mx-auto"
+          style={{
+            maskImage: 'linear-gradient(to right, transparent, white 20%, white 80%, transparent)',
+            WebkitMaskImage: 'linear-gradient(to right, transparent, white 20%, white 80%, transparent)',
+          }}
+        >
+          <ul 
+            className="flex w-max min-w-full shrink-0 flex-nowrap py-4 gap-12 animate-scroll hover:[animation-play-state:paused]"
+            style={{
+              animationDirection: 'forwards',
+              animationDuration: '60s',
+            }}
+          >
+            {duplicatedProfiles.map((profile, index) => (
+              <li key={`${profile.id}-${index}`} className="flex-shrink-0">
+                <ProfileCard profile={profile} index={index % profiles.length} />
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
     </FadeIn>
