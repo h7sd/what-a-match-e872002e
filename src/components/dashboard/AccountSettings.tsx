@@ -36,9 +36,11 @@ interface AccountSettingsProps {
   profile: {
     username: string;
     display_name: string | null;
+    alias_username?: string | null;
   } | null;
   onUpdateUsername: (username: string) => Promise<void>;
   onSaveDisplayName: (displayName: string) => Promise<void>;
+  onUpdateAlias?: (alias: string | null) => Promise<void>;
 }
 
 interface MFAFactor {
@@ -54,7 +56,7 @@ const displayNameSchema = z
   .min(1, 'Display name cannot be empty')
   .max(32, 'Display name must be at most 32 characters');
 
-export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName }: AccountSettingsProps) {
+export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, onUpdateAlias }: AccountSettingsProps) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [showEmail, setShowEmail] = useState(false);
@@ -69,6 +71,10 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName }
 
   const [displayNameDraft, setDisplayNameDraft] = useState('');
   const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
+  
+  // Alias username state
+  const [aliasUsername, setAliasUsername] = useState('');
+  const [isSavingAlias, setIsSavingAlias] = useState(false);
   
   // MFA State
   const [mfaFactors, setMfaFactors] = useState<MFAFactor[]>([]);
@@ -87,6 +93,10 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName }
   useEffect(() => {
     setDisplayNameDraft(profile?.display_name || '');
   }, [profile?.display_name]);
+
+  useEffect(() => {
+    setAliasUsername(profile?.alias_username || '');
+  }, [profile?.alias_username]);
 
   useEffect(() => {
     checkMfaStatus();
@@ -246,6 +256,60 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName }
               )}
             </div>
             <p className="text-xs text-primary">Want more? Unlock with Premium</p>
+          </div>
+
+          {/* Alias Username */}
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">Alias Username (Redirect)</label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                <span className="text-muted-foreground">@</span>
+                <Input
+                  value={aliasUsername}
+                  onChange={(e) => setAliasUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0"
+                  placeholder="second-handle"
+                  maxLength={20}
+                />
+              </div>
+              {aliasUsername !== (profile?.alias_username || '') && onUpdateAlias && (
+                <Button 
+                  size="sm" 
+                  onClick={async () => {
+                    setIsSavingAlias(true);
+                    try {
+                      await onUpdateAlias(aliasUsername || null);
+                    } finally {
+                      setIsSavingAlias(false);
+                    }
+                  }}
+                  disabled={isSavingAlias}
+                >
+                  {isSavingAlias ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                </Button>
+              )}
+              {aliasUsername && onUpdateAlias && (
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  onClick={async () => {
+                    setIsSavingAlias(true);
+                    try {
+                      await onUpdateAlias(null);
+                      setAliasUsername('');
+                    } finally {
+                      setIsSavingAlias(false);
+                    }
+                  }}
+                  disabled={isSavingAlias}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Visitors to /{aliasUsername || 'alias'} will be redirected to /{profile?.username}
+            </p>
           </div>
 
           <div className="space-y-2">

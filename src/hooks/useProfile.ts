@@ -57,12 +57,29 @@ export function useProfileByUsername(username: string) {
         .from('profiles')
         .select('*')
         .eq('username', username.toLowerCase())
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data as Profile;
+      return data as Profile | null;
     },
     enabled: !!username,
+  });
+}
+
+export function useProfileByAlias(alias: string) {
+  return useQuery({
+    queryKey: ['profile-alias', alias],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('alias_username', alias.toLowerCase())
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as Profile | null;
+    },
+    enabled: !!alias,
   });
 }
 

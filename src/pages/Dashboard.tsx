@@ -194,6 +194,9 @@ export default function Dashboard() {
   const [cardBorderColor, setCardBorderColor] = useState('');
   const [cardBorderWidth, setCardBorderWidth] = useState(1);
 
+  // Alias username
+  const [aliasUsername, setAliasUsername] = useState('');
+
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -270,6 +273,7 @@ export default function Dashboard() {
       setCardBorderEnabled((profile as any).card_border_enabled ?? true);
       setCardBorderColor((profile as any).card_border_color || '');
       setCardBorderWidth((profile as any).card_border_width ?? 1);
+      setAliasUsername((profile as any).alias_username || '');
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -324,6 +328,43 @@ export default function Dashboard() {
       toast({ title: 'Display name updated!' });
     } catch (error: any) {
       toast({ title: error.message || 'Error updating display name', variant: 'destructive' });
+    }
+  };
+
+  const handleAliasChange = async (newAlias: string | null) => {
+    if (newAlias && (newAlias.length < 1 || newAlias.length > 20)) {
+      toast({ title: 'Alias must be 1-20 characters', variant: 'destructive' });
+      return;
+    }
+    
+    if (newAlias && !/^[a-zA-Z0-9_]+$/.test(newAlias)) {
+      toast({ title: 'Alias can only contain letters, numbers, and underscores', variant: 'destructive' });
+      return;
+    }
+
+    if (newAlias) {
+      // Check if alias is taken (as username or alias)
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('username, alias_username')
+        .or(`username.eq.${newAlias.toLowerCase()},alias_username.eq.${newAlias.toLowerCase()}`)
+        .neq('user_id', user?.id || '')
+        .maybeSingle();
+
+      if (existingProfile) {
+        toast({ title: 'This handle is already taken', variant: 'destructive' });
+        return;
+      }
+    }
+
+    try {
+      await updateProfile.mutateAsync({
+        alias_username: newAlias?.toLowerCase() || null,
+      } as any);
+      setAliasUsername(newAlias?.toLowerCase() || '');
+      toast({ title: newAlias ? 'Alias updated!' : 'Alias removed!' });
+    } catch (error: any) {
+      toast({ title: error.message || 'Error updating alias', variant: 'destructive' });
     }
   };
 
@@ -1260,9 +1301,10 @@ export default function Dashboard() {
             {/* Settings Tab */}
             {activeTab === 'settings' && (
               <AccountSettings
-                profile={profile ? { ...profile, username, display_name: displayName } : null}
+                profile={profile ? { ...profile, username, display_name: displayName, alias_username: aliasUsername } : null}
                 onUpdateUsername={handleUsernameChange}
                 onSaveDisplayName={handleDisplayNameSave}
+                onUpdateAlias={handleAliasChange}
               />
             )}
           </motion.div>

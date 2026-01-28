@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, ArrowLeft } from 'lucide-react';
-import { useProfileByUsername, useSocialLinks, useRecordProfileView } from '@/hooks/useProfile';
+import { useProfileByUsername, useSocialLinks, useRecordProfileView, useProfileByAlias } from '@/hooks/useProfile';
 import { useProfileBadges } from '@/hooks/useBadges';
 import { ProfileCard } from '@/components/profile/ProfileCard';
 import { SocialLinks } from '@/components/profile/SocialLinks';
@@ -16,7 +16,19 @@ import { GlitchOverlay } from '@/components/profile/GlitchOverlay';
 
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
-  const { data: profile, isLoading, error } = useProfileByUsername(username || '');
+  const navigate = useNavigate();
+  
+  // First check if this username is an alias
+  const { data: aliasProfile, isLoading: aliasLoading } = useProfileByAlias(username || '');
+  
+  // If alias found, redirect to the main username
+  useEffect(() => {
+    if (aliasProfile && aliasProfile.username !== username?.toLowerCase()) {
+      navigate(`/${aliasProfile.username}`, { replace: true });
+    }
+  }, [aliasProfile, username, navigate]);
+  
+  const { data: profile, isLoading: profileLoading, error } = useProfileByUsername(username || '');
   const { data: socialLinks = [] } = useSocialLinks(profile?.id || '');
   const { data: badges = [] } = useProfileBadges(profile?.id || '');
   const recordView = useRecordProfileView();
@@ -56,6 +68,8 @@ export default function UserProfile() {
       audioRef.current.volume = volume;
     }
   }, [volume]);
+
+  const isLoading = aliasLoading || profileLoading;
 
   if (isLoading) {
     return (
