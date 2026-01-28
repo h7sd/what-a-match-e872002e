@@ -68,28 +68,69 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Send email with code
       const emailResponse = await resend.emails.send({
-        from: "UserVault <noreply@uservault.app>",
+        from: "UserVault <noreply@uservault.cc>",
         to: [user.email!],
         subject: "Confirm Account Deletion - UserVault",
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-            <h1 style="color: #ff4444; margin-bottom: 24px;">⚠️ Account Deletion Request</h1>
-            <p style="color: #333; font-size: 16px; line-height: 1.6;">
-              You requested to delete your UserVault account. This action is <strong>permanent</strong> and cannot be undone.
-            </p>
-            <p style="color: #333; font-size: 16px; line-height: 1.6;">
-              Your verification code is:
-            </p>
-            <div style="background: #f4f4f4; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-              <code style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${deleteCode}</code>
-            </div>
-            <p style="color: #666; font-size: 14px;">
-              This code expires in 15 minutes.
-            </p>
-            <p style="color: #666; font-size: 14px;">
-              If you did not request this, please ignore this email and secure your account.
-            </p>
-          </div>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+              <tr>
+                <td align="center">
+                  <table width="100%" max-width="500" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+                    <!-- Logo -->
+                    <tr>
+                      <td align="center" style="padding-bottom: 30px;">
+                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;">
+                          <span style="color: white; font-weight: bold; font-size: 24px;">UV</span>
+                        </div>
+                        <h1 style="color: #ffffff; margin: 20px 0 0 0; font-size: 28px; font-weight: 700;">UserVault</h1>
+                      </td>
+                    </tr>
+                    
+                    <!-- Main Card -->
+                    <tr>
+                      <td style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 20px; padding: 40px;">
+                        <h2 style="color: #ef4444; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
+                          ⚠️ Account Deletion
+                        </h2>
+                        <p style="color: #a1a1aa; margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; text-align: center;">
+                          You requested to delete your account. This action is <strong style="color: #ef4444;">permanent</strong> and cannot be undone.
+                        </p>
+                        
+                        <!-- Code Box -->
+                        <div style="background: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 30px;">
+                          <span style="color: #ef4444; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'SF Mono', Monaco, monospace;">${deleteCode}</span>
+                        </div>
+                        
+                        <p style="color: #71717a; margin: 0; font-size: 14px; text-align: center;">
+                          This code expires in <strong style="color: #a1a1aa;">15 minutes</strong>.
+                        </p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding-top: 30px; text-align: center;">
+                        <p style="color: #52525b; font-size: 12px; margin: 0;">
+                          If you didn't request this, please secure your account immediately.
+                        </p>
+                        <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
+                          © ${new Date().getFullYear()} UserVault. All rights reserved.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
         `,
       });
 
