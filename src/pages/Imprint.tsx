@@ -1,15 +1,15 @@
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { FadeIn } from '@/components/landing/FadeIn';
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { FadeIn } from "@/components/landing/FadeIn";
 
 export default function Imprint() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-6 py-12">
         <FadeIn>
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -32,7 +32,7 @@ export default function Imprint() {
           <FadeIn delay={0.2}>
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">Website</h2>
-              <p>uservault.net</p>
+              <p>uservault.cc / uservault.net</p>
             </section>
           </FadeIn>
 
@@ -63,8 +63,8 @@ export default function Imprint() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">Liability for Content</h2>
               <p>
-                The contents of this website have been created with the greatest possible care. 
-                However, we do not guarantee the accuracy, completeness, or timeliness of the content.
+                The contents of this website have been created with the greatest possible care. However, we do not
+                guarantee the accuracy, completeness, or timeliness of the content.
               </p>
             </section>
           </FadeIn>
@@ -73,9 +73,9 @@ export default function Imprint() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">Liability for Links</h2>
               <p>
-                Our website may contain links to external websites over which we have no control. 
-                Therefore, we cannot accept any liability for external content. The respective 
-                provider or operator of the linked pages is always responsible for their content.
+                Our website may contain links to external websites over which we have no control. Therefore, we cannot
+                accept any liability for external content. The respective provider or operator of the linked pages is
+                always responsible for their content.
               </p>
             </section>
           </FadeIn>
@@ -84,9 +84,9 @@ export default function Imprint() {
             <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">Copyright</h2>
               <p>
-                All content and works on this website are subject to German copyright law. 
-                Duplication, processing, distribution, or any form of commercialization beyond 
-                the scope of copyright law requires the prior written consent of the author.
+                All content and works on this website are subject to German copyright law. Duplication, processing,
+                distribution, or any form of commercialization beyond the scope of copyright law requires the prior
+                written consent of the author.
               </p>
             </section>
           </FadeIn>
