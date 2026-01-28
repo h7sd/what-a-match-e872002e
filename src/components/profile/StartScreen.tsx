@@ -13,18 +13,24 @@ interface StartScreenProps {
   textColor?: string;
   bgColor?: string;
   textAnimation?: string;
+  asciiSize?: number;
+  asciiWaves?: boolean;
 }
 
 function AnimatedText({ 
   text, 
   animation, 
   font, 
-  color 
+  color,
+  asciiSize = 8,
+  asciiWaves = true
 }: { 
   text: string; 
   animation: string; 
   font: string; 
   color: string;
+  asciiSize?: number;
+  asciiWaves?: boolean;
 }) {
   const style = { fontFamily: font, color };
   
@@ -58,9 +64,9 @@ function AnimatedText({
           <ASCIITextEffect 
             text={text}
             textColor={color}
-            enableWaves={true}
-            asciiFontSize={8}
-            textFontSize={120}
+            enableWaves={asciiWaves}
+            asciiFontSize={asciiSize}
+            textFontSize={asciiSize * 15}
           />
         </div>
       );
@@ -103,7 +109,9 @@ export function StartScreen({
   font = "Inter",
   textColor = "#a855f7",
   bgColor = "#000000",
-  textAnimation = "none"
+  textAnimation = "none",
+  asciiSize = 8,
+  asciiWaves = true
 }: StartScreenProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
@@ -179,6 +187,8 @@ export function StartScreen({
                 animation={textAnimation}
                 font={font}
                 color={textColor}
+                asciiSize={asciiSize}
+                asciiWaves={asciiWaves}
               />
             )}
           </motion.div>

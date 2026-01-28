@@ -219,6 +219,8 @@ export type Database = {
         Row: {
           accent_color: string | null
           animated_title: boolean | null
+          ascii_size: number | null
+          ascii_waves: boolean | null
           audio_volume: number | null
           avatar_shape: string | null
           avatar_url: string | null
@@ -283,6 +285,8 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           animated_title?: boolean | null
+          ascii_size?: number | null
+          ascii_waves?: boolean | null
           audio_volume?: number | null
           avatar_shape?: string | null
           avatar_url?: string | null
@@ -347,6 +351,8 @@ export type Database = {
         Update: {
           accent_color?: string | null
           animated_title?: boolean | null
+          ascii_size?: number | null
+          ascii_waves?: boolean | null
           audio_volume?: number | null
           avatar_shape?: string | null
           avatar_url?: string | null

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -83,6 +85,10 @@ interface StartScreenSettingsProps {
   onBgColorChange: (color: string) => void;
   textAnimation?: string;
   onTextAnimationChange?: (animation: string) => void;
+  asciiSize?: number;
+  onAsciiSizeChange?: (size: number) => void;
+  asciiWaves?: boolean;
+  onAsciiWavesChange?: (enabled: boolean) => void;
 }
 
 function AnimatedPreviewText({ 
@@ -90,13 +96,17 @@ function AnimatedPreviewText({
   animation, 
   font, 
   color,
-  bgColor
+  bgColor,
+  asciiSize = 8,
+  asciiWaves = true
 }: { 
   text: string; 
   animation: string; 
   font: string; 
   color: string;
   bgColor: string;
+  asciiSize?: number;
+  asciiWaves?: boolean;
 }) {
   const style = { fontFamily: font, color };
   const displayText = text || 'Click anywhere to enter';
@@ -131,9 +141,9 @@ function AnimatedPreviewText({
           <ASCIITextEffect 
             text={displayText}
             textColor={color}
-            enableWaves={true}
-            asciiFontSize={6}
-            textFontSize={80}
+            enableWaves={asciiWaves}
+            asciiFontSize={asciiSize}
+            textFontSize={asciiSize * 10}
           />
         </div>
       );
@@ -190,6 +200,10 @@ export function StartScreenSettings({
   onBgColorChange,
   textAnimation = 'none',
   onTextAnimationChange,
+  asciiSize = 8,
+  onAsciiSizeChange,
+  asciiWaves = true,
+  onAsciiWavesChange,
 }: StartScreenSettingsProps) {
   return (
     <div className="space-y-6">
@@ -221,6 +235,8 @@ export function StartScreenSettings({
               font={font}
               color={textColor}
               bgColor={bgColor}
+              asciiSize={asciiSize}
+              asciiWaves={asciiWaves}
             />
           </div>
 
@@ -257,6 +273,38 @@ export function StartScreenSettings({
               </SelectContent>
             </Select>
           </div>
+
+          {/* ASCII 3D Settings */}
+          {textAnimation === 'ascii-3d' && (
+            <div className="space-y-4 p-4 rounded-lg bg-card/50 border border-border/50">
+              <Label className="text-sm font-medium">ASCII 3D Settings</Label>
+              
+              {/* Size Slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Size</Label>
+                  <span className="text-sm text-muted-foreground">{asciiSize}</span>
+                </div>
+                <Slider
+                  value={[asciiSize]}
+                  onValueChange={(v) => onAsciiSizeChange?.(v[0])}
+                  min={4}
+                  max={16}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Waves Toggle */}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Waves</Label>
+                <Switch 
+                  checked={asciiWaves} 
+                  onCheckedChange={(checked) => onAsciiWavesChange?.(checked)} 
+                />
+              </div>
+            </div>
+          )}
 
           {/* Font */}
           <div className="space-y-2">

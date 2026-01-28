@@ -101,6 +101,8 @@ export default function UserProfile() {
           textColor={(profile as any).start_screen_color || accentColor}
           bgColor={(profile as any).start_screen_bg_color || "#000000"}
           textAnimation={(profile as any).start_screen_animation || "none"}
+          asciiSize={(profile as any).ascii_size ?? 8}
+          asciiWaves={(profile as any).ascii_waves ?? true}
         />
       )}
       

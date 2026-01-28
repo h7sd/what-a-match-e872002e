@@ -171,6 +171,8 @@ export default function Dashboard() {
   const [startScreenColor, setStartScreenColor] = useState('#a855f7');
   const [startScreenBgColor, setStartScreenBgColor] = useState('#000000');
   const [startScreenAnimation, setStartScreenAnimation] = useState<string>('none');
+  const [asciiSize, setAsciiSize] = useState(8);
+  const [asciiWaves, setAsciiWaves] = useState(true);
 
   // Volume control settings
   const [showVolumeControl, setShowVolumeControl] = useState(true);
@@ -250,6 +252,8 @@ export default function Dashboard() {
       setStartScreenColor((profile as any).start_screen_color || '#a855f7');
       setStartScreenBgColor((profile as any).start_screen_bg_color || '#000000');
       setStartScreenAnimation((profile as any).start_screen_animation || 'none');
+      setAsciiSize((profile as any).ascii_size ?? 8);
+      setAsciiWaves((profile as any).ascii_waves ?? true);
       setShowVolumeControl((profile as any).show_volume_control ?? true);
       setShowUsername((profile as any).show_username ?? true);
       setShowDisplayName((profile as any).show_display_name ?? true);
@@ -364,6 +368,8 @@ export default function Dashboard() {
         start_screen_color: startScreenColor,
         start_screen_bg_color: startScreenBgColor,
         start_screen_animation: startScreenAnimation,
+        ascii_size: asciiSize,
+        ascii_waves: asciiWaves,
         show_volume_control: showVolumeControl,
         show_username: showUsername,
         show_display_name: showDisplayName,
@@ -859,6 +865,10 @@ export default function Dashboard() {
                     onBgColorChange={setStartScreenBgColor}
                     textAnimation={startScreenAnimation}
                     onTextAnimationChange={setStartScreenAnimation}
+                    asciiSize={asciiSize}
+                    onAsciiSizeChange={setAsciiSize}
+                    asciiWaves={asciiWaves}
+                    onAsciiWavesChange={setAsciiWaves}
                   />
                 </div>
 
