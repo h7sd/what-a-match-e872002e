@@ -792,6 +792,7 @@ export default function Dashboard() {
                   textColor={textColor}
                   backgroundUrl={backgroundUrl}
                   backgroundVideoUrl={backgroundVideoUrl}
+                  backgroundEffect={backgroundEffect as any}
                   showUsername={showUsername}
                   showDisplayName={showDisplayName}
                   showBadges={showBadges}
@@ -805,7 +806,7 @@ export default function Dashboard() {
                     return badge ? {
                       id: badge.id,
                       name: badge.name,
-                      color: badge.color,
+                      color: badge.color || null,
                       icon_url: badge.icon_url,
                     } : null;
                   }).filter(Boolean) as any[]}
@@ -817,6 +818,11 @@ export default function Dashboard() {
                   textFont={textFont}
                   iconColor={iconColor}
                   monochromeIcons={monochromeIcons}
+                  cardColor={undefined}
+                  effects={effects}
+                  occupation={occupation}
+                  location={location_}
+                  uidNumber={(profile as any)?.uid_number || 1}
                 />
 
                 <CustomizationPanel
