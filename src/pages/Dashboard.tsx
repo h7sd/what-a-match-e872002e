@@ -785,9 +785,59 @@ export default function Dashboard() {
 
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
-              <div className="flex flex-col lg:flex-row gap-6">
-                {/* Settings Column - Scrollable */}
-                <div className="flex-1 space-y-6 min-w-0">
+              <div className="space-y-6">
+                {/* Live Preview: full width, directly under the header, and sticky while scrolling */}
+                <div className="sticky top-14 md:top-20 z-40">
+                  <LiveProfilePreview
+                    username={username}
+                    displayName={displayName}
+                    bio={bio}
+                    avatarUrl={avatarUrl}
+                    avatarShape={avatarShape}
+                    backgroundColor={backgroundColor}
+                    accentColor={accentColor}
+                    textColor={textColor}
+                    backgroundUrl={backgroundUrl}
+                    backgroundVideoUrl={backgroundVideoUrl}
+                    backgroundEffect={backgroundEffect as any}
+                    showUsername={showUsername}
+                    showDisplayName={showDisplayName}
+                    showBadges={showBadges}
+                    showViews={showViews}
+                    showAvatar={showAvatar}
+                    showDescription={showDescription}
+                    showLinks={showLinks}
+                    viewsCount={profile?.views_count || 0}
+                    badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
+                      const badge = globalBadges.find(gb => gb.id === ub.badge_id);
+                      return badge ? {
+                        id: badge.id,
+                        name: badge.name,
+                        color: badge.color || null,
+                        icon_url: badge.icon_url,
+                      } : null;
+                    }).filter(Boolean) as any[]}
+                    socialLinks={socialLinks}
+                    cardBorderEnabled={cardBorderEnabled}
+                    cardBorderColor={cardBorderColor}
+                    cardBorderWidth={cardBorderWidth}
+                    nameFont={nameFont}
+                    textFont={textFont}
+                    iconColor={iconColor}
+                    monochromeIcons={monochromeIcons}
+                    cardColor={undefined}
+                    effects={effects}
+                    occupation={occupation}
+                    location={location_}
+                    uidNumber={(profile as any)?.uid_number || 1}
+                    glowSocials={glowSocials}
+                    iconOnlyLinks={iconOnlyLinks}
+                    iconLinksOpacity={iconLinksOpacity}
+                  />
+                </div>
+
+                {/* Settings */}
+                <div className="space-y-6 min-w-0">
                   <CustomizationPanel
                     backgroundUrl={backgroundUrl}
                     setBackgroundUrl={setBackgroundUrl}
@@ -927,58 +977,6 @@ export default function Dashboard() {
                       onBorderEnabledChange={setCardBorderEnabled}
                       onBorderColorChange={setCardBorderColor}
                       onBorderWidthChange={setCardBorderWidth}
-                    />
-                  </div>
-                </div>
-
-                {/* Preview Column - Sticky on Desktop */}
-                <div className="lg:w-[400px] xl:w-[450px] flex-shrink-0">
-                  <div className="lg:sticky lg:top-4">
-                    <LiveProfilePreview
-                      username={username}
-                      displayName={displayName}
-                      bio={bio}
-                      avatarUrl={avatarUrl}
-                      avatarShape={avatarShape}
-                      backgroundColor={backgroundColor}
-                      accentColor={accentColor}
-                      textColor={textColor}
-                      backgroundUrl={backgroundUrl}
-                      backgroundVideoUrl={backgroundVideoUrl}
-                      backgroundEffect={backgroundEffect as any}
-                      showUsername={showUsername}
-                      showDisplayName={showDisplayName}
-                      showBadges={showBadges}
-                      showViews={showViews}
-                      showAvatar={showAvatar}
-                      showDescription={showDescription}
-                      showLinks={showLinks}
-                      viewsCount={profile?.views_count || 0}
-                      badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
-                        const badge = globalBadges.find(gb => gb.id === ub.badge_id);
-                        return badge ? {
-                          id: badge.id,
-                          name: badge.name,
-                          color: badge.color || null,
-                          icon_url: badge.icon_url,
-                        } : null;
-                      }).filter(Boolean) as any[]}
-                      socialLinks={socialLinks}
-                      cardBorderEnabled={cardBorderEnabled}
-                      cardBorderColor={cardBorderColor}
-                      cardBorderWidth={cardBorderWidth}
-                      nameFont={nameFont}
-                      textFont={textFont}
-                      iconColor={iconColor}
-                      monochromeIcons={monochromeIcons}
-                      cardColor={undefined}
-                      effects={effects}
-                      occupation={occupation}
-                      location={location_}
-                      uidNumber={(profile as any)?.uid_number || 1}
-                      glowSocials={glowSocials}
-                      iconOnlyLinks={iconOnlyLinks}
-                      iconLinksOpacity={iconLinksOpacity}
                     />
                   </div>
                 </div>
