@@ -11,6 +11,9 @@ import { StatsSection } from "@/components/landing/StatsSection";
 import { Footer } from "@/components/landing/Footer";
 import { ReportUserDialog } from "@/components/landing/ReportUserDialog";
 import { LiquidEther } from "@/components/landing/LiquidEther";
+import { ClaimBanner } from "@/components/landing/ClaimBanner";
+import { ProfileSearch } from "@/components/landing/ProfileSearch";
+import { FeaturedProfiles } from "@/components/landing/FeaturedProfiles";
 
 export default function Index() {
   const { user } = useAuth();
@@ -125,6 +128,12 @@ export default function Index() {
             </div>
           </div>
 
+          {/* Claim Banner */}
+          <ClaimBanner />
+
+          {/* Profile Search with floating URLs */}
+          <ProfileSearch />
+
           {/* Features Grid */}
           <div id="features" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             {features.map((feature, i) => (
@@ -137,6 +146,9 @@ export default function Index() {
               />
             ))}
           </div>
+
+          {/* Featured Profiles */}
+          <FeaturedProfiles />
 
           {/* Stats Section */}
           <StatsSection />
