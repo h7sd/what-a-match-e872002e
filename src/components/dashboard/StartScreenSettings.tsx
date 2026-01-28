@@ -13,6 +13,7 @@ import { ShuffleText, FuzzyText, DecryptedText, ASCIIText, TextAnimationType } f
 import ASCIITextEffect from '@/components/profile/ASCIITextEffect';
 import DecryptedTextEffect from '@/components/profile/DecryptedTextEffect';
 import FuzzyTextEffect from '@/components/profile/FuzzyTextEffect';
+import ShuffleTextEffect from '@/components/profile/ShuffleTextEffect';
 
 const FONTS = [
   'Inter',
@@ -55,11 +56,12 @@ const FONTS = [
   'Shadows Into Light',
 ];
 
-export type AdvancedTextAnimationType = 'none' | 'shuffle' | 'fuzzy' | 'decrypted' | 'ascii' | 'ascii-3d' | 'decrypted-advanced' | 'fuzzy-canvas';
+export type AdvancedTextAnimationType = 'none' | 'shuffle' | 'shuffle-gsap' | 'fuzzy' | 'decrypted' | 'ascii' | 'ascii-3d' | 'decrypted-advanced' | 'fuzzy-canvas';
 
 const TEXT_ANIMATIONS: { value: AdvancedTextAnimationType; label: string; description: string }[] = [
   { value: 'none', label: 'None', description: 'Static text with typewriter cursor' },
   { value: 'shuffle', label: 'Shuffle', description: 'Characters shuffle into place' },
+  { value: 'shuffle-gsap', label: 'Shuffle Pro', description: 'GSAP-powered shuffle with directions' },
   { value: 'fuzzy', label: 'Fuzzy', description: 'Glitchy chromatic aberration effect' },
   { value: 'decrypted', label: 'Decrypted', description: 'Matrix-style decrypt animation' },
   { value: 'ascii', label: 'ASCII', description: 'ASCII art glitch on hover' },
@@ -102,6 +104,21 @@ function AnimatedPreviewText({
   switch (animation) {
     case 'shuffle':
       return <ShuffleText text={displayText} style={style} className="text-lg" />;
+    case 'shuffle-gsap':
+      return (
+        <ShuffleTextEffect
+          text={displayText}
+          style={{ ...style, fontSize: '1.25rem' }}
+          shuffleDirection="right"
+          duration={0.35}
+          animationMode="evenodd"
+          shuffleTimes={1}
+          stagger={0.03}
+          triggerOnHover={true}
+          autoPlay={true}
+          loop={false}
+        />
+      );
     case 'fuzzy':
       return <FuzzyText text={displayText} style={style} className="text-lg" />;
     case 'decrypted':

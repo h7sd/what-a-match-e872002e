@@ -1,0 +1,40 @@
+.shuffle-parent {
+  display: inline-block;
+  white-space: normal;
+  word-wrap: break-word;
+  will-change: transform;
+  line-height: 1.2;
+  visibility: hidden;
+}
+
+.shuffle-parent.is-ready {
+  visibility: visible;
+}
+
+.shuffle-text-container {
+  display: inline-block;
+}
+
+.shuffle-char-wrapper {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: baseline;
+  position: relative;
+}
+
+.shuffle-char-wrapper > .shuffle-inner {
+  display: inline-flex;
+  will-change: transform;
+}
+
+.shuffle-scramble-container {
+  display: inline-flex;
+  will-change: transform;
+}
+
+.shuffle-char-item {
+  line-height: 1;
+  display: inline-block;
+  text-align: center;
+  min-width: 0.5em;
+}

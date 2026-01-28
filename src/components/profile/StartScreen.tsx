@@ -4,6 +4,7 @@ import { ShuffleText, FuzzyText, DecryptedText, ASCIIText } from './TextAnimatio
 import ASCIITextEffect from './ASCIITextEffect';
 import DecryptedTextEffect from './DecryptedTextEffect';
 import FuzzyTextEffect from './FuzzyTextEffect';
+import ShuffleTextEffect from './ShuffleTextEffect';
 
 interface StartScreenProps {
   onStart: () => void;
@@ -30,6 +31,21 @@ function AnimatedText({
   switch (animation) {
     case 'shuffle':
       return <ShuffleText text={text} style={style} className="text-xl" />;
+    case 'shuffle-gsap':
+      return (
+        <ShuffleTextEffect
+          text={text}
+          style={{ ...style, fontSize: 'clamp(1.25rem, 3vw, 2rem)' }}
+          shuffleDirection="right"
+          duration={0.35}
+          animationMode="evenodd"
+          shuffleTimes={1}
+          stagger={0.03}
+          triggerOnHover={true}
+          autoPlay={true}
+          loop={false}
+        />
+      );
     case 'fuzzy':
       return <FuzzyText text={text} style={style} className="text-xl" />;
     case 'decrypted':
