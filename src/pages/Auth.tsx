@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Mail, CheckCircle2, Shield } from 'lucide-react';
+import { Loader2, ArrowLeft, Mail, Shield } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+
+const TURNSTILE_SITE_KEY = '0x4AAAAAACVEg1JAQ99IiFFG';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -25,6 +27,22 @@ const signupSchema = loginSchema.extend({
 });
 
 type AuthStep = 'login' | 'signup' | 'verify' | 'forgot-password' | 'reset-password' | 'mfa-verify';
+
+declare global {
+  interface Window {
+    turnstile: {
+      render: (container: string | HTMLElement, options: {
+        sitekey: string;
+        callback: (token: string) => void;
+        'expired-callback'?: () => void;
+        'error-callback'?: () => void;
+        theme?: 'light' | 'dark' | 'auto';
+      }) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  }
+}
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -42,11 +60,90 @@ export default function Auth() {
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileLoaded, setTurnstileLoaded] = useState(false);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   const { signIn, signUp, verifyMfa } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Load Turnstile script
+  useEffect(() => {
+    if (document.getElementById('turnstile-script')) {
+      setTurnstileLoaded(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'turnstile-script';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setTurnstileLoaded(true);
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup widget on unmount
+      if (widgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.remove(widgetIdRef.current);
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    };
+  }, []);
+
+  // Render Turnstile widget
+  const renderTurnstile = useCallback(() => {
+    if (!turnstileLoaded || !turnstileRef.current || !window.turnstile) return;
+    
+    // Remove existing widget
+    if (widgetIdRef.current) {
+      try {
+        window.turnstile.remove(widgetIdRef.current);
+      } catch (e) {
+        // Ignore errors
+      }
+      widgetIdRef.current = null;
+    }
+
+    // Clear container
+    turnstileRef.current.innerHTML = '';
+
+    // Render new widget
+    widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      callback: (token: string) => {
+        setTurnstileToken(token);
+      },
+      'expired-callback': () => {
+        setTurnstileToken(null);
+      },
+      'error-callback': () => {
+        setTurnstileToken(null);
+        toast({
+          title: 'Security check failed',
+          description: 'Please refresh the page and try again.',
+          variant: 'destructive',
+        });
+      },
+      theme: 'dark',
+    });
+  }, [turnstileLoaded, toast]);
+
+  // Render Turnstile when step changes to login/signup
+  useEffect(() => {
+    if ((step === 'login' || step === 'signup') && turnstileLoaded) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        renderTurnstile();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [step, turnstileLoaded, renderTurnstile]);
 
   // Handle password reset from email link
   useEffect(() => {
@@ -61,6 +158,24 @@ export default function Auth() {
     }
   }, [searchParams]);
 
+  const verifyTurnstile = async (token: string): Promise<boolean> => {
+    try {
+      const response = await supabase.functions.invoke('verify-turnstile', {
+        body: { token },
+      });
+      
+      if (response.error || !response.data?.success) {
+        console.error('Turnstile verification failed:', response.error || response.data);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Turnstile verification error:', error);
+      return false;
+    }
+  };
+
   const sendVerificationEmail = async (targetEmail: string, code: string, type: 'signup' | 'email_change') => {
     const response = await supabase.functions.invoke('send-verification-email', {
       body: { email: targetEmail, code, type },
@@ -74,11 +189,9 @@ export default function Auth() {
   };
 
   const sendPasswordResetEmail = async (targetEmail: string) => {
-    // Generate a password reset token/code
     const code = generateCode();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     
-    // Store the reset code in database
     const { error: codeError } = await supabase
       .from('verification_codes')
       .insert({
@@ -92,10 +205,8 @@ export default function Auth() {
       throw new Error('Error creating reset code');
     }
 
-    // Build the reset URL with the code
     const resetUrl = `${window.location.origin}/auth?type=recovery&email=${encodeURIComponent(targetEmail)}&code=${code}`;
     
-    // Send email via our Resend edge function
     const response = await supabase.functions.invoke('send-password-reset', {
       body: { email: targetEmail, resetUrl },
     });
@@ -111,6 +222,33 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      // Verify Turnstile for login and signup
+      if (step === 'login' || step === 'signup') {
+        if (!turnstileToken) {
+          toast({
+            title: 'Security check required',
+            description: 'Please complete the security verification.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+
+        const isValid = await verifyTurnstile(turnstileToken);
+        if (!isValid) {
+          toast({
+            title: 'Security check failed',
+            description: 'Please try again.',
+            variant: 'destructive',
+          });
+          // Reset turnstile
+          setTurnstileToken(null);
+          renderTurnstile();
+          setLoading(false);
+          return;
+        }
+      }
+
       if (step === 'login') {
         const result = loginSchema.safeParse({ email, password });
         if (!result.success) {
@@ -134,8 +272,10 @@ export default function Auth() {
               : error.message,
             variant: 'destructive',
           });
+          // Reset turnstile on error
+          setTurnstileToken(null);
+          renderTurnstile();
         } else if (needsMfa && factorId) {
-          // User has 2FA enabled, need to verify
           setMfaFactorId(factorId);
           setStep('mfa-verify');
           toast({ title: '2FA Required', description: 'Please enter your authenticator code.' });
@@ -157,11 +297,8 @@ export default function Auth() {
           return;
         }
 
-        // Generate verification code
         const code = generateCode();
-        
-        // Store verification code in database
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         const { error: codeError } = await supabase
           .from('verification_codes')
           .insert({
@@ -175,7 +312,6 @@ export default function Auth() {
           throw new Error('Error creating verification code');
         }
 
-        // Send verification email
         await sendVerificationEmail(email, code, 'signup');
         
         toast({ 
@@ -207,7 +343,6 @@ export default function Auth() {
           return;
         }
 
-        // Get code and email from URL
         const codeParam = searchParams.get('code');
         const emailParam = searchParams.get('email');
         
@@ -222,7 +357,6 @@ export default function Auth() {
           return;
         }
 
-        // Call edge function to reset password
         const response = await supabase.functions.invoke('reset-password', {
           body: { 
             email: emailParam, 
@@ -264,7 +398,6 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // Check code in database
       const { data: codes, error: fetchError } = await supabase
         .from('verification_codes')
         .select('*')
@@ -286,13 +419,11 @@ export default function Auth() {
         return;
       }
 
-      // Mark code as used
       await supabase
         .from('verification_codes')
         .update({ used_at: new Date().toISOString() })
         .eq('id', codes[0].id);
 
-      // Now create the actual account
       const { data: signUpData, error: signUpError } = await signUp(email, password, username);
       
       if (signUpError) {
@@ -305,9 +436,7 @@ export default function Auth() {
         return;
       }
 
-      // Mark email as verified in profile
       if (signUpData?.user) {
-        // Wait a moment for the profile to be created
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         await supabase
@@ -486,9 +615,14 @@ export default function Auth() {
                 )}
               </div>
 
+              {/* Turnstile Widget */}
+              <div className="flex justify-center">
+                <div ref={turnstileRef} />
+              </div>
+
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !turnstileToken}
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -545,9 +679,14 @@ export default function Auth() {
                 )}
               </div>
 
+              {/* Turnstile Widget */}
+              <div className="flex justify-center">
+                <div ref={turnstileRef} />
+              </div>
+
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !turnstileToken}
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -721,6 +860,7 @@ export default function Auth() {
                 onClick={() => {
                   setStep(step === 'login' ? 'signup' : 'login');
                   setErrors({});
+                  setTurnstileToken(null);
                 }}
                 className="text-sm text-muted-foreground hover:text-white transition-colors"
               >
