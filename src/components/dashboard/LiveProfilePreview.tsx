@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ProfileCard } from '@/components/profile/ProfileCard';
 import { SocialLinks } from '@/components/profile/SocialLinks';
-import { BackgroundEffects } from '@/components/profile/BackgroundEffects';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Profile, SocialLink as SocialLinkType } from '@/hooks/useProfile';
 
@@ -245,18 +244,39 @@ export function LiveProfilePreview({
             height: '500px',
           }}
         >
-          {/* Background Effects */}
-          <div className="absolute inset-0 pointer-events-none">
-            <BackgroundEffects
-              backgroundUrl={backgroundUrl}
-              backgroundVideoUrl={backgroundVideoUrl}
-              backgroundColor={backgroundColor}
-              accentColor={accentColor}
-              enableAudio={false}
-              audioVolume={0}
-              effectType={backgroundEffect}
+          {/* Background Video */}
+          {backgroundVideoUrl && (
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ opacity: 0.7 }}
+            >
+              <source src={backgroundVideoUrl} type="video/mp4" />
+            </video>
+          )}
+
+          {/* Background Image */}
+          {!backgroundVideoUrl && backgroundUrl && (
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ 
+                backgroundImage: `url(${backgroundUrl})`,
+                opacity: 0.7,
+              }}
             />
-          </div>
+          )}
+
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              background: `radial-gradient(ellipse at 50% 0%, ${accentColor}30, transparent 60%)`,
+            }}
+          />
 
           {/* Profile Content */}
           <div className="relative z-10 h-full flex flex-col items-center justify-center p-6 overflow-y-auto">
