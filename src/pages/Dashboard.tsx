@@ -780,51 +780,6 @@ export default function Dashboard() {
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
               <div className="space-y-6">
-                {/* Live Profile Preview */}
-                <LiveProfilePreview
-                  username={username}
-                  displayName={displayName}
-                  bio={bio}
-                  avatarUrl={avatarUrl}
-                  avatarShape={avatarShape}
-                  backgroundColor={backgroundColor}
-                  accentColor={accentColor}
-                  textColor={textColor}
-                  backgroundUrl={backgroundUrl}
-                  backgroundVideoUrl={backgroundVideoUrl}
-                  backgroundEffect={backgroundEffect as any}
-                  showUsername={showUsername}
-                  showDisplayName={showDisplayName}
-                  showBadges={showBadges}
-                  showViews={showViews}
-                  showAvatar={showAvatar}
-                  showDescription={showDescription}
-                  showLinks={showLinks}
-                  viewsCount={profile?.views_count || 0}
-                  badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
-                    const badge = globalBadges.find(gb => gb.id === ub.badge_id);
-                    return badge ? {
-                      id: badge.id,
-                      name: badge.name,
-                      color: badge.color || null,
-                      icon_url: badge.icon_url,
-                    } : null;
-                  }).filter(Boolean) as any[]}
-                  socialLinks={socialLinks}
-                  cardBorderEnabled={cardBorderEnabled}
-                  cardBorderColor={cardBorderColor}
-                  cardBorderWidth={cardBorderWidth}
-                  nameFont={nameFont}
-                  textFont={textFont}
-                  iconColor={iconColor}
-                  monochromeIcons={monochromeIcons}
-                  cardColor={undefined}
-                  effects={effects}
-                  occupation={occupation}
-                  location={location_}
-                  uidNumber={(profile as any)?.uid_number || 1}
-                />
-
                 <CustomizationPanel
                   backgroundUrl={backgroundUrl}
                   setBackgroundUrl={setBackgroundUrl}
@@ -890,6 +845,51 @@ export default function Dashboard() {
                   setNameFont={setNameFont}
                   textFont={textFont}
                   setTextFont={setTextFont}
+                />
+
+                {/* Live Profile Preview - Below Asset Uploader */}
+                <LiveProfilePreview
+                  username={username}
+                  displayName={displayName}
+                  bio={bio}
+                  avatarUrl={avatarUrl}
+                  avatarShape={avatarShape}
+                  backgroundColor={backgroundColor}
+                  accentColor={accentColor}
+                  textColor={textColor}
+                  backgroundUrl={backgroundUrl}
+                  backgroundVideoUrl={backgroundVideoUrl}
+                  backgroundEffect={backgroundEffect as any}
+                  showUsername={showUsername}
+                  showDisplayName={showDisplayName}
+                  showBadges={showBadges}
+                  showViews={showViews}
+                  showAvatar={showAvatar}
+                  showDescription={showDescription}
+                  showLinks={showLinks}
+                  viewsCount={profile?.views_count || 0}
+                  badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
+                    const badge = globalBadges.find(gb => gb.id === ub.badge_id);
+                    return badge ? {
+                      id: badge.id,
+                      name: badge.name,
+                      color: badge.color || null,
+                      icon_url: badge.icon_url,
+                    } : null;
+                  }).filter(Boolean) as any[]}
+                  socialLinks={socialLinks}
+                  cardBorderEnabled={cardBorderEnabled}
+                  cardBorderColor={cardBorderColor}
+                  cardBorderWidth={cardBorderWidth}
+                  nameFont={nameFont}
+                  textFont={textFont}
+                  iconColor={iconColor}
+                  monochromeIcons={monochromeIcons}
+                  cardColor={undefined}
+                  effects={effects}
+                  occupation={occupation}
+                  location={location_}
+                  uidNumber={(profile as any)?.uid_number || 1}
                 />
 
                 {/* Start Screen Settings */}
