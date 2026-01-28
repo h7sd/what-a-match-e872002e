@@ -186,7 +186,8 @@ export default function UserProfile() {
             <SocialLinks 
               links={socialLinks} 
               accentColor={accentColor}
-              glowingIcons={profile.effects_config?.glow}
+              glowingIcons={(profile as any).glow_socials ?? false}
+              iconOnly={(profile as any).icon_only_links ?? false}
             />
           )}
         </motion.div>
