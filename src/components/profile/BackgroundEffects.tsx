@@ -241,10 +241,16 @@ export function BackgroundEffects({
             WebkitPerspective: 1000,
             transformStyle: 'preserve-3d',
             WebkitTransformStyle: 'preserve-3d',
-          }}
+            // Prevent quality degradation
+            filter: 'none',
+            WebkitFilter: 'none',
+          } as React.CSSProperties}
         >
+          <source src={backgroundVideoUrl} type="video/mp4; codecs=hvc1" />
+          <source src={backgroundVideoUrl} type="video/mp4; codecs=avc1" />
           <source src={backgroundVideoUrl} type="video/mp4" />
           <source src={backgroundVideoUrl} type="video/quicktime" />
+          <source src={backgroundVideoUrl} type="video/webm; codecs=vp9" />
           <source src={backgroundVideoUrl} type="video/x-m4v" />
         </video>
       )}
