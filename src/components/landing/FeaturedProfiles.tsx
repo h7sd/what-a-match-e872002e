@@ -15,12 +15,12 @@ interface Profile {
 
 function useRandomProfiles() {
   return useQuery({
-    queryKey: ['featured-profiles', Date.now()], // Force refetch on page load
+    queryKey: ['featured-profiles'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
-        .limit(50);
+        .limit(100);
       
       if (error) throw error;
       
@@ -30,6 +30,7 @@ function useRandomProfiles() {
     },
     staleTime: 0, // Always refetch
     gcTime: 0, // Don't cache
+    refetchOnMount: 'always', // Refetch every time component mounts
   });
 }
 
