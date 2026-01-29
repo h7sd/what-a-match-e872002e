@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, ActivityType } = require('discord.js');
+const crypto = require('crypto');
 
 // ============================================
 // CONFIGURATION
@@ -7,10 +8,11 @@ const { Client, GatewayIntentBits, Partials, ActivityType } = require('discord.j
 const DISCORD_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const EDGE_FUNCTION_URL = process.env.EDGE_FUNCTION_URL;
 const GUILD_ID = process.env.GUILD_ID;
+const WEBHOOK_SECRET = process.env.DISCORD_WEBHOOK_SECRET;
 
-if (!DISCORD_TOKEN || !EDGE_FUNCTION_URL || !GUILD_ID) {
+if (!DISCORD_TOKEN || !EDGE_FUNCTION_URL || !GUILD_ID || !WEBHOOK_SECRET) {
   console.error('❌ Missing environment variables! Check your .env file.');
-  console.error('Required: DISCORD_BOT_TOKEN, EDGE_FUNCTION_URL, GUILD_ID');
+  console.error('Required: DISCORD_BOT_TOKEN, EDGE_FUNCTION_URL, GUILD_ID, DISCORD_WEBHOOK_SECRET');
   process.exit(1);
 }
 
@@ -37,6 +39,17 @@ const activityTypeMap = {
   [ActivityType.Custom]: 'Custom',
   [ActivityType.Competing]: 'Competing in',
 };
+
+// ============================================
+// HMAC SIGNATURE GENERATION
+// ============================================
+function generateSignature(payload, timestamp) {
+  const message = `${timestamp}.${payload}`;
+  return crypto
+    .createHmac('sha256', WEBHOOK_SECRET)
+    .update(message)
+    .digest('hex');
+}
 
 // ============================================
 // PRESENCE UPDATE HANDLER
@@ -74,18 +87,26 @@ async function updatePresence(userId, presence, user) {
       activity_large_image: getActivityImage(mainActivity) || getSpotifyImage(spotifyActivity),
     };
 
-    // Send to edge function
+    // Build payload with timestamp for replay protection
+    const timestamp = Date.now();
+    const payload = JSON.stringify({
+      action: 'update',
+      discord_user_id: userId,
+      presence_data: presenceData,
+    });
+
+    // Generate HMAC signature
+    const signature = generateSignature(payload, timestamp);
+
+    // Send to edge function with signature
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-bot-token': DISCORD_TOKEN,
+        'x-signature': signature,
+        'x-timestamp': timestamp.toString(),
       },
-      body: JSON.stringify({
-        action: 'update',
-        discord_user_id: userId,
-        presence_data: presenceData,
-      }),
+      body: payload,
     });
 
     const result = await response.json();

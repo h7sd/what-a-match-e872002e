@@ -3,8 +3,46 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-bot-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature, x-timestamp',
 };
+
+// HMAC signature verification
+async function verifySignature(payload: string, signature: string, timestamp: number): Promise<boolean> {
+  const webhookSecret = Deno.env.get('DISCORD_WEBHOOK_SECRET');
+  if (!webhookSecret) {
+    console.error('DISCORD_WEBHOOK_SECRET not configured');
+    return false;
+  }
+
+  // Check timestamp is within 5 minutes to prevent replay attacks
+  const now = Date.now();
+  const timeDiff = Math.abs(now - timestamp);
+  if (timeDiff > 5 * 60 * 1000) {
+    console.error('Request timestamp expired:', timeDiff, 'ms old');
+    return false;
+  }
+
+  // Verify HMAC signature
+  const message = `${timestamp}.${payload}`;
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(webhookSecret);
+  const messageData = encoder.encode(message);
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData);
+  const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return signature === expectedSignature;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,21 +50,49 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { action, discord_user_id, presence_data } = body;
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // For UPDATE action, verify bot token (only bot can update)
+    // Read body as text first for signature verification
+    const bodyText = await req.text();
+    let body: { action?: string; discord_user_id?: string; presence_data?: Record<string, unknown> };
+    
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { action, discord_user_id, presence_data } = body;
+
+    // For UPDATE action, verify HMAC signature (only bot can update)
     if (action === 'update') {
-      const botToken = req.headers.get('x-bot-token');
-      const expectedToken = Deno.env.get('DISCORD_BOT_TOKEN');
+      const signature = req.headers.get('x-signature');
+      const timestampStr = req.headers.get('x-timestamp');
       
-      if (!botToken || botToken !== expectedToken) {
+      if (!signature || !timestampStr) {
         return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
+          JSON.stringify({ error: 'Missing signature or timestamp' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const timestamp = parseInt(timestampStr, 10);
+      if (isNaN(timestamp)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid timestamp' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const isValid = await verifySignature(bodyText, signature, timestamp);
+      if (!isValid) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid signature' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
