@@ -26,7 +26,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-signature, x-timestamp",
 };
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const DISCORD_WEBHOOK_SECRET = Deno.env.get("DISCORD_WEBHOOK_SECRET");
 
 // Verify HMAC signature from Discord bot
@@ -181,11 +180,10 @@ serve(async (req) => {
 
         // Send approval email
         if (userEmail) {
-          await resend.emails.send({
-            from: "UserVault <noreply@uservault.cc>",
-            to: [userEmail],
-            subject: "Your Badge Request Has Been Approved! 🎉",
-            html: `
+          await sendEmail(
+            userEmail,
+            "Your Badge Request Has Been Approved! 🎉",
+            `
               <!DOCTYPE html>
               <html>
               <head>
@@ -224,8 +222,8 @@ serve(async (req) => {
                 </table>
               </body>
               </html>
-            `,
-          });
+            `
+          );
         }
 
         return new Response(
@@ -245,11 +243,10 @@ serve(async (req) => {
 
         // Send denial email
         if (userEmail) {
-          await resend.emails.send({
-            from: "UserVault <noreply@uservault.cc>",
-            to: [userEmail],
-            subject: "Badge Request Update",
-            html: `
+          await sendEmail(
+            userEmail,
+            "Badge Request Update",
+            `
               <!DOCTYPE html>
               <html>
               <head>
@@ -288,8 +285,8 @@ serve(async (req) => {
                 </table>
               </body>
               </html>
-            `,
-          });
+            `
+          );
         }
 
         return new Response(
@@ -480,7 +477,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in badge-request function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
