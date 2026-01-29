@@ -392,9 +392,47 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
       style: 'card',
     }));
 
+  // Start Screen Preview Component
+  const StartScreenPreview = () => {
+    if (!formData.start_screen_enabled) return null;
+    
+    return (
+      <div className="border-t border-border/50 p-3 bg-muted/20">
+        <div className="flex items-center gap-2 mb-2">
+          <Settings className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">Start Screen Preview</span>
+        </div>
+        <div 
+          className="rounded-lg overflow-hidden border border-border/30"
+          style={{ 
+            backgroundColor: formData.start_screen_bg_color,
+            height: '80px'
+          }}
+        >
+          <div className="h-full flex items-center justify-center">
+            <p 
+              className="text-sm"
+              style={{ 
+                fontFamily: formData.start_screen_font,
+                color: formData.start_screen_color 
+              }}
+            >
+              {formData.start_screen_text || 'Click anywhere to enter'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Stop event propagation for interactive elements
+  const stopPropagation = (e: React.MouseEvent | React.FocusEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+  };
+
   // Preview Component
   const PreviewContent = () => (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" onClick={stopPropagation} onMouseDown={stopPropagation}>
       {/* Preview Header */}
       <div className="flex items-center justify-between p-3 border-b bg-muted/30">
         <div className="flex items-center gap-2">
@@ -405,18 +443,18 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
           <Button
             variant={previewMode === 'desktop' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setPreviewMode('desktop')}
-            className="h-7 w-7 p-0"
+            onClick={(e) => { stopPropagation(e); setPreviewMode('desktop'); }}
+            className="h-8 w-8 p-0 min-h-[32px] min-w-[32px]"
           >
-            <Monitor className="w-3.5 h-3.5" />
+            <Monitor className="w-4 h-4" />
           </Button>
           <Button
             variant={previewMode === 'mobile' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setPreviewMode('mobile')}
-            className="h-7 w-7 p-0"
+            onClick={(e) => { stopPropagation(e); setPreviewMode('mobile'); }}
+            className="h-8 w-8 p-0 min-h-[32px] min-w-[32px]"
           >
-            <Smartphone className="w-3.5 h-3.5" />
+            <Smartphone className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -546,12 +584,15 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
           )}
         </div>
       </div>
+
+      {/* Start Screen Preview below main preview */}
+      <StartScreenPreview />
     </div>
   );
 
   // Editor Content
   const EditorContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" onClick={stopPropagation} onMouseDown={stopPropagation}>
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between gap-3 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -569,11 +610,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Link to={`/${user.username}`} target="_blank" className="hidden sm:block">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="min-h-[40px] min-w-[40px]">
               <ExternalLink className="w-4 h-4" />
             </Button>
           </Link>
-          <Button onClick={handleSave} disabled={isSaving} size="sm">
+          <Button onClick={handleSave} disabled={isSaving} size="sm" className="min-h-[40px] px-4">
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span className="hidden sm:inline ml-1">Save</span>
           </Button>
@@ -584,19 +625,19 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
       <div className="flex-1 overflow-hidden">
         <Tabs defaultValue="profile" className="h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-5 mx-4 mt-4 flex-shrink-0" style={{ width: 'calc(100% - 2rem)' }}>
-            <TabsTrigger value="profile" className="text-xs px-1">
+            <TabsTrigger value="profile" className="text-xs px-1 min-h-[36px]">
               <User className="w-3 h-3 mr-1 hidden sm:inline" />Profile
             </TabsTrigger>
-            <TabsTrigger value="appearance" className="text-xs px-1">
+            <TabsTrigger value="appearance" className="text-xs px-1 min-h-[36px]">
               <Palette className="w-3 h-3 mr-1 hidden sm:inline" />Style
             </TabsTrigger>
-            <TabsTrigger value="badges" className="text-xs px-1">
+            <TabsTrigger value="badges" className="text-xs px-1 min-h-[36px]">
               <Award className="w-3 h-3 mr-1 hidden sm:inline" />Badges
             </TabsTrigger>
-            <TabsTrigger value="links" className="text-xs px-1">
+            <TabsTrigger value="links" className="text-xs px-1 min-h-[36px]">
               <LinkIcon className="w-3 h-3 mr-1 hidden sm:inline" />Links
             </TabsTrigger>
-            <TabsTrigger value="visibility" className="text-xs px-1">
+            <TabsTrigger value="visibility" className="text-xs px-1 min-h-[36px]">
               <Eye className="w-3 h-3 mr-1 hidden sm:inline" />Show
             </TabsTrigger>
           </TabsList>
@@ -604,14 +645,17 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
           <ScrollArea className="flex-1 px-4 pb-4">
             {/* Profile Tab */}
             <TabsContent value="profile" className="mt-4 space-y-4">
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <Label className="text-xs">Display Name</Label>
                   <Input
                     value={formData.display_name}
                     onChange={(e) => updateField('display_name', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="Display name"
-                    className="h-9"
+                    className="h-10"
                   />
                 </div>
                 <div>
@@ -619,6 +663,9 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <Textarea
                     value={formData.bio}
                     onChange={(e) => updateField('bio', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="Bio..."
                     rows={3}
                   />
@@ -629,8 +676,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                     <Input
                       value={formData.occupation}
                       onChange={(e) => updateField('occupation', e.target.value)}
+                      onMouseDown={stopPropagation}
+                      onFocus={stopPropagation}
+                      onClick={stopPropagation}
                       placeholder="Developer, Designer..."
-                      className="h-9"
+                      className="h-10"
                     />
                   </div>
                   <div>
@@ -638,8 +688,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                     <Input
                       value={formData.location}
                       onChange={(e) => updateField('location', e.target.value)}
+                      onMouseDown={stopPropagation}
+                      onFocus={stopPropagation}
+                      onClick={stopPropagation}
                       placeholder="Berlin, DE"
-                      className="h-9"
+                      className="h-10"
                     />
                   </div>
                 </div>
@@ -648,8 +701,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <Input
                     value={formData.discord_user_id}
                     onChange={(e) => updateField('discord_user_id', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="Discord User ID"
-                    className="h-9"
+                    className="h-10"
                   />
                 </div>
                 <div>
@@ -657,14 +713,17 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <Input
                     value={formData.avatar_url}
                     onChange={(e) => updateField('avatar_url', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="https://..."
-                    className="h-9"
+                    className="h-10"
                   />
                 </div>
                 <div>
                   <Label className="text-xs">Avatar Shape</Label>
                   <Select value={formData.avatar_shape} onValueChange={(v) => updateField('avatar_shape', v)}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="circle">Circle</SelectItem>
                       <SelectItem value="rounded">Rounded</SelectItem>
@@ -678,8 +737,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <Input
                     value={formData.background_url}
                     onChange={(e) => updateField('background_url', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="https://..."
-                    className="h-9"
+                    className="h-10"
                   />
                 </div>
                 <div>
@@ -687,8 +749,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <Input
                     value={formData.background_video_url}
                     onChange={(e) => updateField('background_video_url', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="https://..."
-                    className="h-9"
+                    className="h-10"
                   />
                 </div>
                 <div>
@@ -696,8 +761,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <Input
                     value={formData.music_url}
                     onChange={(e) => updateField('music_url', e.target.value)}
+                    onMouseDown={stopPropagation}
+                    onFocus={stopPropagation}
+                    onClick={stopPropagation}
                     placeholder="https://..."
-                    className="h-9"
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -722,12 +790,17 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                           type="color"
                           value={formData[field as keyof typeof formData] as string || '#000000'}
                           onChange={(e) => updateField(field, e.target.value)}
-                          className="w-10 h-9 p-1 cursor-pointer"
+                          onMouseDown={stopPropagation}
+                          onClick={stopPropagation}
+                          className="w-12 h-10 p-1 cursor-pointer"
                         />
                         <Input
                           value={formData[field as keyof typeof formData] as string || ''}
                           onChange={(e) => updateField(field, e.target.value)}
-                          className="flex-1 h-9 text-xs"
+                          onMouseDown={stopPropagation}
+                          onFocus={stopPropagation}
+                          onClick={stopPropagation}
+                          className="flex-1 h-10 text-xs"
                           placeholder="#hex"
                         />
                       </div>
@@ -740,7 +813,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <div>
                     <Label className="text-xs">Layout Style</Label>
                     <Select value={formData.layout_style} onValueChange={(v) => updateField('layout_style', v)}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="stacked">Stacked</SelectItem>
                         <SelectItem value="side-by-side">Side by Side</SelectItem>
@@ -751,7 +824,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <div>
                     <Label className="text-xs">Card Style</Label>
                     <Select value={formData.card_style} onValueChange={(v) => updateField('card_style', v)}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="classic">Classic</SelectItem>
                         <SelectItem value="glass">Glass</SelectItem>
@@ -763,7 +836,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <div>
                     <Label className="text-xs">Name Font</Label>
                     <Select value={formData.name_font} onValueChange={(v) => updateField('name_font', v)}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Inter">Inter</SelectItem>
                         <SelectItem value="Poppins">Poppins</SelectItem>
@@ -776,7 +849,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   <div>
                     <Label className="text-xs">Text Font</Label>
                     <Select value={formData.text_font} onValueChange={(v) => updateField('text_font', v)}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Inter">Inter</SelectItem>
                         <SelectItem value="Poppins">Poppins</SelectItem>
@@ -789,13 +862,14 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                 </div>
 
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground pt-2">Effects</h4>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
                     <Label className="text-xs">Opacity ({formData.profile_opacity}%)</Label>
                     <Slider
                       value={[formData.profile_opacity]}
                       onValueChange={([v]) => updateField('profile_opacity', v)}
                       min={0} max={100} step={5}
+                      className="py-2"
                     />
                   </div>
                   <div>
@@ -804,6 +878,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                       value={[formData.profile_blur]}
                       onValueChange={([v]) => updateField('profile_blur', v)}
                       min={0} max={20} step={1}
+                      className="py-2"
                     />
                   </div>
                   <div>
@@ -812,6 +887,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                       value={[formData.card_border_width]}
                       onValueChange={([v]) => updateField('card_border_width', v)}
                       min={0} max={5} step={1}
+                      className="py-2"
                     />
                   </div>
                   <div>
@@ -820,12 +896,13 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                       value={[formData.icon_links_opacity]}
                       onValueChange={([v]) => updateField('icon_links_opacity', v)}
                       min={0} max={100} step={5}
+                      className="py-2"
                     />
                   </div>
                 </div>
 
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground pt-2">Glow Effects</h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4">
                   {[
                     { label: 'Glow Username', field: 'glow_username' },
                     { label: 'Glow Socials', field: 'glow_socials' },
@@ -834,8 +911,8 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                     { label: 'Monochrome Icons', field: 'monochrome_icons' },
                     { label: 'Icon Only Links', field: 'icon_only_links' },
                   ].map(({ label, field }) => (
-                    <div key={field} className="flex items-center justify-between">
-                      <Label className="text-xs">{label}</Label>
+                    <div key={field} className="flex items-center justify-between min-h-[44px] py-1">
+                      <Label className="text-sm">{label}</Label>
                       <Switch
                         checked={formData[field as keyof typeof formData] as boolean}
                         onCheckedChange={(v) => updateField(field, v)}
@@ -857,13 +934,13 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   No badges assigned to this user.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {userBadges.map((ub) => {
                     const Icon = getBadgeIcon(ub.badge.name);
                     return (
                       <div
                         key={ub.id}
-                        className={`p-3 rounded-lg border ${
+                        className={`p-4 rounded-lg border ${
                           ub.is_locked 
                             ? 'border-destructive/30 bg-destructive/5' 
                             : ub.is_enabled 
@@ -871,30 +948,30 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                               : 'border-border bg-secondary/10'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
-                              className="w-8 h-8 rounded flex items-center justify-center"
+                              className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0"
                               style={{ backgroundColor: `${ub.badge.color || '#8B5CF6'}20` }}
                             >
                               {ub.badge.icon_url ? (
-                                <img src={ub.badge.icon_url} alt="" className="w-5 h-5" />
+                                <img src={ub.badge.icon_url} alt="" className="w-6 h-6" />
                               ) : (
-                                <Icon className="w-4 h-4" style={{ color: ub.badge.color || '#8B5CF6' }} />
+                                <Icon className="w-5 h-5" style={{ color: ub.badge.color || '#8B5CF6' }} />
                               )}
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{ub.badge.name}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{ub.badge.name}</p>
                               <p className="text-xs text-muted-foreground">
                                 {ub.is_locked ? 'Locked' : ub.is_enabled ? 'Active' : 'Hidden'}
                               </p>
                             </div>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-2 flex-shrink-0">
                             <Button
                               variant={ub.is_enabled && !ub.is_locked ? "default" : "outline"}
                               size="sm"
-                              className="h-7 text-xs"
+                              className="h-10 px-4 min-w-[60px]"
                               onClick={() => toggleBadge(ub.id, 'is_enabled', ub.is_enabled)}
                               disabled={ub.is_locked}
                             >
@@ -903,7 +980,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                             <Button
                               variant={ub.is_locked ? "destructive" : "outline"}
                               size="sm"
-                              className="h-7 text-xs"
+                              className="h-10 px-4 min-w-[70px]"
                               onClick={() => toggleBadge(ub.id, 'is_locked', ub.is_locked)}
                             >
                               {ub.is_locked ? 'Unlock' : 'Lock'}
@@ -928,18 +1005,18 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                   No social links added.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {socialLinks.map((link) => (
                     <div
                       key={link.id}
-                      className={`p-3 rounded-lg border ${link.is_visible ? 'border-green-500/30' : 'border-border'}`}
+                      className={`p-4 rounded-lg border ${link.is_visible ? 'border-green-500/30 bg-green-500/5' : 'border-border'}`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{link.title || link.platform}</p>
                           <p className="text-xs text-muted-foreground truncate">{link.url}</p>
                         </div>
-                        <div className="flex items-center gap-2 ml-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <Switch
                             checked={link.is_visible}
                             onCheckedChange={async (visible) => {
@@ -972,7 +1049,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
             <TabsContent value="visibility" className="mt-4 space-y-4">
               <div className="space-y-4">
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground">Profile Elements</h4>
-                <div className="grid gap-3">
+                <div className="grid gap-4">
                   {[
                     { label: 'Show Username', field: 'show_username' },
                     { label: 'Show Display Name', field: 'show_display_name' },
@@ -983,7 +1060,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                     { label: 'Show Views', field: 'show_views' },
                     { label: 'Card Border', field: 'card_border_enabled' },
                   ].map(({ label, field }) => (
-                    <div key={field} className="flex items-center justify-between">
+                    <div key={field} className="flex items-center justify-between min-h-[44px] py-1">
                       <Label className="text-sm">{label}</Label>
                       <Switch
                         checked={formData[field as keyof typeof formData] as boolean}
@@ -994,8 +1071,8 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                 </div>
 
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground pt-2">Start Screen</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between min-h-[44px] py-1">
                     <Label className="text-sm">Enable Start Screen</Label>
                     <Switch
                       checked={formData.start_screen_enabled}
@@ -1009,7 +1086,10 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                         <Input
                           value={formData.start_screen_text}
                           onChange={(e) => updateField('start_screen_text', e.target.value)}
-                          className="h-9"
+                          onMouseDown={stopPropagation}
+                          onFocus={stopPropagation}
+                          onClick={stopPropagation}
+                          className="h-10"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -1020,12 +1100,17 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                               type="color"
                               value={formData.start_screen_color}
                               onChange={(e) => updateField('start_screen_color', e.target.value)}
-                              className="w-10 h-9 p-1"
+                              onMouseDown={stopPropagation}
+                              onClick={stopPropagation}
+                              className="w-12 h-10 p-1"
                             />
                             <Input
                               value={formData.start_screen_color}
                               onChange={(e) => updateField('start_screen_color', e.target.value)}
-                              className="flex-1 h-9 text-xs"
+                              onMouseDown={stopPropagation}
+                              onFocus={stopPropagation}
+                              onClick={stopPropagation}
+                              className="flex-1 h-10 text-xs"
                             />
                           </div>
                         </div>
@@ -1036,25 +1121,48 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                               type="color"
                               value={formData.start_screen_bg_color}
                               onChange={(e) => updateField('start_screen_bg_color', e.target.value)}
-                              className="w-10 h-9 p-1"
+                              onMouseDown={stopPropagation}
+                              onClick={stopPropagation}
+                              className="w-12 h-10 p-1"
                             />
                             <Input
                               value={formData.start_screen_bg_color}
                               onChange={(e) => updateField('start_screen_bg_color', e.target.value)}
-                              className="flex-1 h-9 text-xs"
+                              onMouseDown={stopPropagation}
+                              onFocus={stopPropagation}
+                              onClick={stopPropagation}
+                              className="flex-1 h-10 text-xs"
                             />
                           </div>
                         </div>
                       </div>
                       <div>
+                        <Label className="text-xs">Font</Label>
+                        <Select value={formData.start_screen_font} onValueChange={(v) => updateField('start_screen_font', v)}>
+                          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Inter">Inter</SelectItem>
+                            <SelectItem value="Poppins">Poppins</SelectItem>
+                            <SelectItem value="Roboto">Roboto</SelectItem>
+                            <SelectItem value="Space Mono">Space Mono</SelectItem>
+                            <SelectItem value="Playfair Display">Playfair Display</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
                         <Label className="text-xs">Animation</Label>
                         <Select value={formData.start_screen_animation} onValueChange={(v) => updateField('start_screen_animation', v)}>
-                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="fade">Fade</SelectItem>
-                            <SelectItem value="slide">Slide</SelectItem>
-                            <SelectItem value="glitch">Glitch</SelectItem>
+                            <SelectItem value="none">None (Typewriter)</SelectItem>
+                            <SelectItem value="shuffle">Shuffle</SelectItem>
+                            <SelectItem value="shuffle-gsap">Shuffle GSAP</SelectItem>
+                            <SelectItem value="fuzzy">Fuzzy</SelectItem>
+                            <SelectItem value="decrypted">Decrypted</SelectItem>
+                            <SelectItem value="ascii">ASCII</SelectItem>
+                            <SelectItem value="ascii-3d">ASCII 3D</SelectItem>
+                            <SelectItem value="decrypted-advanced">Decrypted Advanced</SelectItem>
+                            <SelectItem value="fuzzy-canvas">Fuzzy Canvas</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1073,7 +1181,11 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
-        <DrawerContent className="h-[95vh] max-h-[95vh]">
+        <DrawerContent 
+          className="h-[95vh] max-h-[95vh]"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DrawerHeader className="sr-only">
             <DrawerTitle>Edit User: {user.username}</DrawerTitle>
           </DrawerHeader>
@@ -1081,7 +1193,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
             {/* Collapsible Preview on Mobile */}
             <Collapsible open={previewExpanded} onOpenChange={setPreviewExpanded} className="border-b flex-shrink-0">
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between rounded-none h-10">
+                <Button variant="ghost" className="w-full justify-between rounded-none h-12 min-h-[48px]">
                   <span className="flex items-center gap-2 text-sm">
                     <Eye className="w-4 h-4" />
                     Preview
@@ -1090,7 +1202,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="h-[300px]">
+                <div className="h-[350px]">
                   <PreviewContent />
                 </div>
               </CollapsibleContent>
@@ -1109,7 +1221,12 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
   // Desktop: Use Sheet with side-by-side layout
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full max-w-6xl sm:max-w-6xl p-0">
+      <SheetContent 
+        side="right" 
+        className="w-full max-w-6xl sm:max-w-6xl p-0"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>Edit User: {user.username}</SheetTitle>
         </SheetHeader>
