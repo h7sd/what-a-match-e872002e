@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      badge_requests: {
+        Row: {
+          admin_edited_color: string | null
+          admin_edited_description: string | null
+          admin_edited_icon_url: string | null
+          admin_edited_name: string | null
+          badge_color: string
+          badge_description: string | null
+          badge_icon_url: string | null
+          badge_name: string
+          created_at: string
+          denial_reason: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_edited_color?: string | null
+          admin_edited_description?: string | null
+          admin_edited_icon_url?: string | null
+          admin_edited_name?: string | null
+          badge_color?: string
+          badge_description?: string | null
+          badge_icon_url?: string | null
+          badge_name: string
+          created_at?: string
+          denial_reason?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_edited_color?: string | null
+          admin_edited_description?: string | null
+          admin_edited_icon_url?: string | null
+          admin_edited_name?: string | null
+          badge_color?: string
+          badge_description?: string | null
+          badge_icon_url?: string | null
+          badge_name?: string
+          created_at?: string
+          denial_reason?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           color: string | null
