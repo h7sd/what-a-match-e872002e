@@ -61,6 +61,7 @@ import { LimitedBadgeAssigner } from '@/components/admin/LimitedBadgeAssigner';
 import { AdminBadgeRemover } from '@/components/admin/AdminBadgeRemover';
 import { AllBadgeAssigner } from '@/components/admin/AllBadgeAssigner';
 import { UserBanManager } from '@/components/admin/UserBanManager';
+import { AdminAccountLookup } from '@/components/admin/AdminAccountLookup';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
@@ -1266,6 +1267,11 @@ export default function Dashboard() {
             {/* Admin Tab */}
             {activeTab === 'admin' && isAdmin && (
               <div className="space-y-6 max-w-4xl">
+                {/* Account Lookup - Full Width Top */}
+                <div className="glass-card p-6">
+                  <AdminAccountLookup />
+                </div>
+
                 {/* Top Row - Badge Assigners */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="glass-card p-6">
