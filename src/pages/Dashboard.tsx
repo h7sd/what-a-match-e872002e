@@ -33,6 +33,7 @@ import {
   Menu,
   X,
   Volume2,
+  Send,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -62,7 +63,9 @@ import { AdminBadgeRemover } from '@/components/admin/AdminBadgeRemover';
 import { AllBadgeAssigner } from '@/components/admin/AllBadgeAssigner';
 import { UserBanManager } from '@/components/admin/UserBanManager';
 import { AdminAccountLookup } from '@/components/admin/AdminAccountLookup';
+import { AdminUIDManager } from '@/components/admin/AdminUIDManager';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
+import { BadgeRequestForm } from '@/components/dashboard/BadgeRequestForm';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { LiveProfilePreview } from '@/components/dashboard/LiveProfilePreview';
@@ -1223,6 +1226,15 @@ export default function Dashboard() {
             {/* Badges Tab */}
             {activeTab === 'badges' && (
               <div className="space-y-6">
+                {/* Request Custom Badge */}
+                <div className="glass-card p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Send className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold">Request Custom Badge</h3>
+                  </div>
+                  <BadgeRequestForm />
+                </div>
+
                 {/* My Badges - Toggle Section */}
                 {userBadges.filter((ub: any) => ub.is_enabled !== false).length > 0 && (
                   <div className="glass-card p-6">
@@ -1264,6 +1276,7 @@ export default function Dashboard() {
                   <BadgesGrid
                     globalBadges={globalBadges}
                     userBadgeIds={userBadges.map(ub => ub.badge_id)}
+                    userUid={(profile as any)?.uid_number}
                   />
                 </div>
               </div>
@@ -1300,6 +1313,11 @@ export default function Dashboard() {
                   <div className="glass-card p-6">
                     <AdminUserManager />
                   </div>
+                </div>
+
+                {/* UID Manager */}
+                <div className="glass-card p-6">
+                  <AdminUIDManager />
                 </div>
 
                 {/* Badge Management - Collapsible */}
