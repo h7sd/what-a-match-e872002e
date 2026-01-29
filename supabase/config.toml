@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.admin-update-profile]
 verify_jwt = false
+
+[functions.badge-request]
+verify_jwt = false
