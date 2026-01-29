@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Users, Upload, Gem } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -58,17 +59,25 @@ function formatNumber(num: number): string {
   return num.toString() + '+';
 }
 
-function StatCard({ stat, index }: { stat: StatItem; index: number }) {
+// Memoized stat card for performance
+const StatCard = memo(function StatCard({ stat, index }: { stat: StatItem; index: number }) {
   const Icon = stat.icon;
   
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 * index, duration: 0.5 }}
+      transition={{ delay: 0.08 * index, duration: 0.4 }}
       className="relative group"
+      style={{
+        willChange: 'transform, opacity',
+        transform: 'translateZ(0)',
+      }}
     >
-      <div className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/50 p-6 transition-all duration-300 hover:border-primary/30 hover:bg-card/80">
+      <div 
+        className="bg-card/60 backdrop-blur-sm rounded-xl border border-border/50 p-6 transition-all duration-150 hover:border-primary/30 hover:bg-card/80"
+        style={{ transform: 'translateZ(0)' }}
+      >
         <div className="flex items-start justify-between">
           <div>
             <p className="text-3xl md:text-4xl font-bold text-foreground mb-1">
@@ -86,9 +95,9 @@ function StatCard({ stat, index }: { stat: StatItem; index: number }) {
       </div>
     </motion.div>
   );
-}
+});
 
-export function StatsSection() {
+export const StatsSection = memo(function StatsSection() {
   const { data: stats } = useStats();
 
   const statItems: StatItem[] = [
@@ -136,4 +145,4 @@ export function StatsSection() {
       </div>
     </section>
   );
-}
+});

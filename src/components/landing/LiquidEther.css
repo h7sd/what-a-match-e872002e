@@ -4,10 +4,22 @@
   width: 100%;
   height: 100%;
   touch-action: none;
+  /* GPU acceleration for smooth rendering */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: strict;
+  isolation: isolate;
 }
 
 .liquid-ether-container canvas {
   display: block;
   width: 100%;
   height: 100%;
+  /* Force GPU compositing layer */
+  transform: translate3d(0, 0, 0);
+  will-change: contents;
+  image-rendering: high-quality;
+  -webkit-font-smoothing: antialiased;
 }

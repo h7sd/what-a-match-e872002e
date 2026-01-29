@@ -43,30 +43,45 @@ export default function Index() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Liquid Ether Background - covers entire viewport */}
-      <div className="fixed inset-0" style={{ zIndex: -1 }}>
+      {/* Liquid Ether Background - covers entire viewport with GPU acceleration */}
+      <div 
+        className="fixed inset-0" 
+        style={{ 
+          zIndex: -1,
+          willChange: 'transform',
+          transform: 'translate3d(0, 0, 0)',
+          backfaceVisibility: 'hidden',
+        }}
+      >
         <LiquidEther
           colors={['#5227FF', '#FF9FFC', '#B19EEF']}
-          mouseForce={20}
-          cursorSize={100}
+          mouseForce={18}
+          cursorSize={90}
           isViscous={true}
-          viscous={30}
-          iterationsViscous={32}
-          iterationsPoisson={32}
-          resolution={0.5}
+          viscous={25}
+          iterationsViscous={24}
+          iterationsPoisson={24}
+          resolution={0.4}
           isBounce={false}
           autoDemo={true}
-          autoSpeed={0.5}
-          autoIntensity={2.2}
-          takeoverDuration={0.25}
-          autoResumeDelay={3000}
-          autoRampDuration={0.6}
+          autoSpeed={0.4}
+          autoIntensity={2.0}
+          takeoverDuration={0.2}
+          autoResumeDelay={2500}
+          autoRampDuration={0.5}
           style={{ width: '100%', height: '100%' }}
         />
       </div>
       
-      {/* Dark overlay for readability */}
-      <div className="fixed inset-0 bg-black/40 pointer-events-none" style={{ zIndex: 0 }} />
+      {/* Dark overlay for readability - GPU accelerated */}
+      <div 
+        className="fixed inset-0 bg-black/40 pointer-events-none" 
+        style={{ 
+          zIndex: 0,
+          willChange: 'opacity',
+          transform: 'translateZ(0)',
+        }} 
+      />
 
       <div className="relative z-10">
         {/* Header */}
