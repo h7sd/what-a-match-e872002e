@@ -124,6 +124,8 @@ interface CustomizationPanelProps {
   setGlowSocials: (value: boolean) => void;
   glowBadges: boolean;
   setGlowBadges: (value: boolean) => void;
+  transparentBadges?: boolean;
+  setTransparentBadges?: (value: boolean) => void;
   iconOnlyLinks: boolean;
   setIconOnlyLinks: (value: boolean) => void;
   iconLinksOpacity: number;
@@ -599,6 +601,29 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
                   className="text-xs"
                 >
                   ✨ Badges
+                </Button>
+              </div>
+            </div>
+            
+            {/* Badge Style Settings */}
+            <div className="space-y-2">
+              <Label>Badge Style</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant={props.transparentBadges ? "outline" : "default"} 
+                  size="sm"
+                  onClick={() => props.setTransparentBadges?.(false)}
+                  className="text-xs"
+                >
+                  🎨 With Background
+                </Button>
+                <Button 
+                  variant={props.transparentBadges ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => props.setTransparentBadges?.(true)}
+                  className="text-xs"
+                >
+                  ✨ Transparent
                 </Button>
               </div>
             </div>

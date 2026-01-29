@@ -179,6 +179,7 @@ export default function UserProfile() {
             borderEnabled={(profile as any).card_border_enabled ?? true}
             borderColor={(profile as any).card_border_color}
             borderWidth={(profile as any).card_border_width ?? 1}
+            transparentBadges={(profile as any).transparent_badges ?? false}
           />
 
           {/* Discord Presence Widget - Only show when border/card is enabled */}

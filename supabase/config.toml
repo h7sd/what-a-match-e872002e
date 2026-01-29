@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = false
+
+[functions.admin-impersonate]
+verify_jwt = true

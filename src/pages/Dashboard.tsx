@@ -62,6 +62,7 @@ import { AdminBadgeRemover } from '@/components/admin/AdminBadgeRemover';
 import { AllBadgeAssigner } from '@/components/admin/AllBadgeAssigner';
 import { UserBanManager } from '@/components/admin/UserBanManager';
 import { AdminAccountLookup } from '@/components/admin/AdminAccountLookup';
+import { AdminImpersonate } from '@/components/admin/AdminImpersonate';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
@@ -189,6 +190,7 @@ export default function Dashboard() {
   const [showAvatar, setShowAvatar] = useState(true);
   const [showLinks, setShowLinks] = useState(true);
   const [showDescription, setShowDescription] = useState(true);
+  const [transparentBadges, setTransparentBadges] = useState(false);
 
   // Card border settings
   const [cardBorderEnabled, setCardBorderEnabled] = useState(true);
@@ -271,6 +273,7 @@ export default function Dashboard() {
       setShowAvatar((profile as any).show_avatar ?? true);
       setShowLinks((profile as any).show_links ?? true);
       setShowDescription((profile as any).show_description ?? true);
+      setTransparentBadges((profile as any).transparent_badges ?? false);
       setCardBorderEnabled((profile as any).card_border_enabled ?? true);
       setCardBorderColor((profile as any).card_border_color || '');
       setCardBorderWidth((profile as any).card_border_width ?? 1);
@@ -427,6 +430,7 @@ export default function Dashboard() {
         show_avatar: showAvatar,
         show_links: showLinks,
         show_description: showDescription,
+        transparent_badges: transparentBadges,
         card_border_enabled: cardBorderEnabled,
         card_border_color: cardBorderColor || null,
         card_border_width: cardBorderWidth,
@@ -929,6 +933,8 @@ export default function Dashboard() {
                     setGlowSocials={setGlowSocials}
                     glowBadges={glowBadges}
                     setGlowBadges={setGlowBadges}
+                    transparentBadges={transparentBadges}
+                    setTransparentBadges={setTransparentBadges}
                     iconOnlyLinks={iconOnlyLinks}
                     setIconOnlyLinks={setIconOnlyLinks}
                     iconLinksOpacity={iconLinksOpacity}
@@ -1267,6 +1273,11 @@ export default function Dashboard() {
             {/* Admin Tab */}
             {activeTab === 'admin' && isAdmin && (
               <div className="space-y-6 max-w-4xl">
+                {/* Admin Test Login Button - Top Right */}
+                <div className="flex justify-end">
+                  <AdminImpersonate />
+                </div>
+
                 {/* Account Lookup - Full Width Top */}
                 <div className="glass-card p-6">
                   <AdminAccountLookup />

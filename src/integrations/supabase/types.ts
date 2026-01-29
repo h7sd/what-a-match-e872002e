@@ -279,6 +279,7 @@ export type Database = {
           swap_bio_colors: boolean | null
           text_color: string | null
           text_font: string | null
+          transparent_badges: boolean | null
           uid_number: number
           updated_at: string
           use_discord_avatar: boolean | null
@@ -349,6 +350,7 @@ export type Database = {
           swap_bio_colors?: boolean | null
           text_color?: string | null
           text_font?: string | null
+          transparent_badges?: boolean | null
           uid_number?: number
           updated_at?: string
           use_discord_avatar?: boolean | null
@@ -419,6 +421,7 @@ export type Database = {
           swap_bio_colors?: boolean | null
           text_color?: string | null
           text_font?: string | null
+          transparent_badges?: boolean | null
           uid_number?: number
           updated_at?: string
           use_discord_avatar?: boolean | null

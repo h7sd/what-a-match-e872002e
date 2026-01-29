@@ -25,6 +25,7 @@ interface ProfileCardProps {
   borderEnabled?: boolean;
   borderColor?: string | null;
   borderWidth?: number;
+  transparentBadges?: boolean;
 }
 
 export function ProfileCard({ 
@@ -39,6 +40,7 @@ export function ProfileCard({
   borderEnabled = true,
   borderColor,
   borderWidth = 1,
+  transparentBadges = false,
 }: ProfileCardProps) {
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
@@ -163,34 +165,53 @@ export function ProfileCard({
                 <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
                   {badges.map((badge) => {
                     const Icon = getBadgeIcon(badge.name);
-                    const badgeColor = badge.color || accentColor;
+                    const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
                     const customImage = getBadgeImage(badge.name);
+                    const shadowFilter = transparentBadges ? 'none' : `drop-shadow(0 0 4px ${badge.color || accentColor}50)`;
+                    const hoverShadow = transparentBadges ? 'none' : `drop-shadow(0 0 8px ${badge.color || accentColor})`;
 
                     return (
                       <Tooltip key={badge.id}>
                         <TooltipTrigger asChild>
                           <motion.div
-                            className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                            className={`w-6 h-6 flex items-center justify-center cursor-pointer ${transparentBadges ? 'opacity-70' : ''}`}
                             whileHover={{ 
                               scale: 1.3,
-                              filter: `drop-shadow(0 0 8px ${badgeColor})`,
+                              filter: hoverShadow,
+                              opacity: 1,
                             }}
                             whileTap={{ scale: 0.95 }}
                             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                           >
                             {badge.icon_url ? (
-                              <img src={badge.icon_url} alt={badge.name} className="w-6 h-6 object-contain" loading="lazy" />
+                              <img 
+                                src={badge.icon_url} 
+                                alt={badge.name} 
+                                className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`} 
+                                loading="lazy" 
+                              />
                             ) : customImage ? (
-                              <img src={customImage} alt={badge.name} className="w-6 h-6 object-contain" loading="lazy" />
+                              <img 
+                                src={customImage} 
+                                alt={badge.name} 
+                                className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`} 
+                                loading="lazy" 
+                              />
                             ) : (
-                              <Icon className="w-6 h-6 transition-all duration-200" style={{ color: badgeColor, filter: `drop-shadow(0 0 4px ${badgeColor}50)` }} />
+                              <Icon 
+                                className="w-6 h-6 transition-all duration-200" 
+                                style={{ 
+                                  color: badgeColor, 
+                                  filter: shadowFilter,
+                                }} 
+                              />
                             )}
                           </motion.div>
                         </TooltipTrigger>
                         <TooltipContent 
                           side="top" 
                           className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl"
-                          style={{ boxShadow: `0 4px 20px ${badgeColor}40` }}
+                          style={{ boxShadow: transparentBadges ? undefined : `0 4px 20px ${badge.color || accentColor}40` }}
                         >
                           {badge.name}
                         </TooltipContent>
@@ -378,17 +399,20 @@ export function ProfileCard({
               <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
                 {badges.map((badge) => {
                   const Icon = getBadgeIcon(badge.name);
-                  const badgeColor = badge.color || accentColor;
+                  const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
                   const customImage = getBadgeImage(badge.name);
+                  const shadowFilter = transparentBadges ? 'none' : `drop-shadow(0 0 4px ${badge.color || accentColor}50)`;
+                  const hoverShadow = transparentBadges ? 'none' : `drop-shadow(0 0 8px ${badge.color || accentColor})`;
 
                   return (
                     <Tooltip key={badge.id}>
                       <TooltipTrigger asChild>
                         <motion.div
-                          className="w-6 h-6 flex items-center justify-center cursor-pointer"
+                          className={`w-6 h-6 flex items-center justify-center cursor-pointer ${transparentBadges ? 'opacity-70' : ''}`}
                           whileHover={{ 
                             scale: 1.3,
-                            filter: `drop-shadow(0 0 8px ${badgeColor})`,
+                            filter: hoverShadow,
+                            opacity: 1,
                           }}
                           whileTap={{ scale: 0.95 }}
                           transition={{ type: 'spring', stiffness: 400, damping: 17 }}
@@ -397,14 +421,14 @@ export function ProfileCard({
                             <img
                               src={badge.icon_url}
                               alt={badge.name}
-                              className="w-6 h-6 object-contain"
+                              className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`}
                               loading="lazy"
                             />
                           ) : customImage ? (
                             <img
                               src={customImage}
                               alt={badge.name}
-                              className="w-6 h-6 object-contain"
+                              className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`}
                               loading="lazy"
                             />
                           ) : (
@@ -412,7 +436,7 @@ export function ProfileCard({
                               className="w-6 h-6 transition-all duration-200" 
                               style={{ 
                                 color: badgeColor,
-                                filter: `drop-shadow(0 0 4px ${badgeColor}50)`,
+                                filter: shadowFilter,
                               }} 
                             />
                           )}
@@ -422,7 +446,7 @@ export function ProfileCard({
                         side="top" 
                         className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl"
                         style={{
-                          boxShadow: `0 4px 20px ${badgeColor}40`,
+                          boxShadow: transparentBadges ? undefined : `0 4px 20px ${badge.color || accentColor}40`,
                         }}
                       >
                         {badge.name}
