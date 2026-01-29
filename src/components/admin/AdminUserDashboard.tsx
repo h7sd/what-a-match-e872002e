@@ -438,12 +438,13 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
   const previewContent = (
     <div className="h-full flex flex-col" onClick={stopPropagation} onMouseDown={stopPropagation}>
       {/* Preview Header */}
-      <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+      {/* Add right padding so the Sheet close (X) button doesn't overlap these controls */}
+      <div className="flex items-center justify-between p-3 pr-14 border-b bg-muted/30">
         <div className="flex items-center gap-2">
           <Eye className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">Live Preview</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant={previewMode === 'desktop' ? 'default' : 'ghost'}
             size="sm"
