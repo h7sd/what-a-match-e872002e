@@ -23,6 +23,7 @@ export interface UserBadge {
   badge_id: string;
   claimed_at: string;
   is_enabled: boolean;
+  is_locked?: boolean;
   badge?: GlobalBadge;
 }
 
@@ -100,7 +101,7 @@ export function useProfileBadges(profileId: string) {
       if (profileError) throw profileError;
       if (!profile) return [];
 
-      // Then get the user's enabled badges only
+      // Then get the user's enabled badges only (exclude locked ones)
       const { data, error } = await supabase
         .from('user_badges')
         .select(`
@@ -108,7 +109,8 @@ export function useProfileBadges(profileId: string) {
           badge:global_badges(*)
         `)
         .eq('user_id', profile.user_id)
-        .eq('is_enabled', true);
+        .eq('is_enabled', true)
+        .or('is_locked.is.null,is_locked.eq.false');
       
       if (error) throw error;
       return (data as (UserBadge & { badge: GlobalBadge })[]).map(ub => ub.badge);

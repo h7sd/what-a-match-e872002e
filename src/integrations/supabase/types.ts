@@ -517,6 +517,7 @@ export type Database = {
           claimed_at: string
           id: string
           is_enabled: boolean | null
+          is_locked: boolean | null
           user_id: string
         }
         Insert: {
@@ -524,6 +525,7 @@ export type Database = {
           claimed_at?: string
           id?: string
           is_enabled?: boolean | null
+          is_locked?: boolean | null
           user_id: string
         }
         Update: {
@@ -531,6 +533,7 @@ export type Database = {
           claimed_at?: string
           id?: string
           is_enabled?: boolean | null
+          is_locked?: boolean | null
           user_id?: string
         }
         Relationships: [

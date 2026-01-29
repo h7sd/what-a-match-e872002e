@@ -16,7 +16,10 @@ import {
   Check,
   AlertCircle,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Lock,
+  Unlock,
+  Ban
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -60,6 +63,7 @@ interface UserBadgeWithGlobal {
   id: string;
   badge_id: string;
   is_enabled: boolean;
+  is_locked: boolean;
   claimed_at: string;
   badge: {
     id: string;
@@ -90,6 +94,7 @@ export function AdminAccountLookup() {
   const [socialLinks, setSocialLinks] = useState<any[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [updatingBadgeId, setUpdatingBadgeId] = useState<string | null>(null);
+  const [lockingBadgeId, setLockingBadgeId] = useState<string | null>(null);
 
   // Live search with debounce
   useEffect(() => {
@@ -146,6 +151,7 @@ export function AdminAccountLookup() {
           id,
           badge_id,
           is_enabled,
+          is_locked,
           claimed_at,
           badge:global_badges(id, name, color, icon_url, rarity, is_limited)
         `)
@@ -207,6 +213,52 @@ export function AdminAccountLookup() {
     }
   };
 
+  const toggleBadgeLocked = async (userBadgeId: string, currentLocked: boolean) => {
+    if (!selectedUser) return;
+    
+    setLockingBadgeId(userBadgeId);
+    try {
+      // When locking, also disable the badge
+      const updateData: { is_locked: boolean; is_enabled?: boolean } = { 
+        is_locked: !currentLocked 
+      };
+      
+      // If we're locking, also disable the badge
+      if (!currentLocked) {
+        updateData.is_enabled = false;
+      }
+
+      const { error } = await supabase
+        .from('user_badges')
+        .update(updateData)
+        .eq('id', userBadgeId);
+
+      if (error) throw error;
+
+      // Update local state
+      setUserBadges(prev => 
+        prev.map(b => b.id === userBadgeId 
+          ? { ...b, is_locked: !currentLocked, is_enabled: currentLocked ? b.is_enabled : false } 
+          : b
+        )
+      );
+
+      queryClient.invalidateQueries({ queryKey: ['userBadges'] });
+      queryClient.invalidateQueries({ queryKey: ['profileBadges'] });
+      
+      toast({ 
+        title: currentLocked ? 'Badge unlocked' : 'Badge locked', 
+        description: currentLocked 
+          ? 'User can now enable this badge' 
+          : 'User cannot use this badge anymore'
+      });
+    } catch (error: any) {
+      toast({ title: error.message || 'Error updating badge lock', variant: 'destructive' });
+    } finally {
+      setLockingBadgeId(null);
+    }
+  };
+
   const clearSelection = () => {
     setSelectedUser(null);
     setUserBadges([]);
@@ -221,8 +273,9 @@ export function AdminAccountLookup() {
     }
   };
 
-  const enabledBadges = userBadges.filter(b => b.is_enabled);
-  const disabledBadges = userBadges.filter(b => !b.is_enabled);
+  const lockedBadges = userBadges.filter(b => b.is_locked);
+  const enabledBadges = userBadges.filter(b => b.is_enabled && !b.is_locked);
+  const disabledBadges = userBadges.filter(b => !b.is_enabled && !b.is_locked);
 
   return (
     <div className="space-y-4">
@@ -347,6 +400,64 @@ export function AdminAccountLookup() {
                   </div>
                 ) : (
                   <>
+                    {/* Locked Badges (Admin blocked) */}
+                    {lockedBadges.length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-medium text-destructive flex items-center gap-1 mb-2">
+                          <Ban className="w-3 h-3" />
+                          Locked Badges ({lockedBadges.length})
+                        </h5>
+                        <div className="space-y-2">
+                          {lockedBadges.map((ub) => {
+                            const Icon = getBadgeIcon(ub.badge.name);
+                            return (
+                              <div
+                                key={ub.id}
+                                className="flex items-center justify-between p-2 rounded-lg border border-destructive/30 bg-destructive/5"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-destructive/10"
+                                  >
+                                    {ub.badge.icon_url ? (
+                                      <img src={ub.badge.icon_url} alt="" className="w-5 h-5 opacity-40 grayscale" />
+                                    ) : (
+                                      <Icon className="w-4 h-4 text-destructive opacity-60" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-1">
+                                      <p className="text-sm font-medium">{ub.badge.name}</p>
+                                      <Lock className="w-3 h-3 text-destructive" />
+                                    </div>
+                                    <p className="text-xs text-destructive/70">Locked by admin - user cannot use</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => toggleBadgeLocked(ub.id, true)}
+                                    disabled={lockingBadgeId === ub.id}
+                                    className="text-xs"
+                                  >
+                                    {lockingBadgeId === ub.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Unlock className="w-3 h-3 mr-1" />
+                                        Unlock
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Enabled Badges */}
                     {enabledBadges.length > 0 && (
                       <div>
@@ -378,7 +489,23 @@ export function AdminAccountLookup() {
                                     <p className="text-xs text-muted-foreground">{ub.badge.rarity}</p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleBadgeLocked(ub.id, false)}
+                                    disabled={lockingBadgeId === ub.id}
+                                    className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    {lockingBadgeId === ub.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Lock className="w-3 h-3 mr-1" />
+                                        Lock
+                                      </>
+                                    )}
+                                  </Button>
                                   {updatingBadgeId === ub.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
@@ -395,7 +522,7 @@ export function AdminAccountLookup() {
                       </div>
                     )}
 
-                    {/* Disabled Badges */}
+                    {/* Disabled Badges (user hidden, but not locked) */}
                     {disabledBadges.length > 0 && (
                       <div>
                         <h5 className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-2">
@@ -423,10 +550,26 @@ export function AdminAccountLookup() {
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium">{ub.badge.name}</p>
-                                    <p className="text-xs text-muted-foreground">{ub.badge.rarity}</p>
+                                    <p className="text-xs text-muted-foreground">{ub.badge.rarity} • Hidden by user</p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleBadgeLocked(ub.id, false)}
+                                    disabled={lockingBadgeId === ub.id}
+                                    className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    {lockingBadgeId === ub.id ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Lock className="w-3 h-3 mr-1" />
+                                        Lock
+                                      </>
+                                    )}
+                                  </Button>
                                   {updatingBadgeId === ub.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
