@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   X, 
@@ -395,46 +395,47 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
       style: 'card',
     }));
 
-  // Start Screen Preview Component
-  const StartScreenPreview = () => {
-    if (!formData.start_screen_enabled) return null;
-    
-    return (
-      <div className="border-t border-border/50 p-3 bg-muted/20">
-        <div className="flex items-center gap-2 mb-2">
-          <Settings className="w-3 h-3 text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground">Start Screen Preview</span>
-        </div>
-        <div 
-          className="rounded-lg overflow-hidden border border-border/30"
-          style={{ 
-            backgroundColor: formData.start_screen_bg_color,
-            height: '80px'
-          }}
-        >
-          <div className="h-full flex items-center justify-center">
-            <p 
-              className="text-sm"
-              style={{ 
-                fontFamily: formData.start_screen_font,
-                color: formData.start_screen_color 
-              }}
-            >
-              {formData.start_screen_text || 'Click anywhere to enter'}
-            </p>
-          </div>
+  // Start Screen Preview - as JSX variable to prevent focus loss
+  const startScreenPreview = formData.start_screen_enabled ? (
+    <div className="border-t border-border/50 p-3 bg-muted/20">
+      <div className="flex items-center gap-2 mb-2">
+        <Settings className="w-3 h-3 text-muted-foreground" />
+        <span className="text-xs font-medium text-muted-foreground">Start Screen Preview</span>
+      </div>
+      <div 
+        className="rounded-lg overflow-hidden border border-border/30"
+        style={{ 
+          backgroundColor: formData.start_screen_bg_color,
+          height: '80px'
+        }}
+      >
+        <div className="h-full flex items-center justify-center">
+          <p 
+            className="text-sm"
+            style={{ 
+              fontFamily: formData.start_screen_font,
+              color: formData.start_screen_color 
+            }}
+          >
+            {formData.start_screen_text || 'Click anywhere to enter'}
+          </p>
         </div>
       </div>
-    );
-  };
+    </div>
+  ) : null;
 
-  // Stop event propagation for interactive elements
-  const stopPropagation = (e: React.MouseEvent | React.FocusEvent | React.KeyboardEvent) => {
+  // Stop event propagation for interactive elements - memoized to prevent re-renders
+  const stopPropagation = useCallback((e: React.MouseEvent | React.FocusEvent | React.KeyboardEvent) => {
     e.stopPropagation();
-  };
+  }, []);
 
-  // Preview Component
-  const PreviewContent = () => (
+  // Memoized update function to prevent input focus loss
+  const handleInputChange = useCallback((field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    updateField(field, e.target.value);
+  }, []);
+
+  // Preview Content - as JSX variable (not a function component) to prevent focus loss
+  const previewContent = (
     <div className="h-full flex flex-col" onClick={stopPropagation} onMouseDown={stopPropagation}>
       {/* Preview Header */}
       <div className="flex items-center justify-between p-3 border-b bg-muted/30">
@@ -589,12 +590,12 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
       </div>
 
       {/* Start Screen Preview below main preview */}
-      <StartScreenPreview />
+      {startScreenPreview}
     </div>
   );
 
-  // Editor Content
-  const EditorContent = () => (
+  // Editor Content - as JSX variable (not a function component) to prevent focus loss
+  const editorContent = (
     <div className="flex flex-col h-full" onClick={stopPropagation} onMouseDown={stopPropagation}>
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between gap-3 flex-shrink-0">
@@ -1206,14 +1207,14 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="h-[350px]">
-                  <PreviewContent />
+                  {previewContent}
                 </div>
               </CollapsibleContent>
             </Collapsible>
 
             {/* Editor */}
             <div className="flex-1 overflow-hidden">
-              <EditorContent />
+              {editorContent}
             </div>
           </div>
         </DrawerContent>
@@ -1236,12 +1237,12 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
         <div className="flex h-full">
           {/* Left: Editor */}
           <div className="w-1/2 border-r overflow-hidden">
-            <EditorContent />
+            {editorContent}
           </div>
           
           {/* Right: Preview */}
           <div className="w-1/2 overflow-hidden">
-            <PreviewContent />
+            {previewContent}
           </div>
         </div>
       </SheetContent>
