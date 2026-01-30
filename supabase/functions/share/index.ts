@@ -6,6 +6,7 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const username = url.searchParams.get("u") || url.searchParams.get("username");
+  const src = url.searchParams.get("src");
 
   if (!username) {
     return new Response("Username required. Use ?u=username", { status: 400 });
@@ -32,6 +33,11 @@ Deno.serve(async (req) => {
   const ogIcon = profile.og_icon_url || "https://storage.googleapis.com/gpt-engineer-file-uploads/N7OIoQRjNPSXaLFdJjQDPkdaXHs1/uploads/1769473434323-UserVault%204%20(1).png";
   const profileUrl = `https://uservault.cc/${profile.username}`;
 
+  // Discord can de-dupe/cache based on og:url. When users paste cache-busters like ?v=123
+  // we need og:url to reflect the original request URL. The Cloudflare Worker should pass
+  // the original URL as `src`.
+  const resolvedOgUrl = resolveOgUrl(src) || profileUrl;
+
   // IMPORTANT:
   // Do NOT auto-redirect (meta refresh / JS). Social crawlers (Discord) may follow redirects
   // and then pick up the *destination* page's OG tags (our SPA index.html), which breaks embeds.
@@ -50,18 +56,18 @@ Deno.serve(async (req) => {
   
   <!-- Open Graph / Discord -->
   <meta property="og:type" content="profile">
-  <meta property="og:url" content="${profileUrl}">
+  <meta property="og:url" content="${escapeHtml(resolvedOgUrl)}">
   <meta property="og:site_name" content="UserVault">
   <meta property="og:title" content="${escapeHtml(ogTitle)}">
   <meta property="og:description" content="${escapeHtml(ogDescription)}">
   <meta property="og:image" content="${ogImage}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <link rel="canonical" href="${profileUrl}">
+  <link rel="canonical" href="${escapeHtml(resolvedOgUrl)}">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="${profileUrl}">
+  <meta name="twitter:url" content="${escapeHtml(resolvedOgUrl)}">
   <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
   <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
   <meta name="twitter:image" content="${ogImage}">
@@ -119,6 +125,19 @@ Deno.serve(async (req) => {
     },
   });
 });
+
+function resolveOgUrl(src: string | null): string | null {
+  if (!src) return null;
+  try {
+    const u = new URL(src);
+    // Allow only our own domains to avoid abuse.
+    const allowedHosts = new Set(["uservault.cc", "www.uservault.cc"]);
+    if (!allowedHosts.has(u.host)) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
 
 function escapeHtml(text: string): string {
   return text
