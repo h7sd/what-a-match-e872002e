@@ -113,13 +113,15 @@ export function ProfileCard({
               </div>
             )}
 
-            {/* Display Name with glitch effect and UID tooltip */}
+            {/* Display Name with glitch effect and UID tooltip - tap-friendly */}
             {showDisplayName && (
-              <TooltipProvider delayDuration={100}>
+              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <h1 
-                      className="text-2xl font-bold mb-1 cursor-default hover:opacity-80 transition-opacity"
+                    <button 
+                      type="button"
+                      aria-label={`User ID: ${(profile as any).uid_number || '1'}`}
+                      className="text-2xl font-bold mb-1 cursor-pointer hover:opacity-80 transition-opacity touch-manipulation min-h-[44px] flex items-center justify-center bg-transparent border-none"
                       style={{ 
                         fontFamily: (profile as any).name_font || 'Inter',
                         color: 'white',
@@ -139,13 +141,13 @@ export function ProfileCard({
                           glitchIntensity={0.03}
                         />
                       )}
-                    </h1>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent 
                     side="top" 
                     className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
                   >
-                    UID: {(profile as any).uid_number || '1'}
+                    UID: #{(profile as any).uid_number || '1'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -159,10 +161,10 @@ export function ProfileCard({
               </p>
             )}
 
-            {/* Badges */}
+            {/* Badges - with proper mobile touch targets (min 44x44px) */}
             {showBadges && badges.length > 0 && (
               <TooltipProvider delayDuration={100}>
-                <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
+                <div className="flex items-center justify-center gap-1 mb-4 flex-wrap max-w-[320px] mx-auto">
                   {badges.map((badge) => {
                     const Icon = getBadgeIcon(badge.name);
                     const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
@@ -173,10 +175,12 @@ export function ProfileCard({
                     return (
                       <Tooltip key={badge.id}>
                         <TooltipTrigger asChild>
-                          <motion.div
-                            className={`w-6 h-6 flex items-center justify-center cursor-pointer ${transparentBadges ? 'opacity-70' : ''}`}
+                          <motion.button
+                            type="button"
+                            aria-label={`Badge: ${badge.name}`}
+                            className={`min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center cursor-pointer rounded-lg touch-manipulation ${transparentBadges ? 'opacity-70' : ''}`}
                             whileHover={{ 
-                              scale: 1.3,
+                              scale: 1.15,
                               filter: hoverShadow,
                               opacity: 1,
                             }}
@@ -206,7 +210,7 @@ export function ProfileCard({
                                 }} 
                               />
                             )}
-                          </motion.div>
+                          </motion.button>
                         </TooltipTrigger>
                         <TooltipContent 
                           side="top" 
@@ -347,13 +351,15 @@ export function ProfileCard({
             </div>
           )}
 
-          {/* Display Name with glitch effect and UID tooltip */}
+          {/* Display Name with glitch effect and UID tooltip - tap-friendly */}
           {showDisplayName && (
-            <TooltipProvider delayDuration={100}>
+            <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <h1 
-                    className="text-2xl font-bold mb-1 cursor-default hover:opacity-80 transition-opacity"
+                  <button 
+                    type="button"
+                    aria-label={`User ID: ${(profile as any).uid_number || '1'}`}
+                    className="text-2xl font-bold mb-1 cursor-pointer hover:opacity-80 transition-opacity touch-manipulation min-h-[44px] flex items-center justify-center bg-transparent border-none"
                     style={{ 
                       fontFamily: (profile as any).name_font || 'Inter',
                       color: 'white',
@@ -373,13 +379,13 @@ export function ProfileCard({
                         glitchIntensity={0.03}
                       />
                     )}
-                  </h1>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent 
                   side="top" 
                   className="bg-black/90 backdrop-blur-md border border-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
                 >
-                  UID: {(profile as any).uid_number || '1'}
+                  UID: #{(profile as any).uid_number || '1'}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -393,10 +399,10 @@ export function ProfileCard({
             </p>
           )}
 
-          {/* Badges - Icon only with hover tooltip like feds.lol */}
+          {/* Badges - with proper mobile touch targets (min 44x44px) */}
           {showBadges && badges.length > 0 && (
             <TooltipProvider delayDuration={100}>
-              <div className="flex items-center justify-center gap-2 mb-4 flex-wrap max-w-[280px] mx-auto">
+              <div className="flex items-center justify-center gap-1 mb-4 flex-wrap max-w-[320px] mx-auto">
                 {badges.map((badge) => {
                   const Icon = getBadgeIcon(badge.name);
                   const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
@@ -407,10 +413,12 @@ export function ProfileCard({
                   return (
                     <Tooltip key={badge.id}>
                       <TooltipTrigger asChild>
-                        <motion.div
-                          className={`w-6 h-6 flex items-center justify-center cursor-pointer ${transparentBadges ? 'opacity-70' : ''}`}
+                        <motion.button
+                          type="button"
+                          aria-label={`Badge: ${badge.name}`}
+                          className={`min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center cursor-pointer rounded-lg touch-manipulation ${transparentBadges ? 'opacity-70' : ''}`}
                           whileHover={{ 
-                            scale: 1.3,
+                            scale: 1.15,
                             filter: hoverShadow,
                             opacity: 1,
                           }}
@@ -440,7 +448,7 @@ export function ProfileCard({
                               }} 
                             />
                           )}
-                        </motion.div>
+                        </motion.button>
                       </TooltipTrigger>
                       <TooltipContent 
                         side="top" 
