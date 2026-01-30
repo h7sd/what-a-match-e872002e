@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,10 +11,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Share2, Image, Type, FileText, Upload, X } from 'lucide-react';
+import { Image, Type, FileText, Upload, X, Globe, Monitor } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 
 // Animation types for OG title
 type OGTitleAnimation = 'none' | 'typewriter' | 'shuffle' | 'decrypted';
@@ -60,58 +59,96 @@ export function DiscordEmbedSettings({
   const [uploading, setUploading] = useState<'image' | 'icon' | null>(null);
   const [animatedTitle, setAnimatedTitle] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [tabAnimatedTitle, setTabAnimatedTitle] = useState('');
+  const animationRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Typewriter animation effect for preview
+  const displayTitle = ogTitle || `@${username} | uservault.cc`;
+
+  // Typewriter animation effect for Discord preview
   useEffect(() => {
-    if (ogTitleAnimation === 'typewriter' && ogTitle) {
+    if (animationRef.current) {
+      clearInterval(animationRef.current);
+    }
+
+    const titleToAnimate = displayTitle;
+
+    if (ogTitleAnimation === 'typewriter' && titleToAnimate) {
       setAnimatedTitle('');
       let i = 0;
-      const interval = setInterval(() => {
-        if (i < ogTitle.length) {
-          setAnimatedTitle(ogTitle.slice(0, i + 1));
+      animationRef.current = setInterval(() => {
+        if (i < titleToAnimate.length) {
+          setAnimatedTitle(titleToAnimate.slice(0, i + 1));
           i++;
         } else {
-          clearInterval(interval);
+          if (animationRef.current) clearInterval(animationRef.current);
         }
       }, 100);
-      return () => clearInterval(interval);
-    } else if (ogTitleAnimation === 'shuffle' && ogTitle) {
+    } else if (ogTitleAnimation === 'shuffle' && titleToAnimate) {
       let iterations = 0;
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      const interval = setInterval(() => {
+      animationRef.current = setInterval(() => {
         setAnimatedTitle(
-          ogTitle
+          titleToAnimate
             .split('')
             .map((char, index) => {
-              if (index < iterations) return ogTitle[index];
+              if (index < iterations) return titleToAnimate[index];
+              if (char === ' ') return ' ';
               return chars[Math.floor(Math.random() * chars.length)];
             })
             .join('')
         );
         iterations += 0.5;
-        if (iterations >= ogTitle.length) clearInterval(interval);
+        if (iterations >= titleToAnimate.length && animationRef.current) {
+          clearInterval(animationRef.current);
+        }
       }, 50);
-      return () => clearInterval(interval);
-    } else if (ogTitleAnimation === 'decrypted' && ogTitle) {
+    } else if (ogTitleAnimation === 'decrypted' && titleToAnimate) {
       let revealed = 0;
-      const interval = setInterval(() => {
-        if (revealed < ogTitle.length) {
+      animationRef.current = setInterval(() => {
+        if (revealed < titleToAnimate.length) {
           setAnimatedTitle(
-            ogTitle
+            titleToAnimate
               .split('')
-              .map((char, i) => (i <= revealed ? char : '█'))
+              .map((char, i) => (i <= revealed ? char : char === ' ' ? ' ' : '█'))
               .join('')
           );
           revealed++;
         } else {
-          clearInterval(interval);
+          if (animationRef.current) clearInterval(animationRef.current);
         }
       }, 80);
+    } else {
+      setAnimatedTitle(titleToAnimate);
+    }
+
+    return () => {
+      if (animationRef.current) clearInterval(animationRef.current);
+    };
+  }, [displayTitle, ogTitleAnimation]);
+
+  // Browser tab animation effect
+  useEffect(() => {
+    if (ogTitleAnimation === 'typewriter' && displayTitle) {
+      setTabAnimatedTitle('');
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < displayTitle.length) {
+          setTabAnimatedTitle(displayTitle.slice(0, i + 1));
+          i++;
+        } else {
+          clearInterval(interval);
+          // Loop the animation
+          setTimeout(() => {
+            setTabAnimatedTitle('');
+            i = 0;
+          }, 2000);
+        }
+      }, 150);
       return () => clearInterval(interval);
     } else {
-      setAnimatedTitle(ogTitle);
+      setTabAnimatedTitle(displayTitle);
     }
-  }, [ogTitle, ogTitleAnimation]);
+  }, [displayTitle, ogTitleAnimation]);
 
   // Cursor blink effect
   useEffect(() => {
@@ -120,6 +157,8 @@ export function DiscordEmbedSettings({
         setCursorVisible((v) => !v);
       }, 530);
       return () => clearInterval(interval);
+    } else {
+      setCursorVisible(false);
     }
   }, [ogTitleAnimation]);
 
@@ -154,11 +193,10 @@ export function DiscordEmbedSettings({
     }
   };
 
-  const displayTitle = ogTitle || `@${username} | uservault.cc`;
   const displayDescription = ogDescription || `Check out ${username}'s profile on UserVault`;
-  const previewTitle = ogTitleAnimation === 'typewriter' 
-    ? `${animatedTitle}${cursorVisible ? '|' : ' '}`
-    : animatedTitle || displayTitle;
+  const previewTitle = ogTitleAnimation !== 'none' 
+    ? `${animatedTitle}${ogTitleAnimation === 'typewriter' && cursorVisible ? '|' : ''}`
+    : displayTitle;
 
   return (
     <div className="space-y-6">
@@ -168,9 +206,9 @@ export function DiscordEmbedSettings({
             <SiDiscord className="w-5 h-5 text-[#5865F2]" />
           </div>
           <div>
-            <Label className="text-foreground font-semibold">Discord Embed</Label>
+            <Label className="text-foreground font-semibold">Discord & Browser Embed</Label>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Customize how your profile appears when shared on Discord
+              Customize how your profile appears on Discord & browser tabs
             </p>
           </div>
         </div>
@@ -183,13 +221,48 @@ export function DiscordEmbedSettings({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="space-y-5"
+            className="space-y-6"
           >
-            {/* Live Preview - Discord Style */}
+            {/* Browser Tab Preview */}
+            <div className="rounded-lg bg-[#202124] p-3 space-y-2">
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <Monitor className="w-3 h-3" />
+                Browser Tab Preview
+              </p>
+              <div className="flex items-center">
+                <div className="bg-[#35363a] rounded-t-lg px-3 py-2 flex items-center gap-2 max-w-[200px] border-b-2 border-primary">
+                  {ogIconUrl ? (
+                    <img 
+                      src={ogIconUrl} 
+                      alt="Tab icon" 
+                      className="w-4 h-4 rounded-sm object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-4 h-4 rounded-sm bg-primary/50 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[6px] font-bold text-white">UV</span>
+                    </div>
+                  )}
+                  <span className="text-xs text-white truncate font-medium">
+                    {ogTitleAnimation === 'typewriter' 
+                      ? `${tabAnimatedTitle}${cursorVisible ? '|' : ''}`
+                      : displayTitle}
+                  </span>
+                  <X className="w-3 h-3 text-gray-500 ml-auto flex-shrink-0" />
+                </div>
+                <div className="bg-[#292a2d] rounded-t-lg px-3 py-2 ml-1 flex items-center gap-2 opacity-50">
+                  <div className="w-4 h-4 rounded-sm bg-gray-600" />
+                  <span className="text-xs text-gray-400 truncate">New Tab</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Discord Embed Preview */}
             <div className="rounded-lg bg-[#2b2d31] p-4 space-y-2">
-              <p className="text-xs text-[#949ba4] mb-2">Preview</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <SiDiscord className="w-3 h-3" />
+                Discord Embed Preview
+              </p>
               <div className="flex items-start gap-3">
-                {/* Discord Embed Card */}
                 <div className="flex-1 border-l-4 border-[#5865F2] bg-[#2f3136] rounded-r-lg p-3 max-w-md">
                   {/* Site name with icon */}
                   <div className="flex items-center gap-2 mb-1">
@@ -231,153 +304,159 @@ export function DiscordEmbedSettings({
               </div>
             </div>
 
-            {/* Icon Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Image className="w-4 h-4" />
-                Site Icon (appears next to site name)
-              </Label>
-              <div className="flex items-center gap-3">
-                {ogIconUrl ? (
-                  <div className="relative">
-                    <img 
-                      src={ogIconUrl} 
-                      alt="Icon" 
-                      className="w-12 h-12 rounded-lg object-cover border border-border"
-                    />
-                    <button
-                      onClick={() => onOgIconUrlChange('')}
-                      className="absolute -top-2 -right-2 w-5 h-5 bg-destructive rounded-full flex items-center justify-center"
-                    >
-                      <X className="w-3 h-3 text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="w-12 h-12 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center cursor-pointer transition-colors">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'icon')}
-                      disabled={uploading === 'icon'}
-                    />
-                    {uploading === 'icon' ? (
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </label>
-                )}
-                <Input
-                  value={ogIconUrl}
-                  onChange={(e) => onOgIconUrlChange(e.target.value)}
-                  placeholder="https://... or upload"
-                  className="flex-1 bg-card border-border"
-                />
-              </div>
-            </div>
-
-            {/* Title */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Type className="w-4 h-4" />
-                Title
-              </Label>
-              <Input
-                value={ogTitle}
-                onChange={(e) => onOgTitleChange(e.target.value)}
-                placeholder={`@${username} | uservault.cc`}
-                className="bg-card border-border"
-              />
-            </div>
-
-            {/* Title Animation */}
-            <div className="space-y-2">
-              <Label>Title Animation (Preview Only)</Label>
-              <Select value={ogTitleAnimation} onValueChange={onOgTitleAnimationChange}>
-                <SelectTrigger className="bg-card border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {OG_TITLE_ANIMATIONS.map((anim) => (
-                    <SelectItem key={anim.value} value={anim.value}>
-                      <div className="flex flex-col">
-                        <span>{anim.label}</span>
-                        <span className="text-xs text-muted-foreground">{anim.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Note: Discord doesn't support animated titles, but the animation shows here as a preview effect
-              </p>
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Description
-              </Label>
-              <Textarea
-                value={ogDescription}
-                onChange={(e) => onOgDescriptionChange(e.target.value)}
-                placeholder={`Check out ${username}'s profile on UserVault`}
-                className="bg-card border-border resize-none"
-                rows={2}
-              />
-            </div>
-
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Image className="w-4 h-4" />
-                Embed Image
-              </Label>
-              <div className="space-y-3">
-                {ogImageUrl && (
-                  <div className="relative inline-block">
-                    <img 
-                      src={ogImageUrl} 
-                      alt="OG Image" 
-                      className="max-h-32 rounded-lg border border-border"
-                    />
-                    <button
-                      onClick={() => onOgImageUrlChange('')}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive rounded-full flex items-center justify-center"
-                    >
-                      <X className="w-4 h-4 text-white" />
-                    </button>
-                  </div>
-                )}
+            {/* Settings */}
+            <div className="grid gap-5">
+              {/* Icon Upload */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Globe className="w-4 h-4 text-primary" />
+                  Site Icon (Tab & Embed)
+                </Label>
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:border-primary/50 cursor-pointer transition-colors bg-card">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'image')}
-                      disabled={uploading === 'image'}
-                    />
-                    {uploading === 'image' ? (
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                    )}
-                    <span className="text-sm">Upload Image</span>
-                  </label>
-                  <span className="text-xs text-muted-foreground">or</span>
+                  {ogIconUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={ogIconUrl} 
+                        alt="Icon" 
+                        className="w-12 h-12 rounded-lg object-cover border border-border"
+                      />
+                      <button
+                        onClick={() => onOgIconUrlChange('')}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-destructive rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-12 h-12 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center cursor-pointer transition-colors bg-card/50">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'icon')}
+                        disabled={uploading === 'icon'}
+                      />
+                      {uploading === 'icon' ? (
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </label>
+                  )}
                   <Input
-                    value={ogImageUrl}
-                    onChange={(e) => onOgImageUrlChange(e.target.value)}
-                    placeholder="https://..."
+                    value={ogIconUrl}
+                    onChange={(e) => onOgIconUrlChange(e.target.value)}
+                    placeholder="https://... or upload an icon"
                     className="flex-1 bg-card border-border"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Recommended size: 1200x630px for best display on Discord
+                  Recommended: 32x32px or 64x64px PNG/ICO
                 </p>
+              </div>
+
+              {/* Title */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Type className="w-4 h-4 text-primary" />
+                  Title
+                </Label>
+                <Input
+                  value={ogTitle}
+                  onChange={(e) => onOgTitleChange(e.target.value)}
+                  placeholder={`@${username} | uservault.cc`}
+                  className="bg-card border-border"
+                />
+              </div>
+
+              {/* Title Animation */}
+              <div className="space-y-2">
+                <Label className="text-sm">Title Animation</Label>
+                <Select value={ogTitleAnimation} onValueChange={onOgTitleAnimationChange}>
+                  <SelectTrigger className="bg-card border-border">
+                    <SelectValue placeholder="Select animation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OG_TITLE_ANIMATIONS.map((anim) => (
+                      <SelectItem key={anim.value} value={anim.value}>
+                        <div className="flex flex-col">
+                          <span>{anim.label}</span>
+                          <span className="text-xs text-muted-foreground">{anim.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Animation shows in preview and on the browser tab when viewing your profile
+                </p>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm">
+                  <FileText className="w-4 h-4 text-primary" />
+                  Description
+                </Label>
+                <Textarea
+                  value={ogDescription}
+                  onChange={(e) => onOgDescriptionChange(e.target.value)}
+                  placeholder={`Check out ${username}'s profile on UserVault`}
+                  className="bg-card border-border resize-none"
+                  rows={2}
+                />
+              </div>
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Image className="w-4 h-4 text-primary" />
+                  Embed Image (Large Preview)
+                </Label>
+                <div className="space-y-3">
+                  {ogImageUrl && (
+                    <div className="relative inline-block">
+                      <img 
+                        src={ogImageUrl} 
+                        alt="OG Image" 
+                        className="max-h-32 rounded-lg border border-border"
+                      />
+                      <button
+                        onClick={() => onOgImageUrlChange('')}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-destructive rounded-full flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                      >
+                        <X className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:border-primary/50 cursor-pointer transition-colors bg-card">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'image')}
+                        disabled={uploading === 'image'}
+                      />
+                      {uploading === 'image' ? (
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      <span className="text-sm">Upload Image</span>
+                    </label>
+                    <span className="text-xs text-muted-foreground">or</span>
+                    <Input
+                      value={ogImageUrl}
+                      onChange={(e) => onOgImageUrlChange(e.target.value)}
+                      placeholder="https://..."
+                      className="flex-1 bg-card border-border"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Recommended: 1200x630px for best display on Discord & Twitter
+                  </p>
+                </div>
               </div>
             </div>
           </motion.div>

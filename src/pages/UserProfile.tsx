@@ -14,6 +14,134 @@ import { ControlsBar } from '@/components/profile/ControlsBar';
 import { SimpleVolumeBar } from '@/components/profile/SimpleVolumeBar';
 import { GlitchOverlay } from '@/components/profile/GlitchOverlay';
 
+// Custom hook for animated document title
+function useAnimatedDocumentTitle(
+  title: string, 
+  animation: string,
+  iconUrl?: string | null
+) {
+  const [animatedTitle, setAnimatedTitle] = useState(title);
+  const frameRef = useRef<number | null>(null);
+  const indexRef = useRef(0);
+
+  // Set favicon
+  useEffect(() => {
+    if (iconUrl) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = iconUrl;
+    }
+    return () => {
+      // Reset to default favicon on unmount
+      const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (link) {
+        link.href = 'https://storage.googleapis.com/gpt-engineer-file-uploads/N7OIoQRjNPSXaLFdJjQDPkdaXHs1/uploads/1769473434323-UserVault%204%20(1).png';
+      }
+    };
+  }, [iconUrl]);
+
+  // Animate title
+  useEffect(() => {
+    if (animation === 'typewriter' && title) {
+      indexRef.current = 0;
+      setAnimatedTitle('');
+      
+      const animate = () => {
+        if (indexRef.current <= title.length) {
+          const displayTitle = title.slice(0, indexRef.current) + (indexRef.current < title.length ? '|' : '');
+          setAnimatedTitle(displayTitle);
+          document.title = displayTitle;
+          indexRef.current++;
+          frameRef.current = window.setTimeout(animate, 150);
+        } else {
+          // Restart after delay
+          frameRef.current = window.setTimeout(() => {
+            indexRef.current = 0;
+            animate();
+          }, 3000);
+        }
+      };
+      animate();
+      
+      return () => {
+        if (frameRef.current) clearTimeout(frameRef.current);
+      };
+    } else if (animation === 'shuffle' && title) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let iterations = 0;
+      
+      const animate = () => {
+        const shuffled = title
+          .split('')
+          .map((char, idx) => {
+            if (idx < iterations) return title[idx];
+            if (char === ' ') return ' ';
+            return chars[Math.floor(Math.random() * chars.length)];
+          })
+          .join('');
+        setAnimatedTitle(shuffled);
+        document.title = shuffled;
+        iterations += 0.5;
+        
+        if (iterations < title.length) {
+          frameRef.current = window.setTimeout(animate, 50);
+        } else {
+          // Restart after delay
+          frameRef.current = window.setTimeout(() => {
+            iterations = 0;
+            animate();
+          }, 5000);
+        }
+      };
+      animate();
+      
+      return () => {
+        if (frameRef.current) clearTimeout(frameRef.current);
+      };
+    } else if (animation === 'decrypted' && title) {
+      let revealed = 0;
+      
+      const animate = () => {
+        const decrypted = title
+          .split('')
+          .map((char, i) => (i <= revealed ? char : char === ' ' ? ' ' : '█'))
+          .join('');
+        setAnimatedTitle(decrypted);
+        document.title = decrypted;
+        revealed++;
+        
+        if (revealed < title.length) {
+          frameRef.current = window.setTimeout(animate, 80);
+        } else {
+          // Restart after delay
+          frameRef.current = window.setTimeout(() => {
+            revealed = 0;
+            animate();
+          }, 5000);
+        }
+      };
+      animate();
+      
+      return () => {
+        if (frameRef.current) clearTimeout(frameRef.current);
+      };
+    } else {
+      setAnimatedTitle(title);
+      document.title = title;
+    }
+    
+    return () => {
+      if (frameRef.current) clearTimeout(frameRef.current);
+    };
+  }, [title, animation]);
+
+  return animatedTitle;
+}
+
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
@@ -42,6 +170,14 @@ export default function UserProfile() {
 
   // Get accent color from profile
   const accentColor = profile?.accent_color || '#8B5CF6';
+  
+  // Custom title and animation for browser tab
+  const ogTitle = (profile as any)?.og_title || (profile ? `@${profile.username} | uservault.cc` : 'UserVault');
+  const ogAnimation = (profile as any)?.og_title_animation || 'none';
+  const ogIconUrl = (profile as any)?.og_icon_url;
+  
+  // Apply animated document title
+  useAnimatedDocumentTitle(ogTitle, ogAnimation, ogIconUrl);
 
   // Record profile view
   useEffect(() => {
