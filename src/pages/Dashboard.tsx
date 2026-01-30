@@ -390,39 +390,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleUidChange = async (newUid: number) => {
-    if (isNaN(newUid) || newUid < 1) {
-      toast({ title: 'UID must be a positive number', variant: 'destructive' });
-      return;
-    }
-
-    // Check if UID is already taken
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .eq('uid_number', newUid)
-      .neq('user_id', user?.id || '')
-      .maybeSingle();
-
-    if (existingProfile) {
-      toast({ 
-        title: 'UID is already taken', 
-        description: `UID #${newUid} is assigned to @${existingProfile.username}`,
-        variant: 'destructive' 
-      });
-      throw new Error(`UID #${newUid} is already taken`);
-    }
-
-    try {
-      await updateProfile.mutateAsync({
-        uid_number: newUid,
-      } as any);
-      toast({ title: `UID updated to #${newUid}!` });
-    } catch (error: any) {
-      toast({ title: error.message || 'Error updating UID', variant: 'destructive' });
-      throw error;
-    }
-  };
 
   const handleSave = async () => {
     try {
@@ -1408,7 +1375,6 @@ export default function Dashboard() {
                 onUpdateUsername={handleUsernameChange}
                 onSaveDisplayName={handleDisplayNameSave}
                 onUpdateAlias={handleAliasChange}
-                onUpdateUid={handleUidChange}
               />
             )}
           </motion.div>
