@@ -380,7 +380,7 @@ serve(async (req) => {
         );
       }
 
-      // Send to Discord channel
+      // Send to Discord channel via webhook - bot will handle button interactions
       const discordWebhook = Deno.env.get("DISCORD_BADGE_REQUEST_WEBHOOK");
       if (discordWebhook) {
         await fetch(discordWebhook, {
@@ -391,38 +391,18 @@ serve(async (req) => {
               title: "🏷️ New Badge Request",
               color: parseInt(badgeColor.replace("#", ""), 16),
               fields: [
-                { name: "User", value: `@${profile?.username || "Unknown"} (UID: ${profile?.uid_number || "N/A"})`, inline: true },
-                { name: "Request ID", value: newRequest.id, inline: true },
-                { name: "Badge Name", value: badgeName, inline: false },
-                { name: "Description", value: badgeDescription || "No description", inline: false },
-                { name: "Color", value: badgeColor, inline: true },
-                { name: "Icon URL", value: badgeIconUrl || "No custom icon", inline: false },
+                { name: "👤 Username", value: `@${profile?.username || "Unknown"}`, inline: true },
+                { name: "🆔 UID", value: `#${profile?.uid_number || "N/A"}`, inline: true },
+                { name: "📧 Email", value: user.email || "N/A", inline: true },
+                { name: "🏷️ Badge Name", value: badgeName, inline: false },
+                { name: "📝 Description", value: badgeDescription || "No description", inline: false },
+                { name: "🎨 Color", value: badgeColor, inline: true },
+                { name: "🖼️ Icon", value: badgeIconUrl ? `[View Icon](${badgeIconUrl})` : "Default icon", inline: true },
+                { name: "🔑 Request ID", value: `\`${newRequest.id}\``, inline: false },
               ],
               thumbnail: badgeIconUrl ? { url: badgeIconUrl } : undefined,
               timestamp: new Date().toISOString(),
-            }],
-            components: [{
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 3,
-                  label: "Approve",
-                  custom_id: `badge_approve_${newRequest.id}`,
-                },
-                {
-                  type: 2,
-                  style: 4,
-                  label: "Deny",
-                  custom_id: `badge_deny_${newRequest.id}`,
-                },
-                {
-                  type: 2,
-                  style: 2,
-                  label: "Edit & Approve",
-                  custom_id: `badge_edit_${newRequest.id}`,
-                },
-              ],
+              footer: { text: "Use the buttons below or bot commands to approve/deny" },
             }],
           }),
         });

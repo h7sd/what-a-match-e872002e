@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Partials, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, ActivityType, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const crypto = require('crypto');
 
 // ============================================
@@ -7,8 +7,10 @@ const crypto = require('crypto');
 // ============================================
 const DISCORD_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const EDGE_FUNCTION_URL = process.env.EDGE_FUNCTION_URL;
+const BADGE_REQUEST_EDGE_URL = process.env.BADGE_REQUEST_EDGE_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/badge-request';
 const GUILD_ID = process.env.GUILD_ID;
 const WEBHOOK_SECRET = process.env.DISCORD_WEBHOOK_SECRET;
+const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
 
 if (!DISCORD_TOKEN || !EDGE_FUNCTION_URL || !GUILD_ID || !WEBHOOK_SECRET) {
   console.error('❌ Missing environment variables! Check your .env file.');
@@ -24,8 +26,10 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
   ],
-  partials: [Partials.GuildMember],
+  partials: [Partials.GuildMember, Partials.Channel],
 });
 
 // ============================================
@@ -50,6 +54,261 @@ function generateSignature(payload, timestamp) {
     .update(message)
     .digest('hex');
 }
+
+// ============================================
+// BADGE REQUEST HANDLING
+// ============================================
+async function handleBadgeAction(action, requestId, options = {}) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const payload = JSON.stringify({
+    action,
+    requestId,
+    ...options,
+  });
+  const signature = generateSignature(payload, timestamp);
+
+  const response = await fetch(BADGE_REQUEST_EDGE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-signature': signature,
+      'x-timestamp': timestamp.toString(),
+    },
+    body: payload,
+  });
+
+  return response.json();
+}
+
+// ============================================
+// INTERACTION HANDLER (Buttons & Modals)
+// ============================================
+client.on('interactionCreate', async (interaction) => {
+  // Check if user is admin
+  const isAdmin = ADMIN_USER_IDS.includes(interaction.user.id);
+  
+  if (!isAdmin) {
+    if (interaction.isButton() || interaction.isModalSubmit()) {
+      return interaction.reply({ 
+        content: '❌ You do not have permission to manage badge requests.', 
+        ephemeral: true 
+      });
+    }
+    return;
+  }
+
+  // Handle button clicks
+  if (interaction.isButton()) {
+    const customId = interaction.customId;
+    
+    // Badge Approve Button
+    if (customId.startsWith('badge_approve_')) {
+      const requestId = customId.replace('badge_approve_', '');
+      
+      await interaction.deferReply({ ephemeral: true });
+      
+      try {
+        const result = await handleBadgeAction('approve', requestId);
+        
+        if (result.success) {
+          await interaction.editReply({ content: '✅ Badge request approved! User has been notified via email.' });
+          
+          // Update original message
+          const embed = EmbedBuilder.from(interaction.message.embeds[0])
+            .setColor(0x22c55e)
+            .setTitle('✅ Badge Request APPROVED')
+            .setFooter({ text: `Approved by ${interaction.user.tag}` });
+          
+          await interaction.message.edit({ embeds: [embed], components: [] });
+        } else {
+          await interaction.editReply({ content: `❌ Failed to approve: ${result.error}` });
+        }
+      } catch (err) {
+        await interaction.editReply({ content: `❌ Error: ${err.message}` });
+      }
+    }
+    
+    // Badge Deny Button - Show modal for reason
+    if (customId.startsWith('badge_deny_')) {
+      const requestId = customId.replace('badge_deny_', '');
+      
+      const modal = new ModalBuilder()
+        .setCustomId(`badge_deny_modal_${requestId}`)
+        .setTitle('Deny Badge Request');
+      
+      const reasonInput = new TextInputBuilder()
+        .setCustomId('denial_reason')
+        .setLabel('Reason for denial')
+        .setStyle(TextInputStyle.Paragraph)
+        .setPlaceholder('Please provide a reason for denying this badge request...')
+        .setRequired(true)
+        .setMaxLength(500);
+      
+      modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+      
+      await interaction.showModal(modal);
+    }
+    
+    // Badge Edit Button - Show modal for editing
+    if (customId.startsWith('badge_edit_')) {
+      const requestId = customId.replace('badge_edit_', '');
+      
+      const modal = new ModalBuilder()
+        .setCustomId(`badge_edit_modal_${requestId}`)
+        .setTitle('Edit & Approve Badge');
+      
+      const nameInput = new TextInputBuilder()
+        .setCustomId('edited_name')
+        .setLabel('Badge Name (leave empty to keep original)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(30);
+      
+      const descInput = new TextInputBuilder()
+        .setCustomId('edited_description')
+        .setLabel('Description (leave empty to keep original)')
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(false)
+        .setMaxLength(100);
+      
+      const colorInput = new TextInputBuilder()
+        .setCustomId('edited_color')
+        .setLabel('Color hex (e.g. #8B5CF6)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setMaxLength(7);
+      
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(nameInput),
+        new ActionRowBuilder().addComponents(descInput),
+        new ActionRowBuilder().addComponents(colorInput)
+      );
+      
+      await interaction.showModal(modal);
+    }
+  }
+  
+  // Handle modal submissions
+  if (interaction.isModalSubmit()) {
+    const customId = interaction.customId;
+    
+    // Denial Modal
+    if (customId.startsWith('badge_deny_modal_')) {
+      const requestId = customId.replace('badge_deny_modal_', '');
+      const denialReason = interaction.fields.getTextInputValue('denial_reason');
+      
+      await interaction.deferReply({ ephemeral: true });
+      
+      try {
+        const result = await handleBadgeAction('deny', requestId, { denialReason });
+        
+        if (result.success) {
+          await interaction.editReply({ content: '✅ Badge request denied. User has been notified via email.' });
+          
+          // Update original message
+          const embed = EmbedBuilder.from(interaction.message.embeds[0])
+            .setColor(0xef4444)
+            .setTitle('❌ Badge Request DENIED')
+            .addFields({ name: '📋 Denial Reason', value: denialReason })
+            .setFooter({ text: `Denied by ${interaction.user.tag}` });
+          
+          await interaction.message.edit({ embeds: [embed], components: [] });
+        } else {
+          await interaction.editReply({ content: `❌ Failed to deny: ${result.error}` });
+        }
+      } catch (err) {
+        await interaction.editReply({ content: `❌ Error: ${err.message}` });
+      }
+    }
+    
+    // Edit Modal
+    if (customId.startsWith('badge_edit_modal_')) {
+      const requestId = customId.replace('badge_edit_modal_', '');
+      const editedName = interaction.fields.getTextInputValue('edited_name') || undefined;
+      const editedDescription = interaction.fields.getTextInputValue('edited_description') || undefined;
+      const editedColor = interaction.fields.getTextInputValue('edited_color') || undefined;
+      
+      await interaction.deferReply({ ephemeral: true });
+      
+      try {
+        const result = await handleBadgeAction('approve', requestId, {
+          editedName,
+          editedDescription,
+          editedColor,
+        });
+        
+        if (result.success) {
+          await interaction.editReply({ content: '✅ Badge edited and approved! User has been notified via email.' });
+          
+          // Update original message
+          const embed = EmbedBuilder.from(interaction.message.embeds[0])
+            .setColor(0x22c55e)
+            .setTitle('✅ Badge Request APPROVED (Edited)')
+            .setFooter({ text: `Approved by ${interaction.user.tag}` });
+          
+          if (editedName) embed.addFields({ name: '✏️ Edited Name', value: editedName, inline: true });
+          if (editedColor) embed.addFields({ name: '🎨 Edited Color', value: editedColor, inline: true });
+          if (editedDescription) embed.addFields({ name: '📝 Edited Description', value: editedDescription });
+          
+          await interaction.message.edit({ embeds: [embed], components: [] });
+        } else {
+          await interaction.editReply({ content: `❌ Failed to approve: ${result.error}` });
+        }
+      } catch (err) {
+        await interaction.editReply({ content: `❌ Error: ${err.message}` });
+      }
+    }
+  }
+});
+
+// ============================================
+// SLASH COMMANDS REGISTRATION
+// ============================================
+client.once('ready', async () => {
+  console.log('');
+  console.log('╔════════════════════════════════════════════╗');
+  console.log('║     UserVault Discord Presence Bot         ║');
+  console.log('╠════════════════════════════════════════════╣');
+  console.log(`║  Bot: ${client.user.tag.padEnd(35)}║`);
+  console.log(`║  Guilds: ${client.guilds.cache.size.toString().padEnd(33)}║`);
+  console.log('╚════════════════════════════════════════════╝');
+  console.log('');
+  console.log('📋 Badge Request Management: ENABLED');
+  console.log(`👮 Admin Users: ${ADMIN_USER_IDS.length > 0 ? ADMIN_USER_IDS.join(', ') : 'Not configured'}`);
+  console.log('');
+
+  // Initial sync
+  const guild = client.guilds.cache.get(GUILD_ID);
+  if (guild) {
+    console.log(`📡 Syncing ${guild.memberCount} members from ${guild.name}...`);
+    
+    try {
+      const members = await guild.members.fetch({ withPresences: true });
+      let synced = 0;
+      
+      for (const [memberId, member] of members) {
+        if (!member.user.bot) {
+          await updatePresence(memberId, member.presence, member.user);
+          synced++;
+          // Small delay to avoid rate limits
+          if (synced % 10 === 0) {
+            await new Promise(r => setTimeout(r, 100));
+          }
+        }
+      }
+      
+      console.log(`✅ Initial sync complete! Processed ${synced} members.`);
+    } catch (err) {
+      console.error('❌ Error during initial sync:', err.message);
+    }
+  } else {
+    console.error(`❌ Could not find guild: ${GUILD_ID}`);
+  }
+  
+  console.log('');
+  console.log('👀 Watching for presence updates and badge requests...');
+  console.log('');
+});
 
 // ============================================
 // PRESENCE UPDATE HANDLER
@@ -152,49 +411,6 @@ function getSpotifyImage(spotifyActivity) {
 // ============================================
 // EVENT HANDLERS
 // ============================================
-client.once('ready', async () => {
-  console.log('');
-  console.log('╔════════════════════════════════════════════╗');
-  console.log('║     UserVault Discord Presence Bot         ║');
-  console.log('╠════════════════════════════════════════════╣');
-  console.log(`║  Bot: ${client.user.tag.padEnd(35)}║`);
-  console.log(`║  Guilds: ${client.guilds.cache.size.toString().padEnd(33)}║`);
-  console.log('╚════════════════════════════════════════════╝');
-  console.log('');
-
-  // Initial sync
-  const guild = client.guilds.cache.get(GUILD_ID);
-  if (guild) {
-    console.log(`📡 Syncing ${guild.memberCount} members from ${guild.name}...`);
-    
-    try {
-      const members = await guild.members.fetch({ withPresences: true });
-      let synced = 0;
-      
-      for (const [memberId, member] of members) {
-        if (!member.user.bot) {
-          await updatePresence(memberId, member.presence, member.user);
-          synced++;
-          // Small delay to avoid rate limits
-          if (synced % 10 === 0) {
-            await new Promise(r => setTimeout(r, 100));
-          }
-        }
-      }
-      
-      console.log(`✅ Initial sync complete! Processed ${synced} members.`);
-    } catch (err) {
-      console.error('❌ Error during initial sync:', err.message);
-    }
-  } else {
-    console.error(`❌ Could not find guild: ${GUILD_ID}`);
-  }
-  
-  console.log('');
-  console.log('👀 Watching for presence updates...');
-  console.log('');
-});
-
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
   if (!newPresence?.member || newPresence.member.user.bot) return;
   await updatePresence(newPresence.userId, newPresence, newPresence.member.user);
