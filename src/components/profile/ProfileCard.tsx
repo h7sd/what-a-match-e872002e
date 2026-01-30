@@ -161,10 +161,10 @@ export function ProfileCard({
               </p>
             )}
 
-            {/* Badges - with proper mobile touch targets (min 44x44px) */}
+            {/* Badges - with transparent rounded container */}
             {showBadges && badges.length > 0 && (
               <TooltipProvider delayDuration={100}>
-                <div className="flex items-center justify-center gap-1 mb-4 flex-wrap max-w-[320px] mx-auto">
+                <div className="inline-flex items-center justify-center gap-0.5 mb-4 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
                   {badges.map((badge) => {
                     const Icon = getBadgeIcon(badge.name);
                     const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
@@ -178,7 +178,7 @@ export function ProfileCard({
                           <motion.button
                             type="button"
                             aria-label={`Badge: ${badge.name}`}
-                            className={`min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center cursor-pointer rounded-lg touch-manipulation ${transparentBadges ? 'opacity-70' : ''}`}
+                            className={`w-8 h-8 flex items-center justify-center cursor-pointer rounded-full touch-manipulation ${transparentBadges ? 'opacity-70' : ''}`}
                             whileHover={{ 
                               scale: 1.15,
                               filter: hoverShadow,
@@ -191,19 +191,19 @@ export function ProfileCard({
                               <img 
                                 src={badge.icon_url} 
                                 alt={badge.name} 
-                                className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`} 
+                                className={`w-5 h-5 object-contain ${transparentBadges ? 'opacity-80' : ''}`} 
                                 loading="lazy" 
                               />
                             ) : customImage ? (
                               <img 
                                 src={customImage} 
                                 alt={badge.name} 
-                                className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`} 
+                                className={`w-5 h-5 object-contain ${transparentBadges ? 'opacity-80' : ''}`} 
                                 loading="lazy" 
                               />
                             ) : (
                               <Icon 
-                                className="w-6 h-6 transition-all duration-200" 
+                                className="w-5 h-5 transition-all duration-200" 
                                 style={{ 
                                   color: badgeColor, 
                                   filter: shadowFilter,
@@ -399,10 +399,10 @@ export function ProfileCard({
             </p>
           )}
 
-          {/* Badges - with proper mobile touch targets (min 44x44px) */}
+          {/* Badges - with transparent rounded container */}
           {showBadges && badges.length > 0 && (
             <TooltipProvider delayDuration={100}>
-              <div className="flex items-center justify-center gap-1 mb-4 flex-wrap max-w-[320px] mx-auto">
+              <div className="inline-flex items-center justify-center gap-0.5 mb-4 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
                 {badges.map((badge) => {
                   const Icon = getBadgeIcon(badge.name);
                   const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
@@ -416,7 +416,7 @@ export function ProfileCard({
                         <motion.button
                           type="button"
                           aria-label={`Badge: ${badge.name}`}
-                          className={`min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center cursor-pointer rounded-lg touch-manipulation ${transparentBadges ? 'opacity-70' : ''}`}
+                          className={`w-8 h-8 flex items-center justify-center cursor-pointer rounded-full touch-manipulation ${transparentBadges ? 'opacity-70' : ''}`}
                           whileHover={{ 
                             scale: 1.15,
                             filter: hoverShadow,
@@ -429,19 +429,19 @@ export function ProfileCard({
                             <img
                               src={badge.icon_url}
                               alt={badge.name}
-                              className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`}
+                              className={`w-5 h-5 object-contain ${transparentBadges ? 'opacity-80' : ''}`}
                               loading="lazy"
                             />
                           ) : customImage ? (
                             <img
                               src={customImage}
                               alt={badge.name}
-                              className={`w-6 h-6 object-contain ${transparentBadges ? 'opacity-80' : ''}`}
+                              className={`w-5 h-5 object-contain ${transparentBadges ? 'opacity-80' : ''}`}
                               loading="lazy"
                             />
                           ) : (
                             <Icon 
-                              className="w-6 h-6 transition-all duration-200" 
+                              className="w-5 h-5 transition-all duration-200" 
                               style={{ 
                                 color: badgeColor,
                                 filter: shadowFilter,
