@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
   
   <!-- Open Graph / Discord -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${escapeHtml(resolvedOgUrl)}">
+  <meta property="og:url" content="${escapeHtml(profileUrl)}">
   <meta property="og:site_name" content="UserVault">
   <meta property="og:title" content="${escapeHtml(ogTitle)}">
   <meta property="og:description" content="${escapeHtml(ogDescription)}">
@@ -113,12 +113,10 @@ Deno.serve(async (req) => {
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:updated_time" content="${updatedTime}">
-  <meta name="cache-id" content="${randomId}">
-  <link rel="canonical" href="${escapeHtml(resolvedOgUrl)}">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="${escapeHtml(resolvedOgUrl)}">
+  <meta name="twitter:url" content="${escapeHtml(profileUrl)}">
   <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
   <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
   <meta name="twitter:image" content="${ogImage}">
@@ -126,42 +124,12 @@ Deno.serve(async (req) => {
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="${ogIcon}">
   
-  <style>
-    body {
-      background: #0a0a0a;
-      color: #fff;
-      font-family: system-ui, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    .loader {
-      text-align: center;
-    }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid #333;
-      border-top-color: #8B5CF6;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
+  <!-- Auto-redirect for humans (bots don't execute JS) -->
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(profileUrl)}">
+  <script>window.location.replace("${escapeHtml(profileUrl)}");</script>
 </head>
-<body>
-  <div class="loader">
-    <div class="spinner"></div>
-    <p>
-      <a href="${profileUrl}" style="color: #8B5CF6; text-decoration: none; font-weight: 600;">Open profile</a>
-    </p>
-    <p style="opacity: 0.7; font-size: 14px; margin-top: 10px;">If you came from Discord/Twitter, this page is only for the preview card.</p>
-  </div>
+<body style="background:#0a0a0a;color:#fff;font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+  <p>Redirecting to <a href="${escapeHtml(profileUrl)}" style="color:#8B5CF6;">${escapeHtml(profile.display_name || profile.username)}</a>...</p>
 </body>
 </html>`;
 
