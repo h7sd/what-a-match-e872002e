@@ -8,23 +8,53 @@ Deno.serve(async (req) => {
   const username = url.searchParams.get("u") || url.searchParams.get("username");
   const src = url.searchParams.get("src");
 
+  console.log(`[OG-EMBED] Request for username/uid: ${username}, src: ${src}`);
+
   if (!username) {
     return new Response("Username required. Use ?u=username", { status: 400 });
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Fetch profile
-  const { data: profile, error } = await supabase
+  // Try to find profile by username, alias, OR uid_number
+  const lowerUsername = username.toLowerCase();
+  const maybeUid = parseInt(username, 10);
+  
+  let profile = null;
+  let error = null;
+
+  // First try by username or alias
+  const { data: byName, error: nameErr } = await supabase
     .from("profiles")
-    .select("username, display_name, bio, avatar_url, og_title, og_description, og_image_url, og_icon_url")
-    .or(`username.eq.${username.toLowerCase()},alias_username.eq.${username.toLowerCase()}`)
+    .select("username, display_name, bio, avatar_url, og_title, og_description, og_image_url, og_icon_url, uid_number")
+    .or(`username.eq.${lowerUsername},alias_username.eq.${lowerUsername}`)
     .maybeSingle();
+
+  if (byName) {
+    profile = byName;
+  } else if (!isNaN(maybeUid) && maybeUid > 0) {
+    // If not found and input looks like a number, try by uid_number
+    const { data: byUid, error: uidErr } = await supabase
+      .from("profiles")
+      .select("username, display_name, bio, avatar_url, og_title, og_description, og_image_url, og_icon_url, uid_number")
+      .eq("uid_number", maybeUid)
+      .maybeSingle();
+    
+    if (byUid) {
+      profile = byUid;
+    } else {
+      error = uidErr || nameErr;
+    }
+  } else {
+    error = nameErr;
+  }
 
   if (error || !profile) {
     console.log(`[OG-EMBED] Profile not found: ${username}`);
     return new Response("Profile not found", { status: 404 });
   }
+
+  console.log(`[OG-EMBED] Found profile: ${profile.username} (uid: ${profile.uid_number})`);
 
   // Build OG data with fallbacks
   const ogTitle = profile.og_title || `@${profile.username} | uservault.cc`;
@@ -45,10 +75,6 @@ Deno.serve(async (req) => {
   const resolvedOgUrl = resolveOgUrl(src) || profileUrl;
   const updatedTime = new Date().toISOString();
 
-  // IMPORTANT:
-  // Do NOT auto-redirect (meta refresh / JS). Social crawlers (Discord) may follow redirects
-  // and then pick up the *destination* page's OG tags (our SPA index.html), which breaks embeds.
-  // Humans can still click through via the link.
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -123,7 +149,7 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-  console.log(`[OG-EMBED] Serving embed page for: ${username} (cache-id: ${randomId})`);
+  console.log(`[OG-EMBED] Serving embed for: ${profile.username} (cache-id: ${randomId})`);
 
   return new Response(html, {
     status: 200,
