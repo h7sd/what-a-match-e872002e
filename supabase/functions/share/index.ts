@@ -29,7 +29,13 @@ Deno.serve(async (req) => {
   // Build OG data with fallbacks
   const ogTitle = profile.og_title || `@${profile.username} | uservault.cc`;
   const ogDescription = profile.og_description || profile.bio || `Check out ${profile.display_name || profile.username}'s profile on UserVault`;
-  const ogImage = profile.og_image_url || profile.avatar_url || "https://what-a-match.lovable.app/og-image.png";
+  
+  // Cache-busting for images and Discord
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(7);
+  const baseOgImage = profile.og_image_url || profile.avatar_url || "https://what-a-match.lovable.app/og-image.png";
+  const ogImage = baseOgImage.includes('?') ? `${baseOgImage}&v=${timestamp}` : `${baseOgImage}?v=${timestamp}`;
+  
   const ogIcon = profile.og_icon_url || "https://storage.googleapis.com/gpt-engineer-file-uploads/N7OIoQRjNPSXaLFdJjQDPkdaXHs1/uploads/1769473434323-UserVault%204%20(1).png";
   const profileUrl = `https://uservault.cc/${profile.username}`;
 
@@ -37,6 +43,7 @@ Deno.serve(async (req) => {
   // we need og:url to reflect the original request URL. The Cloudflare Worker should pass
   // the original URL as `src`.
   const resolvedOgUrl = resolveOgUrl(src) || profileUrl;
+  const updatedTime = new Date().toISOString();
 
   // IMPORTANT:
   // Do NOT auto-redirect (meta refresh / JS). Social crawlers (Discord) may follow redirects
@@ -55,7 +62,7 @@ Deno.serve(async (req) => {
   <meta name="theme-color" content="#8B5CF6">
   
   <!-- Open Graph / Discord -->
-  <meta property="og:type" content="profile">
+  <meta property="og:type" content="website">
   <meta property="og:url" content="${escapeHtml(resolvedOgUrl)}">
   <meta property="og:site_name" content="UserVault">
   <meta property="og:title" content="${escapeHtml(ogTitle)}">
@@ -63,6 +70,8 @@ Deno.serve(async (req) => {
   <meta property="og:image" content="${ogImage}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:updated_time" content="${updatedTime}">
+  <meta name="cache-id" content="${randomId}">
   <link rel="canonical" href="${escapeHtml(resolvedOgUrl)}">
   
   <!-- Twitter -->
@@ -114,14 +123,16 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-  console.log(`[OG-EMBED] Serving embed page for: ${username}`);
+  console.log(`[OG-EMBED] Serving embed page for: ${username} (cache-id: ${randomId})`);
 
   return new Response(html, {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      // Keep short cache for crawlers; they cache aggressively anyway.
-      "Cache-Control": "public, max-age=60",
+      // No caching to ensure fresh meta tags
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
     },
   });
 });
