@@ -11,6 +11,11 @@ const corsHeaders = {
 };
 
 async function sendEmail(to: string, subject: string, html: string) {
+  if (!RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY not configured");
+  }
+
+  console.log(`[EMAIL] Sending to ${to} | subject="${subject}"`);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -24,7 +29,23 @@ async function sendEmail(to: string, subject: string, html: string) {
       html,
     }),
   });
-  return res.json();
+
+  const raw = await res.text();
+  let data: unknown;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    data = { raw };
+  }
+
+  if (!res.ok) {
+    console.error(`[EMAIL] Resend failed [${res.status}]:`, data);
+    throw new Error(`Resend failed [${res.status}]`);
+  }
+
+  // Resend usually returns { id: "..." }
+  console.log("[EMAIL] Resend success:", data);
+  return data;
 }
 
 async function verifySignature(
@@ -223,6 +244,8 @@ serve(async (req) => {
           </html>
         `
       );
+    } else {
+      console.warn(`[EMAIL] No email found for user ${request.user_id}; skipping email send`);
     }
 
     console.log(`[APPROVE] Success for request: ${requestId}`);

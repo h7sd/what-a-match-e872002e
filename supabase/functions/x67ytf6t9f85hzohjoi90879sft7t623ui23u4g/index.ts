@@ -226,6 +226,8 @@ serve(async (req) => {
           </html>
         `
       );
+    } else {
+      console.warn(`[EMAIL] No email found for user ${request.user_id}; skipping email send`);
     }
 
     console.log(`[EDIT-APPROVE] Success for request: ${requestId}`);
