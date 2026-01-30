@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Hash, Search, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Hash, Search, Loader2, Check, AlertCircle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,9 +17,31 @@ interface FoundUser {
 export function AdminUIDManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [foundUser, setFoundUser] = useState<FoundUser | null>(null);
+  const [duplicateUsers, setDuplicateUsers] = useState<FoundUser[]>([]);
   const [newUID, setNewUID] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Fetch users with same UID when foundUser changes
+  useEffect(() => {
+    if (!foundUser) {
+      setDuplicateUsers([]);
+      return;
+    }
+
+    const fetchDuplicates = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, uid_number, display_name')
+        .eq('uid_number', foundUser.uid_number)
+        .neq('id', foundUser.id)
+        .order('username');
+      
+      setDuplicateUsers(data || []);
+    };
+
+    fetchDuplicates();
+  }, [foundUser?.uid_number, foundUser?.id]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -77,7 +99,6 @@ export function AdminUIDManager() {
     setIsUpdating(true);
 
     try {
-
       // Use edge function to bypass RLS trigger restriction
       const { error } = await supabase.functions.invoke('admin-update-profile', {
         body: {
@@ -97,6 +118,11 @@ export function AdminUIDManager() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleSelectUser = (user: FoundUser) => {
+    setFoundUser(user);
+    setNewUID(user.uid_number.toString());
   };
 
   return (
@@ -179,6 +205,29 @@ export function AdminUIDManager() {
               </Button>
             </div>
           </div>
+
+          {/* Duplicate UIDs Warning/Info */}
+          {duplicateUsers.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-yellow-500">
+                <Users className="w-4 h-4" />
+                <span className="text-xs font-medium">
+                  {duplicateUsers.length} other user{duplicateUsers.length > 1 ? 's' : ''} with UID #{foundUser.uid_number}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {duplicateUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => handleSelectUser(user)}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-colors"
+                  >
+                    @{user.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
             <AlertCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
