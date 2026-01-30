@@ -164,7 +164,7 @@ export function ProfileCard({
             {/* Badges - with transparent rounded container */}
             {showBadges && badges.length > 0 && (
               <TooltipProvider delayDuration={100}>
-                <div className="inline-flex items-center justify-center gap-0.5 mb-4 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
+                <div className="inline-flex items-center justify-center -space-x-1 mb-4 px-2.5 py-1 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
                   {badges.map((badge) => {
                     const Icon = getBadgeIcon(badge.name);
                     const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
@@ -402,7 +402,7 @@ export function ProfileCard({
           {/* Badges - with transparent rounded container */}
           {showBadges && badges.length > 0 && (
             <TooltipProvider delayDuration={100}>
-              <div className="inline-flex items-center justify-center gap-0.5 mb-4 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
+              <div className="inline-flex items-center justify-center -space-x-1 mb-4 px-2.5 py-1 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
                 {badges.map((badge) => {
                   const Icon = getBadgeIcon(badge.name);
                   const badgeColor = transparentBadges ? 'currentColor' : (badge.color || accentColor);
