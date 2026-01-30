@@ -1,5 +1,14 @@
 project_id = "cjulgfbmcnmrkvnzkpym"
 
+[functions.share]
+verify_jwt = false
+
+[functions.og-profile]
+verify_jwt = false
+
+[functions.debug-fetch]
+verify_jwt = false
+
 [functions.discord-presence]
 verify_jwt = false
 
@@ -46,13 +55,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.x67ytf6t9f85hzohjoi90879sft7t623ui23u4g]
-verify_jwt = false
-
-[functions.og-profile]
-verify_jwt = false
-
-[functions.share]
-verify_jwt = false
-
-[functions.debug-fetch]
 verify_jwt = false

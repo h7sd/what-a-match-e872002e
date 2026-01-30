@@ -1,9 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const url = new URL(req.url);
   const username = url.searchParams.get("u") || url.searchParams.get("username");
   const src = url.searchParams.get("src");
@@ -11,7 +21,10 @@ Deno.serve(async (req) => {
   console.log(`[OG-EMBED] Request for username/uid: ${username}, src: ${src}`);
 
   if (!username) {
-    return new Response("Username required. Use ?u=username", { status: 400 });
+    return new Response("Username required. Use ?u=username", { 
+      status: 400,
+      headers: corsHeaders 
+    });
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -51,7 +64,10 @@ Deno.serve(async (req) => {
 
   if (error || !profile) {
     console.log(`[OG-EMBED] Profile not found: ${username}`);
-    return new Response("Profile not found", { status: 404 });
+    return new Response("Profile not found", { 
+      status: 404,
+      headers: corsHeaders 
+    });
   }
 
   console.log(`[OG-EMBED] Found profile: ${profile.username} (uid: ${profile.uid_number})`);
@@ -154,6 +170,7 @@ Deno.serve(async (req) => {
   return new Response(html, {
     status: 200,
     headers: {
+      ...corsHeaders,
       "Content-Type": "text/html; charset=utf-8",
       // No caching to ensure fresh meta tags
       "Cache-Control": "no-cache, no-store, must-revalidate",
