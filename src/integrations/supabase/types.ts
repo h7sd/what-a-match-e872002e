@@ -314,6 +314,11 @@ export type Database = {
           music_url: string | null
           name_font: string | null
           occupation: string | null
+          og_description: string | null
+          og_icon_url: string | null
+          og_image_url: string | null
+          og_title: string | null
+          og_title_animation: string | null
           profile_blur: number | null
           profile_opacity: number | null
           show_avatar: boolean | null
@@ -385,6 +390,11 @@ export type Database = {
           music_url?: string | null
           name_font?: string | null
           occupation?: string | null
+          og_description?: string | null
+          og_icon_url?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_title_animation?: string | null
           profile_blur?: number | null
           profile_opacity?: number | null
           show_avatar?: boolean | null
@@ -456,6 +466,11 @@ export type Database = {
           music_url?: string | null
           name_font?: string | null
           occupation?: string | null
+          og_description?: string | null
+          og_icon_url?: string | null
+          og_image_url?: string | null
+          og_title?: string | null
+          og_title_animation?: string | null
           profile_blur?: number | null
           profile_opacity?: number | null
           show_avatar?: boolean | null

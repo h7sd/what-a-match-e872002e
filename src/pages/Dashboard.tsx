@@ -51,6 +51,7 @@ import { EarlyBadgeCountdown } from '@/components/dashboard/EarlyBadgeCountdown'
 import { ProfileVisitorsChart } from '@/components/dashboard/ProfileVisitorsChart';
 import { TopLinksChart } from '@/components/dashboard/TopLinksChart';
 import { StartScreenSettings } from '@/components/dashboard/StartScreenSettings';
+import { DiscordEmbedSettings } from '@/components/dashboard/DiscordEmbedSettings';
 import { VolumeControlSettings } from '@/components/dashboard/VolumeControlSettings';
 import { ProfileVisibilitySettings } from '@/components/dashboard/ProfileVisibilitySettings';
 import { CardBorderSettings } from '@/components/dashboard/CardBorderSettings';
@@ -202,6 +203,14 @@ export default function Dashboard() {
   // Alias username
   const [aliasUsername, setAliasUsername] = useState('');
 
+  // OG/Discord Embed settings
+  const [ogEnabled, setOgEnabled] = useState(false);
+  const [ogTitle, setOgTitle] = useState('');
+  const [ogDescription, setOgDescription] = useState('');
+  const [ogImageUrl, setOgImageUrl] = useState('');
+  const [ogIconUrl, setOgIconUrl] = useState('');
+  const [ogTitleAnimation, setOgTitleAnimation] = useState('none');
+
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -280,6 +289,13 @@ export default function Dashboard() {
       setCardBorderColor((profile as any).card_border_color || '');
       setCardBorderWidth((profile as any).card_border_width ?? 1);
       setAliasUsername((profile as any).alias_username || '');
+      // OG Settings
+      setOgEnabled(!!((profile as any).og_title || (profile as any).og_description || (profile as any).og_image_url || (profile as any).og_icon_url));
+      setOgTitle((profile as any).og_title || '');
+      setOgDescription((profile as any).og_description || '');
+      setOgImageUrl((profile as any).og_image_url || '');
+      setOgIconUrl((profile as any).og_icon_url || '');
+      setOgTitleAnimation((profile as any).og_title_animation || 'none');
       const config = profile.effects_config || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -436,6 +452,11 @@ export default function Dashboard() {
         card_border_enabled: cardBorderEnabled,
         card_border_color: cardBorderColor || null,
         card_border_width: cardBorderWidth,
+        og_title: ogEnabled ? (ogTitle || null) : null,
+        og_description: ogEnabled ? (ogDescription || null) : null,
+        og_image_url: ogEnabled ? (ogImageUrl || null) : null,
+        og_icon_url: ogEnabled ? (ogIconUrl || null) : null,
+        og_title_animation: ogEnabled ? ogTitleAnimation : 'none',
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -982,6 +1003,25 @@ export default function Dashboard() {
                       onAsciiSizeChange={setAsciiSize}
                       asciiWaves={asciiWaves}
                       onAsciiWavesChange={setAsciiWaves}
+                    />
+                  </div>
+
+                  {/* Discord Embed Settings */}
+                  <div className="glass-card p-6">
+                    <DiscordEmbedSettings
+                      enabled={ogEnabled}
+                      onEnabledChange={setOgEnabled}
+                      ogTitle={ogTitle}
+                      onOgTitleChange={setOgTitle}
+                      ogDescription={ogDescription}
+                      onOgDescriptionChange={setOgDescription}
+                      ogImageUrl={ogImageUrl}
+                      onOgImageUrlChange={setOgImageUrl}
+                      ogIconUrl={ogIconUrl}
+                      onOgIconUrlChange={setOgIconUrl}
+                      ogTitleAnimation={ogTitleAnimation}
+                      onOgTitleAnimationChange={setOgTitleAnimation}
+                      username={username}
                     />
                   </div>
 

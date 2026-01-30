@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.x67ytf6t9f85hzohjoi90879sft7t623ui23u4g]
 verify_jwt = false
+
+[functions.og-profile]
+verify_jwt = false
