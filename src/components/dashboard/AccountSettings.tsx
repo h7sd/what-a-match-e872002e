@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   User, Mail, Shield, Key, LogOut, Loader2, Eye, EyeOff, 
   Languages, MessageSquare, RefreshCw, Lock, ShieldCheck, ShieldOff,
-  Trash2, AlertTriangle
+  Trash2, AlertTriangle, Hash
 } from 'lucide-react';
 import { FaDiscord } from 'react-icons/fa6';
 import { Button } from '@/components/ui/button';
@@ -51,10 +51,12 @@ interface AccountSettingsProps {
     username: string;
     display_name: string | null;
     alias_username?: string | null;
+    uid_number?: number;
   } | null;
   onUpdateUsername: (username: string) => Promise<void>;
   onSaveDisplayName: (displayName: string) => Promise<void>;
   onUpdateAlias?: (alias: string | null) => Promise<void>;
+  onUpdateUid?: (uid: number) => Promise<void>;
 }
 
 interface MFAFactor {
@@ -70,7 +72,7 @@ const displayNameSchema = z
   .min(1, 'Display name cannot be empty')
   .max(32, 'Display name must be at most 32 characters');
 
-export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, onUpdateAlias }: AccountSettingsProps) {
+export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, onUpdateAlias, onUpdateUid }: AccountSettingsProps) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const [showEmail, setShowEmail] = useState(false);
@@ -89,6 +91,11 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
   // Alias username state
   const [aliasUsername, setAliasUsername] = useState('');
   const [isSavingAlias, setIsSavingAlias] = useState(false);
+  
+  // UID state
+  const [uidDraft, setUidDraft] = useState('');
+  const [isSavingUid, setIsSavingUid] = useState(false);
+  const [uidError, setUidError] = useState<string | null>(null);
   
   // MFA State
   const [mfaFactors, setMfaFactors] = useState<MFAFactor[]>([]);
@@ -122,6 +129,10 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
   useEffect(() => {
     setAliasUsername(profile?.alias_username || '');
   }, [profile?.alias_username]);
+
+  useEffect(() => {
+    setUidDraft(profile?.uid_number?.toString() || '');
+  }, [profile?.uid_number]);
 
   useEffect(() => {
     checkMfaStatus();
@@ -462,6 +473,60 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
             </div>
             <p className="text-xs text-muted-foreground">
               Visitors to /{aliasUsername || 'alias'} will be redirected to /{profile?.username}
+            </p>
+          </div>
+
+          {/* UID Number */}
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">UID (Registration Number)</label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                <Hash className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">#</span>
+                <Input
+                  value={uidDraft}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setUidDraft(val);
+                    setUidError(null);
+                  }}
+                  className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 font-mono"
+                  placeholder="1"
+                  maxLength={10}
+                />
+              </div>
+              {uidDraft !== (profile?.uid_number?.toString() || '') && uidDraft.length > 0 && onUpdateUid && (
+                <Button 
+                  size="sm" 
+                  onClick={async () => {
+                    const uidNumber = parseInt(uidDraft, 10);
+                    if (isNaN(uidNumber) || uidNumber < 1) {
+                      setUidError('UID must be a positive number');
+                      toast({ title: 'UID must be a positive number', variant: 'destructive' });
+                      return;
+                    }
+
+                    setIsSavingUid(true);
+                    setUidError(null);
+                    try {
+                      await onUpdateUid(uidNumber);
+                    } catch (err: any) {
+                      setUidError(err.message || 'Failed to update UID');
+                    } finally {
+                      setIsSavingUid(false);
+                    }
+                  }}
+                  disabled={isSavingUid}
+                >
+                  {isSavingUid ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                </Button>
+              )}
+            </div>
+            {uidError && (
+              <p className="text-xs text-destructive">{uidError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Your unique registration number. Must be unique across all users.
             </p>
           </div>
 
