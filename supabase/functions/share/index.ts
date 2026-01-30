@@ -31,9 +31,11 @@ Deno.serve(async (req) => {
   const ogImage = profile.og_image_url || profile.avatar_url || "https://what-a-match.lovable.app/og-image.png";
   const ogIcon = profile.og_icon_url || "https://storage.googleapis.com/gpt-engineer-file-uploads/N7OIoQRjNPSXaLFdJjQDPkdaXHs1/uploads/1769473434323-UserVault%204%20(1).png";
   const profileUrl = `https://uservault.cc/${profile.username}`;
-  const siteUrl = "https://what-a-match.lovable.app";
 
-  // Return HTML page with OG tags that redirects to actual profile
+  // IMPORTANT:
+  // Do NOT auto-redirect (meta refresh / JS). Social crawlers (Discord) may follow redirects
+  // and then pick up the *destination* page's OG tags (our SPA index.html), which breaks embeds.
+  // Humans can still click through via the link.
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,6 +57,7 @@ Deno.serve(async (req) => {
   <meta property="og:image" content="${ogImage}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <link rel="canonical" href="${profileUrl}">
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
@@ -65,9 +68,6 @@ Deno.serve(async (req) => {
   
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="${ogIcon}">
-  
-  <!-- Redirect to actual profile after a brief moment -->
-  <meta http-equiv="refresh" content="0;url=${siteUrl}/${profile.username}">
   
   <style>
     body {
@@ -100,12 +100,11 @@ Deno.serve(async (req) => {
 <body>
   <div class="loader">
     <div class="spinner"></div>
-    <p>Redirecting to ${escapeHtml(profile.display_name || profile.username)}'s profile...</p>
+    <p>
+      <a href="${profileUrl}" style="color: #8B5CF6; text-decoration: none; font-weight: 600;">Open profile</a>
+    </p>
+    <p style="opacity: 0.7; font-size: 14px; margin-top: 10px;">If you came from Discord/Twitter, this page is only for the preview card.</p>
   </div>
-  <script>
-    // Immediate redirect for JS-enabled browsers
-    window.location.href = "${siteUrl}/${profile.username}";
-  </script>
 </body>
 </html>`;
 
@@ -115,7 +114,8 @@ Deno.serve(async (req) => {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
+      // Keep short cache for crawlers; they cache aggressively anyway.
+      "Cache-Control": "public, max-age=60",
     },
   });
 });
