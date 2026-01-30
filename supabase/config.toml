@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.og-profile]
 verify_jwt = false
+
+[functions.share]
+verify_jwt = false

@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -11,9 +12,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Image, Type, FileText, Upload, X, Globe, Monitor } from 'lucide-react';
+import { Image, Type, FileText, Upload, X, Globe, Monitor, Copy, Check, ExternalLink } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // Animation types for OG title
 type OGTitleAnimation = 'none' | 'typewriter' | 'shuffle' | 'decrypted';
@@ -56,13 +58,27 @@ export function DiscordEmbedSettings({
   onOgTitleAnimationChange,
   username,
 }: DiscordEmbedSettingsProps) {
+  const { toast } = useToast();
   const [uploading, setUploading] = useState<'image' | 'icon' | null>(null);
   const [animatedTitle, setAnimatedTitle] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
   const [tabAnimatedTitle, setTabAnimatedTitle] = useState('');
+  const [copied, setCopied] = useState(false);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
 
   const displayTitle = ogTitle || `@${username} | uservault.cc`;
+  const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share?u=${username}`;
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast({ title: 'Share link copied!', description: 'Use this link when sharing on Discord for custom embeds.' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({ title: 'Failed to copy', variant: 'destructive' });
+    }
+  };
 
   // Typewriter animation effect for Discord preview
   useEffect(() => {
@@ -301,6 +317,47 @@ export function DiscordEmbedSettings({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Share Link - IMPORTANT */}
+            <div className="rounded-lg bg-primary/10 border border-primary/30 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <ExternalLink className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">Share Link für Discord</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Kopiere diesen Link um dein Profil auf Discord mit deinem Custom-Embed zu teilen.
+                    Der normale Profil-Link zeigt das Standard-Embed.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={shareUrl}
+                  readOnly
+                  className="flex-1 bg-card/50 border-border text-xs font-mono"
+                />
+                <Button
+                  onClick={copyShareLink}
+                  variant="outline"
+                  size="sm"
+                  className="flex-shrink-0"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4 mr-1 text-green-500" />
+                      Kopiert!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 mr-1" />
+                      Kopieren
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
