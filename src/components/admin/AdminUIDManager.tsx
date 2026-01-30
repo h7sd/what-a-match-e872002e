@@ -59,20 +59,33 @@ export function AdminUIDManager() {
         .select('id, username, uid_number, display_name');
 
       if (/^\d+$/.test(searchQuery)) {
+        // UID search - might return multiple users
         query = query.eq('uid_number', parseInt(searchQuery));
+        
+        const { data, error } = await query.order('username');
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Set first user as main, rest as duplicates
+          setFoundUser(data[0]);
+          setNewUID(data[0].uid_number.toString());
+          setDuplicateUsers(data.slice(1));
+        } else {
+          toast.error('No users found with this UID');
+        }
       } else {
+        // Username search - should be unique
         query = query.ilike('username', searchQuery);
-      }
-
-      const { data, error } = await query.maybeSingle();
-
-      if (error) throw error;
-      
-      if (data) {
-        setFoundUser(data);
-        setNewUID(data.uid_number.toString());
-      } else {
-        toast.error('User not found');
+        
+        const { data, error } = await query.maybeSingle();
+        if (error) throw error;
+        
+        if (data) {
+          setFoundUser(data);
+          setNewUID(data.uid_number.toString());
+        } else {
+          toast.error('User not found');
+        }
       }
     } catch (error: any) {
       console.error('Search error:', error);
