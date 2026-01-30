@@ -140,10 +140,22 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const username = extractUsername(url);
+    const botDetected = isBot(request);
+    
+    // Debug header to confirm Worker is active
+    const debugHeaders = {
+      "X-OG-Worker": "active",
+      "X-OG-Username": username || "null",
+      "X-OG-IsBot": String(botDetected),
+    };
     
     // Not a profile page or not a bot -> pass through to origin
-    if (!username || !isBot(request)) {
-      return fetch(request);
+    if (!username || !botDetected) {
+      const response = await fetch(request);
+      // Add debug headers to passthrough response
+      const newResponse = new Response(response.body, response);
+      Object.entries(debugHeaders).forEach(([k, v]) => newResponse.headers.set(k, v));
+      return newResponse;
     }
     
     console.log(`[OG] Bot detected for: ${username}`);
@@ -153,7 +165,10 @@ export default {
       
       if (!profile) {
         console.log(`[OG] Profile not found: ${username}`);
-        return fetch(request);
+        const response = await fetch(request);
+        const newResponse = new Response(response.body, response);
+        newResponse.headers.set("X-OG-Worker", "active-no-profile");
+        return newResponse;
       }
       
       const html = generateOGHtml(profile, request.url);
@@ -164,11 +179,17 @@ export default {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=300",
           "X-Robots-Tag": "noindex",
+          "X-OG-Worker": "active-generated",
+          "X-OG-Profile": profile.username,
         },
       });
     } catch (error) {
       console.error(`[OG] Error:`, error);
-      return fetch(request);
+      const response = await fetch(request);
+      const newResponse = new Response(response.body, response);
+      newResponse.headers.set("X-OG-Worker", "error");
+      newResponse.headers.set("X-OG-Error", error.message);
+      return newResponse;
     }
   },
 };
