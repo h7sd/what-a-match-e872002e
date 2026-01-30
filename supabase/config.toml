@@ -3,6 +3,9 @@ project_id = "cjulgfbmcnmrkvnzkpym"
 [functions.share]
 verify_jwt = false
 
+[functions.og-embed]
+verify_jwt = false
+
 [functions.og-profile]
 verify_jwt = false
 
