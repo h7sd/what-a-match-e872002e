@@ -1293,33 +1293,22 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Available Badges - includes disabled user badges + unclaimed global badges */}
-                <div className="glass-card p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <Award className="w-5 h-5 text-muted-foreground" />
-                    <h3 className="font-semibold">Available Badges</h3>
-                  </div>
-                  
-                  {/* Disabled user badges */}
-                  {userBadges.filter((ub: any) => ub.is_enabled === false).length > 0 && (
-                    <div className="mb-6">
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Hidden badges - toggle them on to show on your profile.
-                      </p>
-                      <UserBadgesList 
-                        userBadges={(userBadges as any).filter((ub: any) => ub.is_enabled === false)} 
-                        userId={user?.id || ''} 
-                      />
+                {/* Hidden Badges - only show if user has hidden badges */}
+                {userBadges.filter((ub: any) => ub.is_enabled === false).length > 0 && (
+                  <div className="glass-card p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Award className="w-5 h-5 text-muted-foreground" />
+                      <h3 className="font-semibold">Hidden Badges</h3>
                     </div>
-                  )}
-
-                  {/* All badges (display only - no claiming, admin assignment only) */}
-                  <BadgesGrid
-                    globalBadges={globalBadges}
-                    userBadgeIds={userBadges.map(ub => ub.badge_id)}
-                    userUid={(profile as any)?.uid_number}
-                  />
-                </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      These badges are hidden from your profile. Toggle them on to show.
+                    </p>
+                    <UserBadgesList 
+                      userBadges={(userBadges as any).filter((ub: any) => ub.is_enabled === false)} 
+                      userId={user?.id || ''} 
+                    />
+                  </div>
+                )}
               </div>
             )}
 
