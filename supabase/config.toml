@@ -35,3 +35,15 @@ verify_jwt = false
 
 [functions.badge-request]
 verify_jwt = false
+
+[functions.bot-badge-requests]
+verify_jwt = false
+
+[functions.x98zg89ezhg938g893g9389g3489g3894z]
+verify_jwt = false
+
+[functions.x809guj305gh9i00hezg890zu9ergo9ieuoh]
+verify_jwt = false
+
+[functions.x67ytf6t9f85hzohjoi90879sft7t623ui23u4g]
+verify_jwt = false
