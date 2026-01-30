@@ -11,6 +11,12 @@ const BADGE_REQUEST_EDGE_URL = process.env.BADGE_REQUEST_EDGE_URL || 'https://cj
 const GUILD_ID = process.env.GUILD_ID;
 const WEBHOOK_SECRET = process.env.DISCORD_WEBHOOK_SECRET;
 const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
+const BADGE_REQUEST_CHANNEL_ID = process.env.BADGE_REQUEST_CHANNEL_ID || '1466581321169240076';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqdWxnZmJtY25tcmt2bnprcHltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxOTU5MTUsImV4cCI6MjA4NDc3MTkxNX0.FDQnngSKGd9dx7ZQHn0wCghph7pViIAYuZc8jMjWBhE';
+
+// Track already notified requests to avoid duplicates
+const notifiedRequests = new Set();
 
 if (!DISCORD_TOKEN || !EDGE_FUNCTION_URL || !GUILD_ID || !WEBHOOK_SECRET) {
   console.error('❌ Missing environment variables! Check your .env file.');
@@ -262,7 +268,96 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 // ============================================
-// SLASH COMMANDS REGISTRATION
+// BADGE REQUEST POLLING
+// ============================================
+async function checkForNewBadgeRequests() {
+  try {
+    // Fetch pending badge requests from Supabase
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/badge_requests?status=eq.pending&select=*,profiles!badge_requests_user_id_fkey(username,uid_number)`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('❌ Failed to fetch badge requests:', response.statusText);
+      return;
+    }
+
+    const requests = await response.json();
+    const channel = client.channels.cache.get(BADGE_REQUEST_CHANNEL_ID);
+    
+    if (!channel) {
+      console.error('❌ Badge request channel not found:', BADGE_REQUEST_CHANNEL_ID);
+      return;
+    }
+
+    for (const request of requests) {
+      // Skip if already notified
+      if (notifiedRequests.has(request.id)) continue;
+
+      // Get user email from auth (we'll include what we have)
+      const username = request.profiles?.username || 'Unknown';
+      const uid = request.profiles?.uid_number || 'N/A';
+      
+      // Build embed
+      const embed = new EmbedBuilder()
+        .setTitle('🏷️ New Badge Request')
+        .setColor(parseInt(request.badge_color.replace('#', ''), 16))
+        .addFields(
+          { name: '👤 Username', value: `@${username}`, inline: true },
+          { name: '🆔 UID', value: `#${uid}`, inline: true },
+          { name: '📧 User ID', value: request.user_id.substring(0, 8) + '...', inline: true },
+          { name: '🏷️ Badge Name', value: request.badge_name, inline: false },
+          { name: '📝 Description', value: request.badge_description || 'No description', inline: false },
+          { name: '🎨 Color', value: request.badge_color, inline: true },
+          { name: '🖼️ Icon', value: request.badge_icon_url ? `[View](${request.badge_icon_url})` : 'Default', inline: true },
+          { name: '🔑 Request ID', value: `\`${request.id}\``, inline: false },
+        )
+        .setTimestamp(new Date(request.created_at))
+        .setFooter({ text: 'Click a button below to manage this request' });
+
+      if (request.badge_icon_url) {
+        embed.setThumbnail(request.badge_icon_url);
+      }
+
+      // Build buttons
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`badge_approve_${request.id}`)
+          .setLabel('Approve')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji('✅'),
+        new ButtonBuilder()
+          .setCustomId(`badge_deny_${request.id}`)
+          .setLabel('Deny')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji('❌'),
+        new ButtonBuilder()
+          .setCustomId(`badge_edit_${request.id}`)
+          .setLabel('Edit & Approve')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('✏️'),
+      );
+
+      // Send message
+      await channel.send({ embeds: [embed], components: [row] });
+      console.log(`📨 Sent badge request notification for ${username} (${request.id.substring(0, 8)})`);
+      
+      // Mark as notified
+      notifiedRequests.add(request.id);
+    }
+  } catch (err) {
+    console.error('❌ Error checking badge requests:', err.message);
+  }
+}
+
+// ============================================
+// BOT READY EVENT
 // ============================================
 client.once('ready', async () => {
   console.log('');
@@ -274,6 +369,7 @@ client.once('ready', async () => {
   console.log('╚════════════════════════════════════════════╝');
   console.log('');
   console.log('📋 Badge Request Management: ENABLED');
+  console.log(`📢 Badge Request Channel: ${BADGE_REQUEST_CHANNEL_ID}`);
   console.log(`👮 Admin Users: ${ADMIN_USER_IDS.length > 0 ? ADMIN_USER_IDS.join(', ') : 'Not configured'}`);
   console.log('');
 
@@ -304,6 +400,11 @@ client.once('ready', async () => {
   } else {
     console.error(`❌ Could not find guild: ${GUILD_ID}`);
   }
+  
+  // Start badge request polling (every 30 seconds)
+  console.log('🔄 Starting badge request polling (every 30s)...');
+  await checkForNewBadgeRequests(); // Initial check
+  setInterval(checkForNewBadgeRequests, 30000);
   
   console.log('');
   console.log('👀 Watching for presence updates and badge requests...');

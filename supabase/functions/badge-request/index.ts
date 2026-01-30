@@ -380,33 +380,9 @@ serve(async (req) => {
         );
       }
 
-      // Send to Discord channel via webhook - bot will handle button interactions
-      const discordWebhook = Deno.env.get("DISCORD_BADGE_REQUEST_WEBHOOK");
-      if (discordWebhook) {
-        await fetch(discordWebhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            embeds: [{
-              title: "🏷️ New Badge Request",
-              color: parseInt(badgeColor.replace("#", ""), 16),
-              fields: [
-                { name: "👤 Username", value: `@${profile?.username || "Unknown"}`, inline: true },
-                { name: "🆔 UID", value: `#${profile?.uid_number || "N/A"}`, inline: true },
-                { name: "📧 Email", value: user.email || "N/A", inline: true },
-                { name: "🏷️ Badge Name", value: badgeName, inline: false },
-                { name: "📝 Description", value: badgeDescription || "No description", inline: false },
-                { name: "🎨 Color", value: badgeColor, inline: true },
-                { name: "🖼️ Icon", value: badgeIconUrl ? `[View Icon](${badgeIconUrl})` : "Default icon", inline: true },
-                { name: "🔑 Request ID", value: `\`${newRequest.id}\``, inline: false },
-              ],
-              thumbnail: badgeIconUrl ? { url: badgeIconUrl } : undefined,
-              timestamp: new Date().toISOString(),
-              footer: { text: "Use the buttons below or bot commands to approve/deny" },
-            }],
-          }),
-        });
-      }
+      // Note: Discord bot polls the database for new requests and sends messages with buttons
+      // No webhook needed - the bot handles notifications directly
+      console.log(`New badge request created: ${newRequest.id} by ${profile?.username || user.id}`);
 
       return new Response(
         JSON.stringify({ success: true, request: newRequest }),
