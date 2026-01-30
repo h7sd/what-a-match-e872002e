@@ -62,18 +62,52 @@ function generateSignature(payload, timestamp) {
 }
 
 // ============================================
+// HIDDEN ENDPOINT URLS FOR BADGE ACTIONS
+// ============================================
+const APPROVE_ENDPOINT = 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/x98zg89ezhg938g893g9389g3489g3894z';
+const DENY_ENDPOINT = 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/x809guj305gh9i00hezg890zu9ergo9ieuoh';
+const EDIT_APPROVE_ENDPOINT = 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/x67ytf6t9f85hzohjoi90879sft7t623ui23u4g';
+
+// ============================================
 // BADGE REQUEST HANDLING
 // ============================================
 async function handleBadgeAction(action, requestId, options = {}) {
   const timestamp = Math.floor(Date.now() / 1000);
-  const payload = JSON.stringify({
-    action,
-    requestId,
-    ...options,
-  });
+  
+  // Choose endpoint based on action
+  let endpoint;
+  let payload;
+  
+  if (action === 'approve' && (options.editedName || options.editedDescription || options.editedColor || options.editedIconUrl)) {
+    // Edit & Approve
+    endpoint = EDIT_APPROVE_ENDPOINT;
+    payload = JSON.stringify({
+      requestId,
+      editedName: options.editedName,
+      editedDescription: options.editedDescription,
+      editedColor: options.editedColor,
+      editedIconUrl: options.editedIconUrl,
+    });
+  } else if (action === 'approve') {
+    // Simple Approve
+    endpoint = APPROVE_ENDPOINT;
+    payload = JSON.stringify({ requestId });
+  } else if (action === 'deny') {
+    // Deny
+    endpoint = DENY_ENDPOINT;
+    payload = JSON.stringify({
+      requestId,
+      denialReason: options.denialReason,
+    });
+  } else {
+    throw new Error(`Unknown action: ${action}`);
+  }
+  
   const signature = generateSignature(payload, timestamp);
 
-  const response = await fetch(BADGE_REQUEST_EDGE_URL, {
+  console.log(`🔗 Calling ${action} endpoint for request ${requestId.substring(0, 8)}...`);
+  
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -82,6 +116,12 @@ async function handleBadgeAction(action, requestId, options = {}) {
     },
     body: payload,
   });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    console.error(`❌ Action ${action} failed: ${response.status} ${response.statusText}`);
+    console.error(`Response body: ${text}`);
+  }
 
   return response.json();
 }
