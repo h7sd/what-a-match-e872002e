@@ -76,23 +76,23 @@ export default function Premium() {
               <Crown className="w-12 h-12 text-white" />
             </div>
             <h2 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">
-              Du bist Premium!
+              You're Premium!
             </h2>
             <p className="text-muted-foreground">
-              Alle Premium-Features sind für dich freigeschaltet.
+              All premium features are unlocked for you.
             </p>
             <div className="flex flex-col gap-2 text-left bg-card/50 rounded-lg p-6 border border-primary/20">
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Erweiterte Themes & Animationen</span>
+                <span>Advanced Themes & Animations</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Exklusive Effekte & Fonts</span>
+                <span>Exclusive Effects & Fonts</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Custom Domain für dein Profil</span>
+                <span>Custom Domain for your Profile</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-green-500" />
@@ -100,7 +100,7 @@ export default function Premium() {
               </div>
             </div>
             <Button onClick={() => navigate("/dashboard")}>
-              Zurück zum Dashboard
+              Back to Dashboard
             </Button>
           </div>
         ) : (

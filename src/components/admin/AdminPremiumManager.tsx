@@ -90,16 +90,16 @@ export function AdminPremiumManager() {
     onSuccess: (_, { isPremium }) => {
       queryClient.invalidateQueries({ queryKey: ['adminPremiumUsers'] });
       toast({ 
-        title: isPremium ? '👑 Premium aktiviert!' : 'Premium entfernt',
+        title: isPremium ? '👑 Premium Activated!' : 'Premium Removed',
         description: isPremium 
-          ? 'Der Benutzer hat jetzt Premium-Zugang.' 
-          : 'Premium-Status wurde entfernt.'
+          ? 'The user now has premium access.' 
+          : 'Premium status has been removed.'
       });
       setSearchQuery('');
       setSearchResults([]);
     },
     onError: (error: any) => {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -138,12 +138,12 @@ export function AdminPremiumManager() {
           ) : user.is_premium ? (
             <>
               <X className="w-3.5 h-3.5" />
-              Entfernen
+              Remove
             </>
           ) : (
             <>
               <Crown className="w-3.5 h-3.5" />
-              Premium geben
+              Give Premium
             </>
           )}
         </Button>
@@ -160,20 +160,20 @@ export function AdminPremiumManager() {
         <div>
           <h3 className="font-semibold">Premium Manager</h3>
           <p className="text-sm text-muted-foreground">
-            Premium-Status für Benutzer verwalten
+            Manage premium status for users
           </p>
         </div>
       </div>
 
       {/* Search */}
       <div className="space-y-2">
-        <Label>Benutzer suchen</Label>
+        <Label>Search User</Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Username eingeben..."
+            placeholder="Enter username..."
             className="pl-9"
           />
           {isSearching && (
@@ -185,7 +185,7 @@ export function AdminPremiumManager() {
       {/* Search Results */}
       {searchResults.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Suchergebnisse</Label>
+          <Label className="text-xs text-muted-foreground">Search Results</Label>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
             {searchResults.map((user) => (
               <UserCard key={user.id} user={user} />
@@ -198,7 +198,7 @@ export function AdminPremiumManager() {
       <div className="space-y-2">
         <Label className="text-xs text-muted-foreground flex items-center gap-2">
           <Crown className="w-3.5 h-3.5 text-amber-500" />
-          Premium Benutzer ({premiumUsers.length})
+          Premium Users ({premiumUsers.length})
         </Label>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -206,7 +206,7 @@ export function AdminPremiumManager() {
           </div>
         ) : premiumUsers.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            Noch keine Premium-Benutzer
+            No premium users yet
           </div>
         ) : (
           <div className="space-y-2 max-h-[300px] overflow-y-auto">

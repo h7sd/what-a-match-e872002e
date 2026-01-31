@@ -13,10 +13,10 @@ interface PremiumCheckoutProps {
 const PREMIUM_PRICE = "3"; // One-time payment in EUR
 
 const PREMIUM_FEATURES = [
-  { icon: Palette, text: "Erweiterte Themes & Animationen" },
-  { icon: Sparkles, text: "Exklusive Effekte & Fonts" },
-  { icon: Globe, text: "Custom Domain für dein Profil" },
-  { icon: Crown, text: "Premium Badge auf deinem Profil" },
+  { icon: Palette, text: "Advanced Themes & Animations" },
+  { icon: Sparkles, text: "Exclusive Effects & Fonts" },
+  { icon: Globe, text: "Custom Domain for your Profile" },
+  { icon: Crown, text: "Premium Badge on your Profile" },
 ];
 
 export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumCheckoutProps) {
@@ -41,8 +41,8 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
 
       if (result?.success) {
         toast({
-          title: "🎉 Premium aktiviert!",
-          description: "Willkommen bei UserVault Premium! Alle Features sind jetzt freigeschaltet.",
+          title: "🎉 Premium Activated!",
+          description: "Welcome to UserVault Premium! All features are now unlocked.",
         });
         onSuccess?.();
       } else {
@@ -51,8 +51,8 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
     } catch (error: any) {
       console.error("Payment processing error:", error);
       toast({
-        title: "Fehler",
-        description: error.message || "Zahlung konnte nicht verarbeitet werden. Bitte versuche es erneut.",
+        title: "Error",
+        description: error.message || "Payment could not be processed. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -63,8 +63,8 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
   const handleError = (err: any) => {
     console.error("PayPal error:", err);
     toast({
-      title: "PayPal Fehler",
-      description: "Es gab ein Problem mit PayPal. Bitte versuche es erneut.",
+      title: "PayPal Error",
+      description: "There was a problem with PayPal. Please try again.",
       variant: "destructive",
     });
   };
@@ -79,15 +79,15 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
           UserVault Premium
         </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Einmalzahlung • Lebenslanger Zugang
+          One-time Payment • Lifetime Access
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-6">
         {/* Price */}
         <div className="text-center">
-          <span className="text-4xl font-bold text-foreground">{price}€</span>
-          <span className="text-muted-foreground ml-2">einmalig</span>
+          <span className="text-4xl font-bold text-foreground">€{price}</span>
+          <span className="text-muted-foreground ml-2">one-time</span>
         </div>
 
         {/* Features */}
@@ -107,14 +107,14 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
           {isPending && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">PayPal wird geladen...</span>
+              <span className="ml-2 text-muted-foreground">Loading PayPal...</span>
             </div>
           )}
           
           {isProcessing && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">Zahlung wird verarbeitet...</span>
+              <span className="ml-2 text-muted-foreground">Processing payment...</span>
             </div>
           )}
 
@@ -151,8 +151,8 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
               onError={handleError}
               onCancel={() => {
                 toast({
-                  title: "Abgebrochen",
-                  description: "Du hast die Zahlung abgebrochen.",
+                  title: "Cancelled",
+                  description: "You cancelled the payment.",
                 });
               }}
             />
@@ -163,11 +163,11 @@ export function PremiumCheckout({ onSuccess, price = PREMIUM_PRICE }: PremiumChe
         <div className="flex items-center justify-center gap-4 pt-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Check className="w-3 h-3 text-green-500" />
-            <span>Sichere Zahlung</span>
+            <span>Secure Payment</span>
           </div>
           <div className="flex items-center gap-1">
             <Check className="w-3 h-3 text-green-500" />
-            <span>Sofortige Aktivierung</span>
+            <span>Instant Activation</span>
           </div>
         </div>
       </CardContent>

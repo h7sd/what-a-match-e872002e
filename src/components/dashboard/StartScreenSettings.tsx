@@ -224,7 +224,7 @@ export function StartScreenSettings({
                 className="text-xs text-amber-500 hover:underline flex items-center gap-1"
               >
                 <Crown className="w-3 h-3" />
-                Upgrade für erweiterte Animationen
+                Upgrade for advanced animations
               </Link>
             )}
           </div>

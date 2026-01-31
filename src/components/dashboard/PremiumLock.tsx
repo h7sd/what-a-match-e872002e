@@ -16,7 +16,7 @@ interface PremiumLockProps {
 export function PremiumLock({ 
   isPremium, 
   children, 
-  featureName = "Dieses Feature",
+  featureName = "This feature",
   className 
 }: PremiumLockProps) {
   if (isPremium) {
@@ -45,7 +45,7 @@ export function PremiumLock({
               Premium Feature
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Klicke zum Freischalten
+              Click to unlock
             </p>
           </div>
         </Link>
