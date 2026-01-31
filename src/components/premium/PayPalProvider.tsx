@@ -35,7 +35,7 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
     <PayPalScriptProvider
       options={{
         clientId,
-        currency: "EUR",
+        currency: "USD",
         intent: "capture",
       }}
     >
