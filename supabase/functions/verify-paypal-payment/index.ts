@@ -5,6 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function generateInvoiceNumber(orderId: string): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const shortId = orderId.substring(0, 8).toUpperCase();
+  return `UV-${year}${month}-${shortId}`;
+}
+
+const PREMIUM_PRICE = '0.01'; // Test price - change to actual price
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -66,19 +76,15 @@ Deno.serve(async (req) => {
       )
     }
 
-    // For now, we trust the client-side PayPal SDK verification
-    // In production, you should verify with PayPal's API using a secret key
-    // The PayPal SDK already validates the payment on the client side
-    
     // Update user's premium status using service role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
     
     // Check if order was already processed
     const { data: existingOrder } = await supabaseAdmin
-      .from('profiles')
-      .select('paypal_order_id')
-      .eq('paypal_order_id', orderId)
-      .single()
+      .from('purchases')
+      .select('id')
+      .eq('order_id', orderId)
+      .maybeSingle()
     
     if (existingOrder) {
       console.log('Order already processed:', orderId)
@@ -96,6 +102,7 @@ Deno.serve(async (req) => {
       .single()
 
     const purchaseDate = new Date().toISOString()
+    const invoiceNumber = generateInvoiceNumber(orderId)
 
     // Update user's profile to premium
     const { error: updateError } = await supabaseAdmin
@@ -117,6 +124,28 @@ Deno.serve(async (req) => {
 
     console.log('Premium activated for user:', user.id)
 
+    // Record the purchase in the purchases table
+    const { error: purchaseError } = await supabaseAdmin
+      .from('purchases')
+      .insert({
+        user_id: user.id,
+        username: profile?.username || 'Unknown',
+        email: user.email || 'Unknown',
+        order_id: orderId,
+        amount: parseFloat(PREMIUM_PRICE),
+        currency: 'EUR',
+        payment_method: 'PayPal',
+        invoice_number: invoiceNumber,
+        status: 'completed'
+      })
+
+    if (purchaseError) {
+      console.error('Failed to record purchase:', purchaseError)
+      // Don't fail the whole request, premium is already activated
+    } else {
+      console.log('Purchase recorded:', invoiceNumber)
+    }
+
     // Send confirmation email with invoice
     try {
       const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-premium-email`, {
@@ -129,7 +158,7 @@ Deno.serve(async (req) => {
           email: user.email,
           username: profile?.username || 'User',
           orderId: orderId,
-          amount: '0.01', // Test price
+          amount: PREMIUM_PRICE,
           purchaseDate: purchaseDate,
         }),
       })

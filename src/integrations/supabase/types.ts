@@ -577,6 +577,48 @@ export type Database = {
         }
         Relationships: []
       }
+      purchases: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          email: string
+          id: string
+          invoice_number: string
+          order_id: string
+          payment_method: string
+          status: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          email: string
+          id?: string
+          invoice_number: string
+          order_id: string
+          payment_method?: string
+          status?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          email?: string
+          id?: string
+          invoice_number?: string
+          order_id?: string
+          payment_method?: string
+          status?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       social_links: {
         Row: {
           click_count: number | null
