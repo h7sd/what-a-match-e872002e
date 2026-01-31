@@ -36,18 +36,12 @@ export function PremiumLock({
           to="/premium"
           className="flex flex-col items-center gap-2 p-4 text-center group hover:scale-105 transition-transform"
         >
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <Lock className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <Lock className="w-4 h-4 text-white" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-              <Crown className="w-3.5 h-3.5 text-amber-500" />
-              Premium Feature
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Click to unlock
-            </p>
-          </div>
+          <p className="text-sm font-medium text-amber-500">
+            Unlock with Premium
+          </p>
         </Link>
       </div>
     </div>

@@ -1257,48 +1257,55 @@ export default function Dashboard() {
 
             {/* Admin Tab */}
             {activeTab === 'admin' && isAdmin && (
-              <div className="space-y-6 max-w-4xl">
-                {/* Account Lookup - Full Width Top */}
+              <div className="space-y-6 max-w-5xl">
+                {/* Account Lookup - Full Width */}
                 <div className="glass-card p-6">
                   <AdminAccountLookup />
                 </div>
 
-                {/* Top Row - Badge Assigners */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="glass-card p-6">
-                    <LimitedBadgeAssigner />
-                  </div>
-                  <div className="glass-card p-6">
-                    <AdminBadgeRemover />
-                  </div>
-                </div>
-
-                {/* All Badge Assigner */}
-                <div className="glass-card p-6">
-                  <AllBadgeAssigner />
-                </div>
-
-                {/* User Management Row */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="glass-card p-6">
-                    <UserBanManager />
-                  </div>
-                  <div className="glass-card p-6">
-                    <AdminUserManager />
-                  </div>
-                  <div className="glass-card p-6">
-                    <AdminPremiumManager />
+                {/* Badge Management Section */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground px-1">Badge Management</h3>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="glass-card p-5">
+                      <LimitedBadgeAssigner />
+                    </div>
+                    <div className="glass-card p-5">
+                      <AllBadgeAssigner />
+                    </div>
+                    <div className="glass-card p-5">
+                      <AdminBadgeRemover />
+                    </div>
                   </div>
                 </div>
 
-                {/* UID Manager */}
-                <div className="glass-card p-6">
-                  <AdminUIDManager />
+                {/* User Management Section */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground px-1">User Management</h3>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="glass-card p-5">
+                      <UserBanManager />
+                    </div>
+                    <div className="glass-card p-5">
+                      <AdminUserManager />
+                    </div>
+                    <div className="glass-card p-5">
+                      <AdminPremiumManager />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Badge Management - Collapsible */}
-                <div className="glass-card p-6">
-                  <AdminBadgeManager />
+                {/* System Section */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground px-1">System</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="glass-card p-5">
+                      <AdminUIDManager />
+                    </div>
+                    <div className="glass-card p-5">
+                      <AdminBadgeManager />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
