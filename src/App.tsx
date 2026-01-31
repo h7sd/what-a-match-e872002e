@@ -14,6 +14,7 @@ import Privacy from "./pages/Privacy";
 import Imprint from "./pages/Imprint";
 import ShareRedirect from "./pages/ShareRedirect";
 import Status from "./pages/Status";
+import AliasRespond from "./pages/AliasRespond";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/imprint" element={<Imprint />} />
             <Route path="/status" element={<Status />} />
+            <Route path="/alias-respond" element={<AliasRespond />} />
             <Route path="/s/:username" element={<ShareRedirect />} />
             <Route path="/:username" element={<UserProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

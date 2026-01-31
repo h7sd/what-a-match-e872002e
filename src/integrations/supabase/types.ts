@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      alias_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requested_alias: string
+          requester_id: string
+          responded_at: string | null
+          response_token: string | null
+          status: string
+          target_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_alias: string
+          requester_id: string
+          responded_at?: string | null
+          response_token?: string | null
+          status?: string
+          target_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_alias?: string
+          requester_id?: string
+          responded_at?: string | null
+          response_token?: string | null
+          status?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       badge_requests: {
         Row: {
           admin_edited_color: string | null
