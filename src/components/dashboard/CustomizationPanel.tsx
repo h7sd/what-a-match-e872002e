@@ -180,7 +180,7 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
       {/* Assets Uploader */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Assets Uploader</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <FileUploader
             type="background"
             currentUrl={props.backgroundUrl || props.backgroundVideoUrl}
@@ -203,12 +203,6 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
             currentUrl={props.musicUrl}
             onUpload={props.setMusicUrl}
             onRemove={() => props.setMusicUrl('')}
-          />
-          <FileUploader
-            type="avatar"
-            currentUrl={props.avatarUrl}
-            onUpload={props.setAvatarUrl}
-            onRemove={() => props.setAvatarUrl('')}
           />
           <FileUploader
             type="cursor"
@@ -268,16 +262,6 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
         
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={props.bio}
-                onChange={(e) => props.setBio(e.target.value)}
-                placeholder="This is my description"
-                className="bg-secondary/30"
-              />
-            </div>
-
             <div className="space-y-2">
               <Label>Background Effects</Label>
               <Select 
