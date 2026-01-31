@@ -51,6 +51,9 @@ verify_jwt = false
 [functions.bot-badge-requests]
 verify_jwt = false
 
+[functions.health]
+verify_jwt = false
+
 [functions.x98zg89ezhg938g893g9389g3489g3894z]
 verify_jwt = false
 
