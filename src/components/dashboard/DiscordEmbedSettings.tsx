@@ -375,7 +375,7 @@ export function DiscordEmbedSettings({
                       <img 
                         src={ogIconUrl} 
                         alt="Icon" 
-                        className="w-12 h-12 rounded-lg object-cover border border-border"
+                        className="w-16 h-16 rounded-lg object-cover border border-border"
                       />
                       <button
                         onClick={() => onOgIconUrlChange('')}
@@ -385,7 +385,7 @@ export function DiscordEmbedSettings({
                       </button>
                     </div>
                   ) : (
-                    <label className="w-12 h-12 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center cursor-pointer transition-colors bg-card/50">
+                    <label className="flex-1 h-20 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center cursor-pointer transition-colors bg-card/50">
                       <input
                         type="file"
                         accept="image/*"
@@ -394,18 +394,15 @@ export function DiscordEmbedSettings({
                         disabled={uploading === 'icon'}
                       />
                       {uploading === 'icon' ? (
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <Upload className="w-4 h-4 text-muted-foreground" />
+                        <>
+                          <Upload className="w-5 h-5 text-muted-foreground mb-1" />
+                          <span className="text-xs text-muted-foreground">Click to upload icon</span>
+                        </>
                       )}
                     </label>
                   )}
-                  <Input
-                    value={ogIconUrl}
-                    onChange={(e) => onOgIconUrlChange(e.target.value)}
-                    placeholder="https://... or upload an icon"
-                    className="flex-1 bg-card border-border"
-                  />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Recommended: 32x32px or 64x64px PNG/ICO
@@ -486,8 +483,8 @@ export function DiscordEmbedSettings({
                       </button>
                     </div>
                   )}
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:border-primary/50 cursor-pointer transition-colors bg-card">
+                  {!ogImageUrl && (
+                    <label className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center cursor-pointer transition-colors bg-card/50">
                       <input
                         type="file"
                         accept="image/*"
@@ -496,20 +493,15 @@ export function DiscordEmbedSettings({
                         disabled={uploading === 'image'}
                       />
                       {uploading === 'image' ? (
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <Upload className="w-4 h-4 text-muted-foreground" />
+                        <>
+                          <Upload className="w-5 h-5 text-muted-foreground mb-1" />
+                          <span className="text-xs text-muted-foreground">Click to upload embed image</span>
+                        </>
                       )}
-                      <span className="text-sm">Upload Image</span>
                     </label>
-                    <span className="text-xs text-muted-foreground">or</span>
-                    <Input
-                      value={ogImageUrl}
-                      onChange={(e) => onOgImageUrlChange(e.target.value)}
-                      placeholder="https://..."
-                      className="flex-1 bg-card border-border"
-                    />
-                  </div>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Recommended: 1200x630px for best display on Discord & Twitter
                   </p>
