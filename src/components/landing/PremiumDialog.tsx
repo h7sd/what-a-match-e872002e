@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { PayPalProvider } from "@/components/premium/PayPalProvider";
@@ -16,14 +16,27 @@ import { Crown, Check, Loader2 } from "lucide-react";
 
 interface PremiumDialogProps {
   children: React.ReactNode;
+  defaultOpen?: boolean;
 }
 
-export function PremiumDialog({ children }: PremiumDialogProps) {
+export function PremiumDialog({ children, defaultOpen = false }: PremiumDialogProps) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [open, setOpen] = useState(defaultOpen);
   const [isPremium, setIsPremium] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Check for premium redirect after login
+  useEffect(() => {
+    const showPremium = searchParams.get("showPremium");
+    if (showPremium === "true" && user && !authLoading) {
+      setOpen(true);
+      // Remove the query param
+      searchParams.delete("showPremium");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, user, authLoading, setSearchParams]);
 
   useEffect(() => {
     async function checkPremiumStatus() {
@@ -54,7 +67,8 @@ export function PremiumDialog({ children }: PremiumDialogProps) {
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && !user) {
-      navigate("/auth");
+      // Redirect to auth with premium redirect flag
+      navigate("/auth?redirect=premium");
       return;
     }
     setOpen(newOpen);

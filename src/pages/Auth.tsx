@@ -95,13 +95,19 @@ export default function Auth() {
           }
         }
         
-        // No MFA required, redirect to dashboard
-        navigate('/dashboard');
+        // Check for premium redirect
+        const redirect = searchParams.get('redirect');
+        if (redirect === 'premium') {
+          navigate('/?showPremium=true');
+        } else {
+          // No MFA required, redirect to dashboard
+          navigate('/dashboard');
+        }
       }
     };
     
     checkAuthAndMfa();
-  }, [user, mfaChallenge, step, navigate, toast]);
+  }, [user, mfaChallenge, step, navigate, toast, searchParams]);
 
   // Load Turnstile script
   useEffect(() => {
@@ -350,7 +356,13 @@ export default function Auth() {
           toast({ title: '2FA Required', description: 'Please enter your authenticator code.' });
         } else {
           toast({ title: 'Welcome back!' });
-          navigate('/dashboard');
+          // Check for premium redirect
+          const redirect = searchParams.get('redirect');
+          if (redirect === 'premium') {
+            navigate('/?showPremium=true');
+          } else {
+            navigate('/dashboard');
+          }
         }
       } else if (step === 'signup') {
         const result = signupSchema.safeParse({ email, password, username });
