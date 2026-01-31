@@ -54,25 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!emailOrUsername.includes('@')) {
       const usernameInput = emailOrUsername.toLowerCase().trim();
       
-      // Look up email by username or alias_username
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .or(`username.ilike.${usernameInput},alias_username.ilike.${usernameInput}`)
-        .maybeSingle();
-      
-      if (profileError) {
-        console.error('Profile lookup error:', profileError);
-        return { error: new Error('Invalid username or password') };
-      }
-      
-      if (!profile) {
-        return { error: new Error('Invalid username or password') };
-      }
-      
-      // Get user email from auth.users via admin function
+      // Get user email via secure edge function (handles rate limiting + validation)
       const { data: userData, error: userError } = await supabase.functions.invoke('get-user-email', {
-        body: { user_id: profile.user_id }
+        body: { username: usernameInput }
       });
       
       if (userError || !userData?.email) {

@@ -77,9 +77,27 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const { requestedAlias } = body;
-      if (!requestedAlias) {
+      if (!requestedAlias || typeof requestedAlias !== "string") {
         return new Response(
           JSON.stringify({ error: "Missing requestedAlias" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Validate alias format - must match signup validation rules
+      const normalizedAlias = requestedAlias.toLowerCase().trim();
+      const aliasRegex = /^[a-zA-Z0-9_]+$/;
+      
+      if (normalizedAlias.length < 1 || normalizedAlias.length > 20) {
+        return new Response(
+          JSON.stringify({ error: "Username must be between 1 and 20 characters" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      if (!aliasRegex.test(normalizedAlias)) {
+        return new Response(
+          JSON.stringify({ error: "Username can only contain letters, numbers and underscores" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
