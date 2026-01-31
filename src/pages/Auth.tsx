@@ -75,11 +75,34 @@ export default function Auth() {
 
   // Redirect if already logged in AND not in MFA challenge (e.g., after OAuth callback)
   useEffect(() => {
-    // Don't redirect if we're in the middle of MFA verification
-    if (user && !mfaChallenge && step !== 'mfa-verify') {
-      navigate('/dashboard');
-    }
-  }, [user, mfaChallenge, step, navigate]);
+    const checkAuthAndMfa = async () => {
+      // Don't redirect if we're in the middle of MFA verification
+      if (user && !mfaChallenge && step !== 'mfa-verify') {
+        // Check if user has MFA enabled and needs to verify
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+          // User has MFA but hasn't verified - don't redirect, trigger MFA
+          const { data: factorsData } = await supabase.auth.mfa.listFactors();
+          
+          if (factorsData && factorsData.totp.length > 0) {
+            const verifiedFactor = factorsData.totp.find(f => f.status === 'verified');
+            if (verifiedFactor) {
+              setMfaFactorId(verifiedFactor.id);
+              setStep('mfa-verify');
+              toast({ title: '2FA Required', description: 'Please enter your authenticator code.' });
+              return;
+            }
+          }
+        }
+        
+        // No MFA required, redirect to dashboard
+        navigate('/dashboard');
+      }
+    };
+    
+    checkAuthAndMfa();
+  }, [user, mfaChallenge, step, navigate, toast]);
 
   // Load Turnstile script
   useEffect(() => {
@@ -161,18 +184,42 @@ export default function Auth() {
     }
   }, [step, turnstileLoaded, renderTurnstile]);
 
-  // Handle password reset from email link
+  // Handle password reset from email link or MFA required redirect
   useEffect(() => {
     const type = searchParams.get('type');
     const emailParam = searchParams.get('email');
     const codeParam = searchParams.get('code');
+    const mfaRequired = searchParams.get('mfa');
     
     if (type === 'recovery' && emailParam && codeParam) {
       setEmail(emailParam);
       setVerificationCode(codeParam);
       setStep('reset-password');
     }
-  }, [searchParams]);
+    
+    // Handle MFA required redirect - check if user has MFA and needs to verify
+    if (mfaRequired === 'required' && user) {
+      const checkAndTriggerMfa = async () => {
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+          // Get the verified factor to use for challenge
+          const { data: factorsData } = await supabase.auth.mfa.listFactors();
+          
+          if (factorsData && factorsData.totp.length > 0) {
+            const verifiedFactor = factorsData.totp.find(f => f.status === 'verified');
+            if (verifiedFactor) {
+              setMfaFactorId(verifiedFactor.id);
+              setStep('mfa-verify');
+              toast({ title: '2FA Required', description: 'Please enter your authenticator code.' });
+            }
+          }
+        }
+      };
+      
+      checkAndTriggerMfa();
+    }
+  }, [searchParams, user, toast]);
 
   const verifyTurnstile = async (token: string): Promise<boolean> => {
     // Allow bypass token for development/preview environments where Turnstile may fail

@@ -222,11 +222,29 @@ export default function Dashboard() {
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkTitle, setNewLinkTitle] = useState('');
 
-  // Redirect if not authenticated
+  // Check MFA status and redirect if not verified
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
+    const checkMfaStatus = async () => {
+      if (!authLoading && !user) {
+        navigate('/auth');
+        return;
+      }
+      
+      if (user) {
+        // Check if user has MFA enabled and needs to verify
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aalData) {
+          // If user has MFA enabled (nextLevel is aal2) but hasn't verified (currentLevel is aal1)
+          if (aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+            // User needs to complete MFA verification
+            navigate('/auth?mfa=required');
+          }
+        }
+      }
+    };
+    
+    checkMfaStatus();
   }, [user, authLoading, navigate]);
 
   // Populate form with profile data
