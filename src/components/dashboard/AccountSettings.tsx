@@ -221,12 +221,12 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
       if (error) throw error;
 
       if (data?.success) {
-        toast({ title: 'Anfrage gesendet', description: `@${aliasOwnerUsername || requested} bekommt eine E-Mail.` });
+        toast({ title: 'Request sent', description: `@${aliasOwnerUsername || requested} will receive an email.` });
       } else {
         throw new Error(data?.error || 'Request failed');
       }
     } catch (e: any) {
-      toast({ title: 'Request fehlgeschlagen', description: e?.message || 'Unbekannter Fehler', variant: 'destructive' });
+      toast({ title: 'Request failed', description: e?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setIsRequestingAlias(false);
     }
@@ -518,7 +518,7 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
                 </Button>
               )}
             </div>
-            <p className="text-xs text-primary">Want more? Unlock with Premium</p>
+            
           </div>
 
           {/* Alias Username */}
@@ -596,18 +596,18 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
             {/* Availability hint */}
             {aliasUsername !== (profile?.alias_username || '') && (
               <div className="text-xs">
-                {aliasAvailability === 'available' && <span className="text-success">Verfügbar</span>}
+                {aliasAvailability === 'available' && <span className="text-success">Available</span>}
                 {aliasAvailability === 'taken' && (
                   <span className="text-muted-foreground">
-                    Vergeben von <span className="text-primary">@{aliasOwnerUsername}</span> – du kannst eine Anfrage senden.
+                    Taken by <span className="text-primary">@{aliasOwnerUsername}</span> – you can send a request.
                   </span>
                 )}
                 {aliasAvailability === 'unrequestable' && (
                   <span className="text-muted-foreground">
-                    Dieser Handle ist bereits als Alias vergeben (kein Request möglich).
+                    This handle is already taken as an alias (no request possible).
                   </span>
                 )}
-                {aliasAvailability === 'invalid' && <span className="text-destructive">Ungültig (1–20 Zeichen, a-z, 0-9, _)</span>}
+                {aliasAvailability === 'invalid' && <span className="text-destructive">Invalid (1–20 characters, a-z, 0-9, _)</span>}
               </div>
             )}
 
