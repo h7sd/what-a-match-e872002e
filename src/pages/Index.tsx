@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Sparkles, Zap, Globe, Music } from "lucide-react";
 import { FadeIn } from "@/components/landing/FadeIn";
@@ -18,7 +19,20 @@ import { ClaimedUsernamesSidebar } from "@/components/landing/ClaimedUsernamesSi
 import { PremiumDialog } from "@/components/landing/PremiumDialog";
 
 export default function Index() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+
+  // Check for premium redirect after login
+  useEffect(() => {
+    const showPremium = searchParams.get("showPremium");
+    if (showPremium === "true" && user && !authLoading) {
+      setShowPremiumDialog(true);
+      // Remove the query param
+      searchParams.delete("showPremium");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, user, authLoading, setSearchParams]);
 
   const features = [
     {
@@ -88,7 +102,10 @@ export default function Index() {
                 UserVault.cc
               </Link>
               <nav className="hidden md:flex items-center gap-6">
-                <PremiumDialog>
+                <PremiumDialog 
+                  open={showPremiumDialog} 
+                  onOpenChange={setShowPremiumDialog}
+                >
                   <button 
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
