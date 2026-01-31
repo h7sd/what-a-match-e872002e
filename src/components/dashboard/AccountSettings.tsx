@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   User, Mail, Shield, Key, LogOut, Loader2, Eye, EyeOff, 
@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -90,6 +91,13 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
   // Alias username state
   const [aliasUsername, setAliasUsername] = useState('');
   const [isSavingAlias, setIsSavingAlias] = useState(false);
+
+  type AliasAvailability = 'idle' | 'checking' | 'available' | 'taken' | 'unrequestable' | 'invalid';
+  const [aliasAvailability, setAliasAvailability] = useState<AliasAvailability>('idle');
+  const [aliasOwnerUsername, setAliasOwnerUsername] = useState<string | null>(null);
+  const [flashAliasAvailable, setFlashAliasAvailable] = useState(false);
+  const [isRequestingAlias, setIsRequestingAlias] = useState(false);
+  const aliasCheckTimerRef = useRef<number | null>(null);
   
   
   // MFA State
@@ -124,6 +132,105 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
   useEffect(() => {
     setAliasUsername(profile?.alias_username || '');
   }, [profile?.alias_username]);
+
+  // Live alias availability check (debounced)
+  useEffect(() => {
+    if (aliasCheckTimerRef.current) {
+      window.clearTimeout(aliasCheckTimerRef.current);
+      aliasCheckTimerRef.current = null;
+    }
+
+    const currentAlias = (profile?.alias_username || '').toLowerCase();
+    const next = (aliasUsername || '').toLowerCase();
+
+    setAliasOwnerUsername(null);
+
+    // No change / empty
+    if (!next || next === currentAlias) {
+      setAliasAvailability('idle');
+      return;
+    }
+
+    // Basic validation
+    if (next.length < 1 || next.length > 20 || !/^[a-z0-9_]+$/.test(next)) {
+      setAliasAvailability('invalid');
+      return;
+    }
+
+    // Wait a moment while typing
+    setAliasAvailability('checking');
+    aliasCheckTimerRef.current = window.setTimeout(async () => {
+      try {
+        if (!user?.id) return;
+
+        // If taken either as username OR as someone else's alias_username, it's not claimable.
+        const { data: existingProfile, error } = await supabase
+          .from('profiles')
+          .select('user_id, username, alias_username')
+          .or(`username.eq.${next},alias_username.eq.${next}`)
+          .neq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Alias availability check failed:', error);
+          setAliasAvailability('idle');
+          return;
+        }
+
+        if (!existingProfile) {
+          setAliasAvailability('available');
+          setFlashAliasAvailable(true);
+          window.setTimeout(() => setFlashAliasAvailable(false), 900);
+          return;
+        }
+
+        // Request only makes sense if someone has it as their *username*
+        if ((existingProfile.username || '').toLowerCase() === next) {
+          setAliasOwnerUsername(existingProfile.username);
+          setAliasAvailability('taken');
+        } else {
+          setAliasAvailability('unrequestable');
+        }
+      } catch (e) {
+        console.error('Alias availability check crashed:', e);
+        setAliasAvailability('idle');
+      }
+    }, 450);
+
+    return () => {
+      if (aliasCheckTimerRef.current) {
+        window.clearTimeout(aliasCheckTimerRef.current);
+        aliasCheckTimerRef.current = null;
+      }
+    };
+  }, [aliasUsername, profile?.alias_username, user?.id]);
+
+  const handleRequestAlias = async () => {
+    const requested = (aliasUsername || '').toLowerCase();
+    if (!requested || aliasAvailability !== 'taken') return;
+
+    setIsRequestingAlias(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('alias-request', {
+        body: {
+          action: 'create',
+          requestedAlias: requested,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({ title: 'Anfrage gesendet', description: `@${aliasOwnerUsername || requested} bekommt eine E-Mail.` });
+      } else {
+        throw new Error(data?.error || 'Request failed');
+      }
+    } catch (e: any) {
+      toast({ title: 'Request fehlgeschlagen', description: e?.message || 'Unbekannter Fehler', variant: 'destructive' });
+    } finally {
+      setIsRequestingAlias(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -418,7 +525,12 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground">Alias Username (Redirect)</label>
             <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+              <div
+                className={cn(
+                  "flex-1 flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border border-border transition-colors",
+                  flashAliasAvailable && "alias-available-flash border-success/60 ring-2 ring-success/20"
+                )}
+              >
                 <span className="text-muted-foreground">@</span>
                 <Input
                   value={aliasUsername}
@@ -428,7 +540,9 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
                   maxLength={20}
                 />
               </div>
-              {aliasUsername !== (profile?.alias_username || '') && onUpdateAlias && (
+
+              {/* Claim if available */}
+              {aliasUsername !== (profile?.alias_username || '') && onUpdateAlias && aliasAvailability === 'available' && (
                 <Button 
                   size="sm" 
                   onClick={async () => {
@@ -444,6 +558,21 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
                   {isSavingAlias ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
                 </Button>
               )}
+
+              {/* Request if taken (username exists) */}
+              {aliasUsername !== (profile?.alias_username || '') && aliasAvailability === 'taken' && (
+                <Button size="sm" onClick={handleRequestAlias} disabled={isRequestingAlias}>
+                  {isRequestingAlias ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Request'}
+                </Button>
+              )}
+
+              {/* Busy indicator */}
+              {aliasUsername !== (profile?.alias_username || '') && aliasAvailability === 'checking' && (
+                <Button size="sm" variant="secondary" disabled>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </Button>
+              )}
+
               {aliasUsername && onUpdateAlias && (
                 <Button 
                   size="sm" 
@@ -463,6 +592,25 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
                 </Button>
               )}
             </div>
+
+            {/* Availability hint */}
+            {aliasUsername !== (profile?.alias_username || '') && (
+              <div className="text-xs">
+                {aliasAvailability === 'available' && <span className="text-success">Verfügbar</span>}
+                {aliasAvailability === 'taken' && (
+                  <span className="text-muted-foreground">
+                    Vergeben von <span className="text-primary">@{aliasOwnerUsername}</span> – du kannst eine Anfrage senden.
+                  </span>
+                )}
+                {aliasAvailability === 'unrequestable' && (
+                  <span className="text-muted-foreground">
+                    Dieser Handle ist bereits als Alias vergeben (kein Request möglich).
+                  </span>
+                )}
+                {aliasAvailability === 'invalid' && <span className="text-destructive">Ungültig (1–20 Zeichen, a-z, 0-9, _)</span>}
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground">
               Visitors to /{aliasUsername || 'alias'} will be redirected to /{profile?.username}
             </p>

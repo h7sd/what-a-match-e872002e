@@ -31,6 +31,10 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Semantic success (used for “available” state) */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+
     --border: 240 5% 18%;
     --input: 240 5% 18%;
     --ring: 270 70% 60%;
@@ -78,6 +82,10 @@
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Semantic success (used for “available” state) */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
 
     --border: 240 5% 18%;
     --input: 240 5% 18%;
@@ -186,6 +194,26 @@
 
   .pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Alias availability flash (brief green highlight) */
+  @keyframes alias-available-flash {
+    0% {
+      box-shadow: 0 0 0 0 hsl(var(--success) / 0);
+      border-color: hsl(var(--border));
+    }
+    35% {
+      box-shadow: 0 0 0 4px hsl(var(--success) / 0.35);
+      border-color: hsl(var(--success) / 0.65);
+    }
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--success) / 0);
+      border-color: hsl(var(--border));
+    }
+  }
+
+  .alias-available-flash {
+    animation: alias-available-flash 800ms ease-out;
   }
 
   /* Floating animation */

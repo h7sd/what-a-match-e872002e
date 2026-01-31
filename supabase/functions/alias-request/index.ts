@@ -152,7 +152,22 @@ const handler = async (req: Request): Promise<Response> => {
       const { data: targetUser } = await supabase.auth.admin.getUserById(targetProfile.user_id);
       
       if (targetUser?.user?.email) {
-        const siteUrl = "https://uservault.cc";
+        const siteUrl = (() => {
+          const origin = req.headers.get("origin");
+          if (origin && (origin.startsWith("http://") || origin.startsWith("https://"))) return origin;
+
+          const referer = req.headers.get("referer");
+          if (referer) {
+            try {
+              return new URL(referer).origin;
+            } catch {
+              // ignore
+            }
+          }
+
+          // Fallback (should rarely be used)
+          return "https://uservault.cc";
+        })();
         const approveUrl = `${siteUrl}/alias-respond?token=${newRequest.response_token}&action=approve`;
         const denyUrl = `${siteUrl}/alias-respond?token=${newRequest.response_token}&action=deny`;
 

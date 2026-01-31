@@ -72,6 +72,7 @@ import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { LiveProfilePreview } from '@/components/dashboard/LiveProfilePreview';
 import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSection';
+import { AliasRequestsBell } from '@/components/dashboard/AliasRequestsBell';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects' | 'badges' | 'admin' | 'settings';
@@ -645,6 +646,7 @@ export default function Dashboard() {
           </Link>
           
           <div className="flex items-center gap-2">
+            <AliasRequestsBell />
             <Button
               size="sm"
               onClick={handleSave}
@@ -690,18 +692,21 @@ export default function Dashboard() {
               )}
               <h1 className="text-xl font-semibold capitalize">{activeTab}</h1>
             </div>
-            <Button
-              onClick={handleSave}
-              disabled={updateProfile.isPending}
-              className="bg-primary"
-            >
-              {updateProfile.isPending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              Save Changes
-            </Button>
+            <div className="flex items-center gap-2">
+              <AliasRequestsBell />
+              <Button
+                onClick={handleSave}
+                disabled={updateProfile.isPending}
+                className="bg-primary"
+              >
+                {updateProfile.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Save Changes
+              </Button>
+            </div>
           </div>
         </header>
 
