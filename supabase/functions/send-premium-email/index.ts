@@ -359,11 +359,11 @@ async function generateInvoicePDF(
   });
   
   const features = [
-    '✓ Advanced Themes & Animations',
-    '✓ Exclusive Effects & Fonts',
-    '✓ Custom Domain for your Profile',
-    '✓ Premium Badge on your Profile',
-    '✓ Lifetime Access - No recurring fees'
+    '- Advanced Themes & Animations',
+    '- Exclusive Effects & Fonts',
+    '- Custom Domain for your Profile',
+    '- Premium Badge on your Profile',
+    '- Lifetime Access - No recurring fees'
   ];
   
   y -= 18;
