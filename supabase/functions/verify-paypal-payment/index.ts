@@ -186,6 +186,33 @@ Deno.serve(async (req) => {
 
     console.log('Premium activated for user:', user.id)
 
+    // Assign Premium badge to user
+    const PREMIUM_BADGE_ID = '68f302c3-8b73-4791-9551-9b8435a8fd93';
+    
+    // Check if user already has the premium badge
+    const { data: existingBadge } = await supabaseAdmin
+      .from('user_badges')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('badge_id', PREMIUM_BADGE_ID)
+      .maybeSingle()
+    
+    if (!existingBadge) {
+      const { error: badgeError } = await supabaseAdmin
+        .from('user_badges')
+        .insert({
+          user_id: user.id,
+          badge_id: PREMIUM_BADGE_ID,
+        })
+      
+      if (badgeError) {
+        console.error('Failed to assign premium badge:', badgeError)
+        // Don't fail the whole request, premium is already activated
+      } else {
+        console.log('Premium badge assigned to user:', user.id)
+      }
+    }
+
     // Record promo code use if applicable
     if (promoCodeId) {
       // Record the use
