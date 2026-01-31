@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
 import { useCurrentUserProfile, useUpdateProfile, useSocialLinks, useCreateSocialLink, useDeleteSocialLink } from '@/hooks/useProfile';
 import { useIsAdmin, useUserBadges, useGlobalBadges, useClaimBadge } from '@/hooks/useBadges';
+import { FileUploader } from '@/components/dashboard/FileUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -769,22 +770,15 @@ export default function Dashboard() {
                     </div>
                     
                     <div className="flex items-start gap-4">
-                      <div className="w-20 h-20 rounded-xl bg-secondary overflow-hidden">
-                        {avatarUrl ? (
-                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-2xl text-muted-foreground">
-                            {displayName.charAt(0) || '?'}
-                          </div>
-                        )}
+                      <div className="w-24 flex-shrink-0">
+                        <FileUploader
+                          type="avatar"
+                          currentUrl={avatarUrl}
+                          onUpload={setAvatarUrl}
+                          onRemove={() => setAvatarUrl('')}
+                        />
                       </div>
                       <div className="flex-1 space-y-3">
-                        <Input
-                          value={avatarUrl}
-                          onChange={(e) => setAvatarUrl(e.target.value)}
-                          placeholder="Avatar URL"
-                          className="bg-secondary/50"
-                        />
                         <div>
                           <Label className="text-xs text-muted-foreground">Avatar Shape</Label>
                           <div className="flex gap-2 mt-2">
