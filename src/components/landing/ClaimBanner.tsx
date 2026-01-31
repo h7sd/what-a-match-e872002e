@@ -9,7 +9,8 @@ export function ClaimBanner() {
   const navigate = useNavigate();
 
   const handleClaim = () => {
-    navigate('/auth', { state: { suggestedUsername: username } });
+    // Navigate to signup page with suggested username
+    navigate('/auth?mode=signup', { state: { suggestedUsername: username } });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
