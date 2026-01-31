@@ -1022,95 +1022,99 @@ export default function Dashboard() {
                     setTextFont={setTextFont}
                   />
 
-                  {/* Start Screen Settings */}
-                  <div className="glass-card p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Sparkles className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Start Screen</h3>
+                  {/* Additional Settings - Compact Cards */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {/* Start Screen */}
+                    <div className="glass-card p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <h3 className="font-medium text-sm">Start Screen</h3>
+                      </div>
+                      <StartScreenSettings
+                        enabled={startScreenEnabled}
+                        onEnabledChange={setStartScreenEnabled}
+                        text={startScreenText}
+                        onTextChange={setStartScreenText}
+                        font={startScreenFont}
+                        onFontChange={setStartScreenFont}
+                        textColor={startScreenColor}
+                        onTextColorChange={setStartScreenColor}
+                        bgColor={startScreenBgColor}
+                        onBgColorChange={setStartScreenBgColor}
+                        textAnimation={startScreenAnimation}
+                        onTextAnimationChange={setStartScreenAnimation}
+                        asciiSize={asciiSize}
+                        onAsciiSizeChange={setAsciiSize}
+                        asciiWaves={asciiWaves}
+                        onAsciiWavesChange={setAsciiWaves}
+                        hasAudio={Boolean(musicUrl || backgroundVideoUrl)}
+                      />
                     </div>
-                    <StartScreenSettings
-                      enabled={startScreenEnabled}
-                      onEnabledChange={setStartScreenEnabled}
-                      text={startScreenText}
-                      onTextChange={setStartScreenText}
-                      font={startScreenFont}
-                      onFontChange={setStartScreenFont}
-                      textColor={startScreenColor}
-                      onTextColorChange={setStartScreenColor}
-                      bgColor={startScreenBgColor}
-                      onBgColorChange={setStartScreenBgColor}
-                      textAnimation={startScreenAnimation}
-                      onTextAnimationChange={setStartScreenAnimation}
-                      asciiSize={asciiSize}
-                      onAsciiSizeChange={setAsciiSize}
-                      asciiWaves={asciiWaves}
-                      onAsciiWavesChange={setAsciiWaves}
-                      hasAudio={Boolean(musicUrl || backgroundVideoUrl)}
-                    />
-                  </div>
 
-                  {/* Discord Embed Settings */}
-                  <div className="glass-card p-6">
-                    <DiscordEmbedSettings
-                      enabled={ogEnabled}
-                      onEnabledChange={setOgEnabled}
-                      ogTitle={ogTitle}
-                      onOgTitleChange={setOgTitle}
-                      ogDescription={ogDescription}
-                      onOgDescriptionChange={setOgDescription}
-                      ogImageUrl={ogImageUrl}
-                      onOgImageUrlChange={setOgImageUrl}
-                      ogIconUrl={ogIconUrl}
-                      onOgIconUrlChange={setOgIconUrl}
-                      ogTitleAnimation={ogTitleAnimation}
-                      onOgTitleAnimationChange={setOgTitleAnimation}
-                      username={username}
-                    />
-                  </div>
-
-                  {/* Volume Control Settings */}
-                  <div className="glass-card p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Volume2 className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Volume Control</h3>
+                    {/* Social Embed */}
+                    <div className="glass-card p-4">
+                      <DiscordEmbedSettings
+                        enabled={ogEnabled}
+                        onEnabledChange={setOgEnabled}
+                        ogTitle={ogTitle}
+                        onOgTitleChange={setOgTitle}
+                        ogDescription={ogDescription}
+                        onOgDescriptionChange={setOgDescription}
+                        ogImageUrl={ogImageUrl}
+                        onOgImageUrlChange={setOgImageUrl}
+                        ogIconUrl={ogIconUrl}
+                        onOgIconUrlChange={setOgIconUrl}
+                        ogTitleAnimation={ogTitleAnimation}
+                        onOgTitleAnimationChange={setOgTitleAnimation}
+                        username={username}
+                      />
                     </div>
-                    <VolumeControlSettings
-                      enabled={showVolumeControl}
-                      onEnabledChange={setShowVolumeControl}
-                    />
                   </div>
 
-                  {/* Profile Visibility Settings */}
-                  <div className="glass-card p-6">
-                    <ProfileVisibilitySettings
-                      showUsername={showUsername}
-                      showDisplayName={showDisplayName}
-                      showBadges={showBadges}
-                      showViews={showViews}
-                      showAvatar={showAvatar}
-                      showLinks={showLinks}
-                      showDescription={showDescription}
-                      onShowUsernameChange={setShowUsername}
-                      onShowDisplayNameChange={setShowDisplayName}
-                      onShowBadgesChange={setShowBadges}
-                      onShowViewsChange={setShowViews}
-                      onShowAvatarChange={setShowAvatar}
-                      onShowLinksChange={setShowLinks}
-                      onShowDescriptionChange={setShowDescription}
-                    />
-                  </div>
+                  {/* Visibility & Card Settings Row */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {/* Profile Visibility */}
+                    <div className="glass-card p-4">
+                      <ProfileVisibilitySettings
+                        showUsername={showUsername}
+                        showDisplayName={showDisplayName}
+                        showBadges={showBadges}
+                        showViews={showViews}
+                        showAvatar={showAvatar}
+                        showLinks={showLinks}
+                        showDescription={showDescription}
+                        onShowUsernameChange={setShowUsername}
+                        onShowDisplayNameChange={setShowDisplayName}
+                        onShowBadgesChange={setShowBadges}
+                        onShowViewsChange={setShowViews}
+                        onShowAvatarChange={setShowAvatar}
+                        onShowLinksChange={setShowLinks}
+                        onShowDescriptionChange={setShowDescription}
+                      />
+                    </div>
 
-                  {/* Card Border Settings */}
-                  <div className="glass-card p-6">
-                    <CardBorderSettings
-                      borderEnabled={cardBorderEnabled}
-                      borderColor={cardBorderColor}
-                      borderWidth={cardBorderWidth}
-                      accentColor={accentColor}
-                      onBorderEnabledChange={setCardBorderEnabled}
-                      onBorderColorChange={setCardBorderColor}
-                      onBorderWidthChange={setCardBorderWidth}
-                    />
+                    {/* Card & Volume Settings */}
+                    <div className="glass-card p-4 space-y-4">
+                      <CardBorderSettings
+                        borderEnabled={cardBorderEnabled}
+                        borderColor={cardBorderColor}
+                        borderWidth={cardBorderWidth}
+                        accentColor={accentColor}
+                        onBorderEnabledChange={setCardBorderEnabled}
+                        onBorderColorChange={setCardBorderColor}
+                        onBorderWidthChange={setCardBorderWidth}
+                      />
+                      <div className="border-t border-border/30 pt-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Volume2 className="w-4 h-4 text-primary" />
+                          <h3 className="font-medium text-sm">Volume Control</h3>
+                        </div>
+                        <VolumeControlSettings
+                          enabled={showVolumeControl}
+                          onEnabledChange={setShowVolumeControl}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
