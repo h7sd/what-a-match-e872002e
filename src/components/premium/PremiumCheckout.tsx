@@ -10,7 +10,7 @@ interface PremiumCheckoutProps {
   price?: string;
 }
 
-const PREMIUM_PRICE = "3"; // One-time payment in EUR
+const PREMIUM_PRICE = "0.01"; // Test price - 1 cent
 
 const PREMIUM_FEATURES = [
   { icon: Palette, text: "Advanced Themes & Animations" },
