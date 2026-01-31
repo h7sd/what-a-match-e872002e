@@ -204,13 +204,8 @@ export function useClaimBadge() {
         .single();
       
       if (error) throw error;
-      
-      // Update claims count directly
-      await supabase
-        .from('global_badges')
-        .update({ claims_count: supabase.rpc ? undefined : 0 })
-        .eq('id', badgeId);
-      
+
+      // claims_count is handled by a backend trigger to keep it atomic + consistent.
       return data;
     },
     onSuccess: () => {
