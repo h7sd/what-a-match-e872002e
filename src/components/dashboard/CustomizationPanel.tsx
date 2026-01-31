@@ -271,18 +271,30 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
                 <SelectTrigger className="bg-secondary/30">
                   <SelectValue placeholder="Choose an option" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="particles">Particles</SelectItem>
-                  <SelectItem value="matrix">Matrix</SelectItem>
-                  <SelectItem value="stars">Stars</SelectItem>
-                  <SelectItem value="snow">Snow</SelectItem>
-                  <SelectItem value="fireflies">Fireflies</SelectItem>
-                  <SelectItem value="rain">Rain</SelectItem>
-                  <SelectItem value="aurora">Aurora</SelectItem>
-                  <SelectItem value="bubbles">Bubbles</SelectItem>
-                  <SelectItem value="confetti">Confetti</SelectItem>
-                  <SelectItem value="geometric">Geometric</SelectItem>
+                  <SelectItem value="particles">✨ Particles</SelectItem>
+                  <SelectItem value="matrix">💻 Matrix</SelectItem>
+                  <SelectItem value="stars">⭐ Stars</SelectItem>
+                  <SelectItem value="snow">❄️ Snow</SelectItem>
+                  <SelectItem value="fireflies">🔥 Fireflies</SelectItem>
+                  <SelectItem value="rain">🌧️ Rain</SelectItem>
+                  <SelectItem value="aurora">🌌 Aurora</SelectItem>
+                  <SelectItem value="bubbles">🫧 Bubbles</SelectItem>
+                  <SelectItem value="confetti">🎉 Confetti</SelectItem>
+                  <SelectItem value="geometric">🔷 Geometric</SelectItem>
+                  <SelectItem value="hearts">❤️ Hearts</SelectItem>
+                  <SelectItem value="leaves">🍂 Falling Leaves</SelectItem>
+                  <SelectItem value="smoke">💨 Smoke</SelectItem>
+                  <SelectItem value="lightning">⚡ Lightning</SelectItem>
+                  <SelectItem value="ripples">🌊 Ripples</SelectItem>
+                  <SelectItem value="hexagons">⬡ Hexagons</SelectItem>
+                  <SelectItem value="dna">🧬 DNA Helix</SelectItem>
+                  <SelectItem value="binary">01 Binary Rain</SelectItem>
+                  <SelectItem value="sakura">🌸 Sakura</SelectItem>
+                  <SelectItem value="music">🎵 Music Notes</SelectItem>
+                  <SelectItem value="plasma">🔮 Plasma</SelectItem>
+                  <SelectItem value="cyber">🤖 Cyber Grid</SelectItem>
                 </SelectContent>
               </Select>
             </div>

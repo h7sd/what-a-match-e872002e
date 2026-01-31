@@ -7,7 +7,7 @@ interface BackgroundEffectsProps {
   accentColor?: string | null;
   enableAudio?: boolean;
   audioVolume?: number;
-  effectType?: 'none' | 'particles' | 'matrix' | 'stars' | 'snow' | 'fireflies' | 'rain' | 'aurora' | 'bubbles' | 'confetti' | 'geometric';
+  effectType?: 'none' | 'particles' | 'matrix' | 'stars' | 'snow' | 'fireflies' | 'rain' | 'aurora' | 'bubbles' | 'confetti' | 'geometric' | 'hearts' | 'leaves' | 'smoke' | 'lightning' | 'ripples' | 'hexagons' | 'dna' | 'binary' | 'sakura' | 'music' | 'plasma' | 'cyber';
 }
 
 export function BackgroundEffects({
@@ -121,6 +121,18 @@ export function BackgroundEffects({
       if (effectType === 'bubbles') count = Math.min(count, 30);
       if (effectType === 'confetti') count = Math.min(count, 100);
       if (effectType === 'geometric') count = Math.min(count, 20);
+      if (effectType === 'hearts') count = Math.min(count, 25);
+      if (effectType === 'leaves') count = Math.min(count, 30);
+      if (effectType === 'smoke') count = Math.min(count, 15);
+      if (effectType === 'lightning') count = Math.min(count, 5);
+      if (effectType === 'ripples') count = Math.min(count, 8);
+      if (effectType === 'hexagons') count = Math.min(count, 15);
+      if (effectType === 'dna') count = Math.min(count, 40);
+      if (effectType === 'binary') count = Math.min(count, 50);
+      if (effectType === 'sakura') count = Math.min(count, 40);
+      if (effectType === 'music') count = Math.min(count, 20);
+      if (effectType === 'plasma') count = Math.min(count, 30);
+      if (effectType === 'cyber') count = Math.min(count, 25);
       
       for (let i = 0; i < count; i++) {
         const particle: typeof particles[0] = {
@@ -165,6 +177,33 @@ export function BackgroundEffects({
           particle.radius = Math.random() * 30 + 20;
           particle.vx = (Math.random() - 0.5) * 0.3;
           particle.vy = (Math.random() - 0.5) * 0.3;
+        }
+        
+        if (effectType === 'hearts' || effectType === 'sakura' || effectType === 'leaves' || effectType === 'music') {
+          particle.vy = Math.random() * 1 + 0.5;
+          particle.vx = (Math.random() - 0.5) * 0.8;
+          particle.radius = Math.random() * 3 + 2;
+        }
+        
+        if (effectType === 'smoke') {
+          particle.radius = Math.random() * 30 + 20;
+          particle.vy = -(Math.random() * 0.3 + 0.1);
+          particle.y = canvas.height + particle.radius;
+        }
+        
+        if (effectType === 'binary') {
+          particle.char = Math.random() > 0.5 ? '1' : '0';
+          particle.vy = Math.random() * 2 + 1;
+        }
+        
+        if (effectType === 'hexagons' || effectType === 'cyber') {
+          particle.radius = Math.random() * 40 + 30;
+          particle.vx = (Math.random() - 0.5) * 0.2;
+          particle.vy = (Math.random() - 0.5) * 0.2;
+        }
+        
+        if (effectType === 'plasma') {
+          particle.radius = Math.random() * 50 + 30;
         }
 
         particles.push(particle);
@@ -280,6 +319,116 @@ export function BackgroundEffects({
           ctx.closePath();
           ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity * 0.3})`;
           ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        } else if (effectType === 'hearts') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(Math.sin(time + index) * 0.1);
+          ctx.font = `${12 + particle.radius * 3}px Arial`;
+          ctx.fillStyle = `rgba(255, 100, 150, ${particle.opacity})`;
+          ctx.fillText('❤', -8, 8);
+          ctx.restore();
+        } else if (effectType === 'leaves') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(time * 0.5 + index);
+          const leafColors = ['#22c55e', '#84cc16', '#f97316', '#eab308', '#dc2626'];
+          ctx.font = `${14 + particle.radius * 2}px Arial`;
+          ctx.fillStyle = leafColors[index % leafColors.length];
+          ctx.fillText('🍂', -8, 8);
+          ctx.restore();
+        } else if (effectType === 'smoke') {
+          const pulse = Math.sin(time + index) * 0.3 + 0.7;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius * pulse, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(150, 150, 150, ${particle.opacity * 0.15})`;
+          ctx.fill();
+        } else if (effectType === 'lightning') {
+          if (Math.random() > 0.995) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.8})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+        } else if (effectType === 'ripples') {
+          const rippleSize = ((time * 50 + index * 80) % 400);
+          ctx.beginPath();
+          ctx.arc(canvas.width / 2, canvas.height / 2, rippleSize, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${0.3 * (1 - rippleSize / 400)})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else if (effectType === 'hexagons') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(time * 0.2);
+          ctx.beginPath();
+          for (let j = 0; j < 6; j++) {
+            const angle = (j / 6) * Math.PI * 2;
+            const x = Math.cos(angle) * particle.radius;
+            const y = Math.sin(angle) * particle.radius;
+            if (j === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.strokeStyle = `rgba(0, 255, 255, ${particle.opacity * 0.3})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        } else if (effectType === 'dna') {
+          const wave = Math.sin(time * 2 + particle.y * 0.02) * 50;
+          const x1 = canvas.width / 2 + wave;
+          const x2 = canvas.width / 2 - wave;
+          ctx.beginPath();
+          ctx.arc(x1, particle.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(59, 130, 246, ${particle.opacity})`;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x2, particle.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(139, 92, 246, ${particle.opacity})`;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x1, particle.y);
+          ctx.lineTo(x2, particle.y);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${particle.opacity * 0.3})`;
+          ctx.stroke();
+        } else if (effectType === 'binary') {
+          ctx.font = '12px monospace';
+          ctx.fillStyle = `rgba(0, 255, 255, ${particle.opacity * 0.7})`;
+          ctx.fillText(particle.char || '0', particle.x, particle.y);
+        } else if (effectType === 'sakura') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(time + index);
+          ctx.font = `${10 + particle.radius * 2}px Arial`;
+          ctx.fillStyle = `rgba(255, 183, 197, ${particle.opacity})`;
+          ctx.fillText('🌸', -8, 8);
+          ctx.restore();
+        } else if (effectType === 'music') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(Math.sin(time * 2 + index) * 0.3);
+          const notes = ['♪', '♫', '♬', '♩'];
+          ctx.font = `${14 + particle.radius * 2}px Arial`;
+          ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity})`;
+          ctx.fillText(notes[index % notes.length], -8, 8);
+          ctx.restore();
+        } else if (effectType === 'plasma') {
+          const hue = (time * 50 + particle.x * 0.5 + particle.y * 0.5) % 360;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius * (1 + Math.sin(time * 2) * 0.3), 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${hue}, 70%, 50%, ${particle.opacity * 0.2})`;
+          ctx.fill();
+        } else if (effectType === 'cyber') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.strokeStyle = `rgba(0, 255, 255, ${particle.opacity * 0.4})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(-particle.radius / 2, -particle.radius / 2, particle.radius, particle.radius);
+          // Add scan line
+          const scanY = (time * 100 + index * 20) % particle.radius - particle.radius / 2;
+          ctx.beginPath();
+          ctx.moveTo(-particle.radius / 2, scanY);
+          ctx.lineTo(particle.radius / 2, scanY);
+          ctx.strokeStyle = `rgba(0, 255, 255, 0.8)`;
           ctx.stroke();
           ctx.restore();
         } else {
