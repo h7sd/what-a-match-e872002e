@@ -47,9 +47,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (emailOrUsername: string, password: string) => {
+    let loginEmail = emailOrUsername;
+    
+    // Check if input is a username (not an email)
+    if (!emailOrUsername.includes('@')) {
+      // Look up email by username
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .or(`username.eq.${emailOrUsername.toLowerCase()},alias_username.eq.${emailOrUsername.toLowerCase()}`)
+        .maybeSingle();
+      
+      if (profileError || !profile) {
+        return { error: new Error('Invalid username or password') };
+      }
+      
+      // Get user email from auth.users via admin function (we need an edge function for this)
+      // For now, we'll try to get the email from a lookup
+      const { data: userData } = await supabase.functions.invoke('get-user-email', {
+        body: { user_id: profile.user_id }
+      });
+      
+      if (!userData?.email) {
+        return { error: new Error('Invalid username or password') };
+      }
+      
+      loginEmail = userData.email;
+    }
+    
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: loginEmail,
       password,
     });
 

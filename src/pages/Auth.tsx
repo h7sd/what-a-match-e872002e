@@ -15,7 +15,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  emailOrUsername: z.string().min(1, 'Email or username is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -48,8 +48,10 @@ declare global {
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
-  const [step, setStep] = useState<AuthStep>('login');
+  const mode = searchParams.get('mode');
+  const [step, setStep] = useState<AuthStep>(mode === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -249,7 +251,7 @@ export default function Auth() {
       }
 
       if (step === 'login') {
-        const result = loginSchema.safeParse({ email, password });
+        const result = loginSchema.safeParse({ emailOrUsername, password });
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach((err) => {
@@ -262,7 +264,7 @@ export default function Auth() {
           return;
         }
 
-        const { error, needsMfa, factorId } = await signIn(email, password);
+        const { error, needsMfa, factorId } = await signIn(emailOrUsername, password);
         if (error) {
           toast({
             title: 'Login failed',
@@ -598,17 +600,17 @@ export default function Auth() {
           {step === 'login' && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="emailOrUsername">Email or Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="emailOrUsername"
+                  type="text"
+                  placeholder="you@example.com or username"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   className="bg-secondary/50 border-border"
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                {errors.emailOrUsername && (
+                  <p className="text-sm text-destructive">{errors.emailOrUsername}</p>
                 )}
               </div>
 

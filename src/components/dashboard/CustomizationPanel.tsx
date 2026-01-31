@@ -277,6 +277,12 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
                   <SelectItem value="matrix">Matrix</SelectItem>
                   <SelectItem value="stars">Stars</SelectItem>
                   <SelectItem value="snow">Snow</SelectItem>
+                  <SelectItem value="fireflies">Fireflies</SelectItem>
+                  <SelectItem value="rain">Rain</SelectItem>
+                  <SelectItem value="aurora">Aurora</SelectItem>
+                  <SelectItem value="bubbles">Bubbles</SelectItem>
+                  <SelectItem value="confetti">Confetti</SelectItem>
+                  <SelectItem value="geometric">Geometric</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -466,7 +472,7 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
                       Add special effects to your username display.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
+                  <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                     <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
                       <div>
                         <Label className="text-sm">Glitch Effect</Label>
@@ -501,6 +507,38 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
                         onCheckedChange={(checked) => 
                           props.setEffects({ ...props.effects, sparkles: checked })
                         }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                      <div>
+                        <Label className="text-sm">Neon Glow</Label>
+                        <p className="text-xs text-muted-foreground">Add a pulsing neon glow effect</p>
+                      </div>
+                      <Switch
+                        checked={props.glowUsername}
+                        onCheckedChange={props.setGlowUsername}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                      <div>
+                        <Label className="text-sm">3D Tilt Effect</Label>
+                        <p className="text-xs text-muted-foreground">Perspective tilt on hover</p>
+                      </div>
+                      <Switch
+                        checked={props.effects.tilt}
+                        onCheckedChange={(checked) => 
+                          props.setEffects({ ...props.effects, tilt: checked })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                      <div>
+                        <Label className="text-sm">Rainbow Gradient</Label>
+                        <p className="text-xs text-muted-foreground">Animated color-shifting text</p>
+                      </div>
+                      <Switch
+                        checked={props.enableProfileGradient}
+                        onCheckedChange={props.setEnableProfileGradient}
                       />
                     </div>
                     <Button onClick={() => setUsernameEffectsOpen(false)} className="w-full">

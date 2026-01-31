@@ -7,7 +7,7 @@ interface BackgroundEffectsProps {
   accentColor?: string | null;
   enableAudio?: boolean;
   audioVolume?: number;
-  effectType?: 'none' | 'particles' | 'matrix' | 'stars' | 'snow';
+  effectType?: 'none' | 'particles' | 'matrix' | 'stars' | 'snow' | 'fireflies' | 'rain' | 'aurora' | 'bubbles' | 'confetti' | 'geometric';
 }
 
 export function BackgroundEffects({
@@ -113,7 +113,14 @@ export function BackgroundEffects({
 
     const createParticles = () => {
       particles.length = 0;
-      const count = Math.floor((canvas.width * canvas.height) / 15000);
+      let count = Math.floor((canvas.width * canvas.height) / 15000);
+      
+      // Adjust count based on effect type
+      if (effectType === 'fireflies') count = Math.min(count, 50);
+      if (effectType === 'rain') count = count * 2;
+      if (effectType === 'bubbles') count = Math.min(count, 30);
+      if (effectType === 'confetti') count = Math.min(count, 100);
+      if (effectType === 'geometric') count = Math.min(count, 20);
       
       for (let i = 0; i < count; i++) {
         const particle: typeof particles[0] = {
@@ -129,23 +136,66 @@ export function BackgroundEffects({
           particle.char = String.fromCharCode(0x30A0 + Math.random() * 96);
           particle.vy = Math.random() * 2 + 1;
         }
+        
+        if (effectType === 'rain') {
+          particle.vy = Math.random() * 8 + 5;
+          particle.vx = Math.random() * 0.5;
+          particle.opacity = Math.random() * 0.3 + 0.1;
+        }
+        
+        if (effectType === 'fireflies') {
+          particle.radius = Math.random() * 3 + 2;
+          particle.vx = (Math.random() - 0.5) * 0.8;
+          particle.vy = (Math.random() - 0.5) * 0.8;
+        }
+        
+        if (effectType === 'bubbles') {
+          particle.radius = Math.random() * 20 + 5;
+          particle.vy = -(Math.random() * 0.5 + 0.2);
+          particle.y = canvas.height + particle.radius;
+        }
+        
+        if (effectType === 'confetti') {
+          particle.radius = Math.random() * 4 + 2;
+          particle.vy = Math.random() * 2 + 1;
+          particle.vx = (Math.random() - 0.5) * 2;
+        }
+        
+        if (effectType === 'geometric') {
+          particle.radius = Math.random() * 30 + 20;
+          particle.vx = (Math.random() - 0.5) * 0.3;
+          particle.vy = (Math.random() - 0.5) * 0.3;
+        }
 
         particles.push(particle);
       }
     };
 
+    let time = 0;
+
     const drawParticles = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      time += 0.02;
 
-      particles.forEach((particle) => {
+      particles.forEach((particle, index) => {
         particle.x += particle.vx;
         particle.y += particle.vy;
 
-        // Wrap around
+        // Wrap around or reset
         if (particle.x < 0) particle.x = canvas.width;
         if (particle.x > canvas.width) particle.x = 0;
         if (particle.y < 0) particle.y = canvas.height;
-        if (particle.y > canvas.height) particle.y = 0;
+        if (particle.y > canvas.height) {
+          if (effectType === 'rain') {
+            particle.y = -10;
+            particle.x = Math.random() * canvas.width;
+          } else if (effectType === 'bubbles') {
+            particle.y = canvas.height + particle.radius;
+            particle.x = Math.random() * canvas.width;
+          } else {
+            particle.y = 0;
+          }
+        }
 
         if (effectType === 'matrix' && particle.char) {
           ctx.font = '14px monospace';
@@ -168,6 +218,70 @@ export function BackgroundEffects({
           ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity})`;
           ctx.fill();
           ctx.restore();
+        } else if (effectType === 'rain') {
+          ctx.beginPath();
+          ctx.moveTo(particle.x, particle.y);
+          ctx.lineTo(particle.x + particle.vx * 2, particle.y + 15);
+          ctx.strokeStyle = `rgba(150, 180, 255, ${particle.opacity})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        } else if (effectType === 'fireflies') {
+          const pulse = Math.sin(time * 2 + index) * 0.5 + 0.5;
+          const glow = particle.radius * (1 + pulse * 0.5);
+          const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, glow * 3);
+          gradient.addColorStop(0, `rgba(255, 255, 150, ${0.8 * pulse})`);
+          gradient.addColorStop(0.5, `rgba(255, 200, 100, ${0.3 * pulse})`);
+          gradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, glow * 3, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.fill();
+        } else if (effectType === 'aurora') {
+          // Aurora is drawn as waves
+          const waveHeight = 100;
+          const y = canvas.height * 0.3 + Math.sin(time + particle.x * 0.01) * waveHeight;
+          ctx.beginPath();
+          ctx.arc(particle.x, y, particle.radius * 3, 0, Math.PI * 2);
+          const auroraColors = ['rgba(0, 255, 100, 0.1)', 'rgba(0, 200, 255, 0.1)', 'rgba(100, 0, 255, 0.1)'];
+          ctx.fillStyle = auroraColors[index % 3];
+          ctx.fill();
+        } else if (effectType === 'bubbles') {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity * 0.5})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          // Highlight
+          ctx.beginPath();
+          ctx.arc(particle.x - particle.radius * 0.3, particle.y - particle.radius * 0.3, particle.radius * 0.2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${particle.opacity * 0.5})`;
+          ctx.fill();
+        } else if (effectType === 'confetti') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(time + index);
+          const confettiColors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bcb', '#c56bff'];
+          ctx.fillStyle = confettiColors[index % confettiColors.length];
+          ctx.fillRect(-particle.radius, -particle.radius * 0.5, particle.radius * 2, particle.radius);
+          ctx.restore();
+        } else if (effectType === 'geometric') {
+          ctx.save();
+          ctx.translate(particle.x, particle.y);
+          ctx.rotate(time * 0.5 + index);
+          ctx.beginPath();
+          const sides = 3 + (index % 4);
+          for (let j = 0; j < sides; j++) {
+            const angle = (j / sides) * Math.PI * 2;
+            const x = Math.cos(angle) * particle.radius;
+            const y = Math.sin(angle) * particle.radius;
+            if (j === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particle.opacity * 0.3})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
         } else {
           ctx.beginPath();
           ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
@@ -178,7 +292,7 @@ export function BackgroundEffects({
         }
       });
 
-      // Draw connections for particles (not for matrix/snow)
+      // Draw connections for particles (not for matrix/snow/rain/etc)
       if (effectType === 'particles') {
         particles.forEach((p1, i) => {
           particles.slice(i + 1).forEach((p2) => {

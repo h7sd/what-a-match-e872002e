@@ -103,6 +103,12 @@ export default function Index() {
                 >
                   Discord
                 </a>
+                <Link 
+                  to="/status"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Status
+                </Link>
               </nav>
             </div>
 
