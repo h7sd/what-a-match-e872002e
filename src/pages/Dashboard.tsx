@@ -59,6 +59,7 @@ import { ProfileVisibilitySettings } from '@/components/dashboard/ProfileVisibil
 import { CardBorderSettings } from '@/components/dashboard/CardBorderSettings';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
+import { AdminPremiumManager } from '@/components/admin/AdminPremiumManager';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
 import { UserBadgesList } from '@/components/dashboard/UserBadgesList';
 import { LimitedBadgeAssigner } from '@/components/admin/LimitedBadgeAssigner';
@@ -1278,12 +1279,15 @@ export default function Dashboard() {
                 </div>
 
                 {/* User Management Row */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-3 gap-6">
                   <div className="glass-card p-6">
                     <UserBanManager />
                   </div>
                   <div className="glass-card p-6">
                     <AdminUserManager />
+                  </div>
+                  <div className="glass-card p-6">
+                    <AdminPremiumManager />
                   </div>
                 </div>
 
