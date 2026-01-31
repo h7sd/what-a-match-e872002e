@@ -1043,6 +1043,7 @@ export default function Dashboard() {
                     setNameFont={setNameFont}
                     textFont={textFont}
                     setTextFont={setTextFont}
+                    isPremium={(profile as any)?.is_premium ?? false}
                   />
 
                   {/* Additional Settings - Compact Cards */}
@@ -1071,6 +1072,7 @@ export default function Dashboard() {
                         asciiWaves={asciiWaves}
                         onAsciiWavesChange={setAsciiWaves}
                         hasAudio={Boolean(musicUrl || backgroundVideoUrl)}
+                        isPremium={(profile as any)?.is_premium ?? false}
                       />
                     </div>
 

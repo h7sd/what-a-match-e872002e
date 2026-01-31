@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
+import { Crown, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { StartScreenPreview } from './StartScreenPreview';
 
 const FONTS = [
@@ -55,16 +57,16 @@ const FONTS = [
 
 export type AdvancedTextAnimationType = 'none' | 'shuffle' | 'shuffle-gsap' | 'fuzzy' | 'decrypted' | 'ascii' | 'ascii-3d' | 'decrypted-advanced' | 'fuzzy-canvas';
 
-const TEXT_ANIMATIONS: { value: AdvancedTextAnimationType; label: string; description: string }[] = [
+const TEXT_ANIMATIONS: { value: AdvancedTextAnimationType; label: string; description: string; premium?: boolean }[] = [
   { value: 'none', label: 'None', description: 'Static text with typewriter cursor' },
   { value: 'shuffle', label: 'Shuffle', description: 'Characters shuffle into place' },
-  { value: 'shuffle-gsap', label: 'Shuffle Pro', description: 'GSAP-powered shuffle with directions' },
-  { value: 'fuzzy', label: 'Fuzzy', description: 'Glitchy chromatic aberration effect' },
-  { value: 'decrypted', label: 'Decrypted', description: 'Matrix-style decrypt animation' },
-  { value: 'ascii', label: 'ASCII', description: 'ASCII art glitch on hover' },
-  { value: 'ascii-3d', label: 'ASCII 3D', description: '3D rotating ASCII art with waves' },
-  { value: 'decrypted-advanced', label: 'Decrypted Pro', description: 'Advanced decrypt with directions' },
-  { value: 'fuzzy-canvas', label: 'Fuzzy Canvas', description: 'High-performance fuzzy with glitch mode' },
+  { value: 'shuffle-gsap', label: 'Shuffle Pro', description: 'GSAP-powered shuffle with directions', premium: true },
+  { value: 'fuzzy', label: 'Fuzzy', description: 'Glitchy chromatic aberration effect', premium: true },
+  { value: 'decrypted', label: 'Decrypted', description: 'Matrix-style decrypt animation', premium: true },
+  { value: 'ascii', label: 'ASCII', description: 'ASCII art glitch on hover', premium: true },
+  { value: 'ascii-3d', label: 'ASCII 3D', description: '3D rotating ASCII art with waves', premium: true },
+  { value: 'decrypted-advanced', label: 'Decrypted Pro', description: 'Advanced decrypt with directions', premium: true },
+  { value: 'fuzzy-canvas', label: 'Fuzzy Canvas', description: 'High-performance fuzzy with glitch mode', premium: true },
 ];
 
 interface StartScreenSettingsProps {
@@ -86,6 +88,8 @@ interface StartScreenSettingsProps {
   onAsciiWavesChange?: (enabled: boolean) => void;
   /** If true, audio is present and start screen cannot be disabled */
   hasAudio?: boolean;
+  /** Premium status for locking features */
+  isPremium?: boolean;
 }
 
 export function StartScreenSettings({
@@ -106,6 +110,7 @@ export function StartScreenSettings({
   asciiWaves = true,
   onAsciiWavesChange,
   hasAudio = false,
+  isPremium = false,
 }: StartScreenSettingsProps) {
   // If audio is present, start screen is forced on and cannot be disabled
   const isForced = hasAudio;
@@ -168,25 +173,60 @@ export function StartScreenSettings({
 
           {/* Text Animation */}
           <div className="space-y-2">
-            <Label>Text Animation</Label>
+            <div className="flex items-center gap-2">
+              <Label>Text Animation</Label>
+              {!isPremium && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-500 border border-amber-500/30">
+                  <Crown className="w-2.5 h-2.5" />
+                  Premium
+                </span>
+              )}
+            </div>
             <Select 
               value={textAnimation} 
-              onValueChange={(v) => onTextAnimationChange?.(v as AdvancedTextAnimationType)}
+              onValueChange={(v) => {
+                const anim = TEXT_ANIMATIONS.find(a => a.value === v);
+                if (anim?.premium && !isPremium) {
+                  // Don't allow selecting premium animations
+                  return;
+                }
+                onTextAnimationChange?.(v as AdvancedTextAnimationType);
+              }}
             >
               <SelectTrigger className="bg-card border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TEXT_ANIMATIONS.map((anim) => (
-                  <SelectItem key={anim.value} value={anim.value}>
-                    <div className="flex flex-col">
-                      <span>{anim.label}</span>
-                      <span className="text-xs text-muted-foreground">{anim.description}</span>
-                    </div>
-                  </SelectItem>
-                ))}
+                {TEXT_ANIMATIONS.map((anim) => {
+                  const isLocked = anim.premium && !isPremium;
+                  return (
+                    <SelectItem 
+                      key={anim.value} 
+                      value={anim.value}
+                      disabled={isLocked}
+                      className={isLocked ? "opacity-50" : ""}
+                    >
+                      <div className="flex flex-col">
+                        <span className="flex items-center gap-2">
+                          {anim.label}
+                          {isLocked && <Lock className="w-3 h-3 text-amber-500" />}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{anim.description}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
+            {!isPremium && (
+              <Link 
+                to="/premium" 
+                className="text-xs text-amber-500 hover:underline flex items-center gap-1"
+              >
+                <Crown className="w-3 h-3" />
+                Upgrade für erweiterte Animationen
+              </Link>
+            )}
           </div>
 
           {/* ASCII 3D Settings */}

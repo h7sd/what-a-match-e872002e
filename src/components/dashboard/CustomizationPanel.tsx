@@ -9,7 +9,8 @@ import {
   MessageSquare, 
   Sliders,
   Eye,
-  Zap
+  Zap,
+  Crown
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { FileUploader } from './FileUploader';
 import { ColorPicker } from './ColorPicker';
+import { PremiumLock, PremiumBadge } from './PremiumLock';
 import { cn } from '@/lib/utils';
 
 const FONTS = [
@@ -78,7 +80,7 @@ const FONTS = [
 
 interface SectionProps {
   icon: React.ElementType;
-  title: string;
+  title: React.ReactNode;
   description?: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
@@ -212,6 +214,9 @@ interface CustomizationPanelProps {
   setNameFont?: (font: string) => void;
   textFont?: string;
   setTextFont?: (font: string) => void;
+  
+  // Premium status
+  isPremium?: boolean;
 }
 
 export function CustomizationPanel(props: CustomizationPanelProps) {
@@ -277,51 +282,53 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
         </div>
       </CollapsibleSection>
 
-      {/* Typography Section */}
+      {/* Typography Section - PREMIUM */}
       <CollapsibleSection
         icon={Type}
-        title="Typography"
+        title={<span className="flex items-center gap-2">Typography {!props.isPremium && <PremiumBadge />}</span>}
         description="Fonts & text settings"
       >
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Name Font</Label>
-            <Select 
-              value={props.nameFont || 'Inter'} 
-              onValueChange={(v) => props.setNameFont?.(v)}
-            >
-              <SelectTrigger className="bg-secondary/30 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {FONTS.map((f) => (
-                  <SelectItem key={f} value={f} style={{ fontFamily: f }}>
-                    {f}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <PremiumLock isPremium={props.isPremium ?? false} featureName="Erweiterte Fonts">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Name Font</Label>
+              <Select 
+                value={props.nameFont || 'Inter'} 
+                onValueChange={(v) => props.setNameFont?.(v)}
+              >
+                <SelectTrigger className="bg-secondary/30 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {FONTS.map((f) => (
+                    <SelectItem key={f} value={f} style={{ fontFamily: f }}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Text Font</Label>
+              <Select 
+                value={props.textFont || 'Inter'} 
+                onValueChange={(v) => props.setTextFont?.(v)}
+              >
+                <SelectTrigger className="bg-secondary/30 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {FONTS.map((f) => (
+                    <SelectItem key={f} value={f} style={{ fontFamily: f }}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Text Font</Label>
-            <Select 
-              value={props.textFont || 'Inter'} 
-              onValueChange={(v) => props.setTextFont?.(v)}
-            >
-              <SelectTrigger className="bg-secondary/30 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {FONTS.map((f) => (
-                  <SelectItem key={f} value={f} style={{ fontFamily: f }}>
-                    {f}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        </PremiumLock>
       </CollapsibleSection>
 
       {/* Colors Section */}
@@ -354,47 +361,49 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
         </div>
       </CollapsibleSection>
 
-      {/* Background Effects Section */}
+      {/* Background Effects Section - PREMIUM */}
       <CollapsibleSection
         icon={Sparkles}
-        title="Background Effects"
+        title={<span className="flex items-center gap-2">Background Effects {!props.isPremium && <PremiumBadge />}</span>}
         description="Animated particle effects"
       >
-        <div className="space-y-4">
-          <Select 
-            value={props.backgroundEffect || 'particles'} 
-            onValueChange={handleBackgroundEffectChange}
-          >
-            <SelectTrigger className="bg-secondary/30">
-              <SelectValue placeholder="Choose an effect" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              <SelectItem value="none">None</SelectItem>
-              <SelectItem value="particles">✨ Particles</SelectItem>
-              <SelectItem value="matrix">💻 Matrix</SelectItem>
-              <SelectItem value="stars">⭐ Stars</SelectItem>
-              <SelectItem value="snow">❄️ Snow</SelectItem>
-              <SelectItem value="fireflies">🔥 Fireflies</SelectItem>
-              <SelectItem value="rain">🌧️ Rain</SelectItem>
-              <SelectItem value="aurora">🌌 Aurora</SelectItem>
-              <SelectItem value="bubbles">🫧 Bubbles</SelectItem>
-              <SelectItem value="confetti">🎉 Confetti</SelectItem>
-              <SelectItem value="geometric">🔷 Geometric</SelectItem>
-              <SelectItem value="hearts">❤️ Hearts</SelectItem>
-              <SelectItem value="leaves">🍂 Falling Leaves</SelectItem>
-              <SelectItem value="smoke">💨 Smoke</SelectItem>
-              <SelectItem value="lightning">⚡ Lightning</SelectItem>
-              <SelectItem value="ripples">🌊 Ripples</SelectItem>
-              <SelectItem value="hexagons">⬡ Hexagons</SelectItem>
-              <SelectItem value="dna">🧬 DNA Helix</SelectItem>
-              <SelectItem value="binary">01 Binary Rain</SelectItem>
-              <SelectItem value="sakura">🌸 Sakura</SelectItem>
-              <SelectItem value="music">🎵 Music Notes</SelectItem>
-              <SelectItem value="plasma">🔮 Plasma</SelectItem>
-              <SelectItem value="cyber">🤖 Cyber Grid</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <PremiumLock isPremium={props.isPremium ?? false} featureName="Background Effekte">
+          <div className="space-y-4">
+            <Select 
+              value={props.backgroundEffect || 'particles'} 
+              onValueChange={handleBackgroundEffectChange}
+            >
+              <SelectTrigger className="bg-secondary/30">
+                <SelectValue placeholder="Choose an effect" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="particles">✨ Particles</SelectItem>
+                <SelectItem value="matrix">💻 Matrix</SelectItem>
+                <SelectItem value="stars">⭐ Stars</SelectItem>
+                <SelectItem value="snow">❄️ Snow</SelectItem>
+                <SelectItem value="fireflies">🔥 Fireflies</SelectItem>
+                <SelectItem value="rain">🌧️ Rain</SelectItem>
+                <SelectItem value="aurora">🌌 Aurora</SelectItem>
+                <SelectItem value="bubbles">🫧 Bubbles</SelectItem>
+                <SelectItem value="confetti">🎉 Confetti</SelectItem>
+                <SelectItem value="geometric">🔷 Geometric</SelectItem>
+                <SelectItem value="hearts">❤️ Hearts</SelectItem>
+                <SelectItem value="leaves">🍂 Falling Leaves</SelectItem>
+                <SelectItem value="smoke">💨 Smoke</SelectItem>
+                <SelectItem value="lightning">⚡ Lightning</SelectItem>
+                <SelectItem value="ripples">🌊 Ripples</SelectItem>
+                <SelectItem value="hexagons">⬡ Hexagons</SelectItem>
+                <SelectItem value="dna">🧬 DNA Helix</SelectItem>
+                <SelectItem value="binary">01 Binary Rain</SelectItem>
+                <SelectItem value="sakura">🌸 Sakura</SelectItem>
+                <SelectItem value="music">🎵 Music Notes</SelectItem>
+                <SelectItem value="plasma">🔮 Plasma</SelectItem>
+                <SelectItem value="cyber">🤖 Cyber Grid</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </PremiumLock>
       </CollapsibleSection>
 
       {/* Discord Integration Section */}
@@ -582,99 +591,101 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
         </div>
       </CollapsibleSection>
 
-      {/* Visual Effects Section */}
+      {/* Visual Effects Section - PREMIUM */}
       <CollapsibleSection
         icon={Zap}
-        title="Visual Effects"
+        title={<span className="flex items-center gap-2">Visual Effects {!props.isPremium && <PremiumBadge />}</span>}
         description="Glows, animations & styles"
       >
-        <div className="space-y-4">
-          {/* Element Glow Settings */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Element Glows</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant={props.glowSocials ? "default" : "outline"} 
-                size="sm"
-                onClick={() => props.setGlowSocials(!props.glowSocials)}
-                className="text-xs h-8"
-              >
-                🌐 Social Links
-              </Button>
-              <Button 
-                variant={props.glowBadges ? "default" : "outline"} 
-                size="sm"
-                onClick={() => props.setGlowBadges(!props.glowBadges)}
-                className="text-xs h-8"
-              >
-                🏆 Badges
-              </Button>
+        <PremiumLock isPremium={props.isPremium ?? false} featureName="Visual Effects">
+          <div className="space-y-4">
+            {/* Element Glow Settings */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Element Glows</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant={props.glowSocials ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => props.setGlowSocials(!props.glowSocials)}
+                  className="text-xs h-8"
+                >
+                  🌐 Social Links
+                </Button>
+                <Button 
+                  variant={props.glowBadges ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => props.setGlowBadges(!props.glowBadges)}
+                  className="text-xs h-8"
+                >
+                  🏆 Badges
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Username Text Effects */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Username Text Effects</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <ToggleItem
-                label="🌈 Rainbow Gradient"
-                checked={props.enableProfileGradient}
-                onChange={props.setEnableProfileGradient}
-              />
-              <ToggleItem
-                label="💫 Glow Pulse"
-                checked={props.glowUsername}
-                onChange={props.setGlowUsername}
-              />
-              <ToggleItem
-                label="⚡ Glitch Effect"
-                checked={props.effects.glow}
-                onChange={(checked) => props.setEffects({ ...props.effects, glow: checked })}
-              />
-              <ToggleItem
-                label="⌨️ Typewriter"
-                checked={props.effects.typewriter}
-                onChange={(checked) => props.setEffects({ ...props.effects, typewriter: checked })}
-              />
-              <ToggleItem
-                label="✨ Sparkles"
-                checked={props.effects.sparkles}
-                onChange={(checked) => props.setEffects({ ...props.effects, sparkles: checked })}
-              />
-              <ToggleItem
-                label="🎯 3D Tilt Card"
-                checked={props.effects.tilt}
-                onChange={(checked) => props.setEffects({ ...props.effects, tilt: checked })}
-              />
+            {/* Username Text Effects */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Username Text Effects</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <ToggleItem
+                  label="🌈 Rainbow Gradient"
+                  checked={props.enableProfileGradient}
+                  onChange={props.setEnableProfileGradient}
+                />
+                <ToggleItem
+                  label="💫 Glow Pulse"
+                  checked={props.glowUsername}
+                  onChange={props.setGlowUsername}
+                />
+                <ToggleItem
+                  label="⚡ Glitch Effect"
+                  checked={props.effects.glow}
+                  onChange={(checked) => props.setEffects({ ...props.effects, glow: checked })}
+                />
+                <ToggleItem
+                  label="⌨️ Typewriter"
+                  checked={props.effects.typewriter}
+                  onChange={(checked) => props.setEffects({ ...props.effects, typewriter: checked })}
+                />
+                <ToggleItem
+                  label="✨ Sparkles"
+                  checked={props.effects.sparkles}
+                  onChange={(checked) => props.setEffects({ ...props.effects, sparkles: checked })}
+                />
+                <ToggleItem
+                  label="🎯 3D Tilt Card"
+                  checked={props.effects.tilt}
+                  onChange={(checked) => props.setEffects({ ...props.effects, tilt: checked })}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Note: Only one text effect applies at a time (priority: Rainbow → Glow → Typewriter → Glitch → Sparkles)
+              </p>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Note: Only one text effect applies at a time (priority: Rainbow → Glow → Typewriter → Glitch → Sparkles)
-            </p>
-          </div>
 
-          {/* Badge Style */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Badge Style</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant={props.transparentBadges ? "outline" : "default"} 
-                size="sm"
-                onClick={() => props.setTransparentBadges?.(false)}
-                className="text-xs h-8"
-              >
-                🎨 With Background
-              </Button>
-              <Button 
-                variant={props.transparentBadges ? "default" : "outline"} 
-                size="sm"
-                onClick={() => props.setTransparentBadges?.(true)}
-                className="text-xs h-8"
-              >
-                ✨ Transparent
-              </Button>
+            {/* Badge Style */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Badge Style</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant={props.transparentBadges ? "outline" : "default"} 
+                  size="sm"
+                  onClick={() => props.setTransparentBadges?.(false)}
+                  className="text-xs h-8"
+                >
+                  🎨 With Background
+                </Button>
+                <Button 
+                  variant={props.transparentBadges ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => props.setTransparentBadges?.(true)}
+                  className="text-xs h-8"
+                >
+                  ✨ Transparent
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </PremiumLock>
       </CollapsibleSection>
 
       {/* Advanced Settings Section */}
