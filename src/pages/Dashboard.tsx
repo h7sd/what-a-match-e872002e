@@ -75,7 +75,7 @@ import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSectio
 import { AliasRequestsBell } from '@/components/dashboard/AliasRequestsBell';
 import { cn } from '@/lib/utils';
 
-type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects' | 'badges' | 'admin' | 'settings';
+type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
 
 const baseNavItems: { icon: React.ElementType; label: string; tab: TabType }[] = [
   { icon: LayoutDashboard, label: 'Overview', tab: 'overview' },
@@ -83,7 +83,6 @@ const baseNavItems: { icon: React.ElementType; label: string; tab: TabType }[] =
   { icon: Palette, label: 'Appearance', tab: 'appearance' },
   { icon: LinkIcon, label: 'Links', tab: 'links' },
   { icon: Award, label: 'Badges', tab: 'badges' },
-  { icon: Sparkles, label: 'Effects', tab: 'effects' },
   { icon: Settings, label: 'Settings', tab: 'settings' },
 ];
 
@@ -1180,92 +1179,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Effects Tab */}
-            {activeTab === 'effects' && (
-              <div className="space-y-6 max-w-4xl">
-                <div className="glass-card p-6 space-y-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold">Enhancements</h3>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <Label>Animate Views</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Animate view counter
-                        </p>
-                      </div>
-                      <Switch
-                        checked={true}
-                        disabled
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <Label>Tilting Card</Label>
-                        <p className="text-xs text-muted-foreground">
-                          3D tilt effect on hover
-                        </p>
-                      </div>
-                      <Switch
-                        checked={effects.tilt}
-                        onCheckedChange={(checked) =>
-                          setEffects({ ...effects, tilt: checked })
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <Label>Glowing Icons</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Glow effect on social links
-                        </p>
-                      </div>
-                      <Switch
-                        checked={effects.glow}
-                        onCheckedChange={(checked) =>
-                          setEffects({ ...effects, glow: checked })
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <Label>Sparkle Effect</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Sparkles + cursor trail
-                        </p>
-                      </div>
-                      <Switch
-                        checked={effects.sparkles}
-                        onCheckedChange={(checked) =>
-                          setEffects({ ...effects, sparkles: checked })
-                        }
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                      <div>
-                        <Label>Typewriter Effect</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Animated typing for name
-                        </p>
-                      </div>
-                      <Switch
-                        checked={effects.typewriter}
-                        onCheckedChange={(checked) =>
-                          setEffects({ ...effects, typewriter: checked })
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Badges Tab */}
             {activeTab === 'badges' && (
