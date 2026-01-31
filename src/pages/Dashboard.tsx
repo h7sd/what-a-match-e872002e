@@ -385,6 +385,27 @@ export default function Dashboard() {
       return;
     }
 
+    // Check 7-day cooldown
+    const aliasChangedAt = (profile as any)?.alias_changed_at;
+    if (newAlias && aliasChangedAt) {
+      const lastChanged = new Date(aliasChangedAt);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      if (lastChanged > sevenDaysAgo) {
+        const nextAllowedDate = new Date(lastChanged);
+        nextAllowedDate.setDate(nextAllowedDate.getDate() + 7);
+        const daysRemaining = Math.ceil((nextAllowedDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        
+        toast({ 
+          title: 'Alias change limit', 
+          description: `You can change your alias again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.`,
+          variant: 'destructive' 
+        });
+        return;
+      }
+    }
+
     if (newAlias) {
       // Check if alias is taken (as username or alias)
       const { data: existingProfile } = await supabase
@@ -403,6 +424,7 @@ export default function Dashboard() {
     try {
       await updateProfile.mutateAsync({
         alias_username: newAlias?.toLowerCase() || null,
+        alias_changed_at: newAlias ? new Date().toISOString() : null,
       } as any);
       setAliasUsername(newAlias?.toLowerCase() || '');
       toast({ title: newAlias ? 'Alias updated!' : 'Alias removed!' });
