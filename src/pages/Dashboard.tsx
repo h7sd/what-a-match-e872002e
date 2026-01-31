@@ -68,6 +68,7 @@ import { AllBadgeAssigner } from '@/components/admin/AllBadgeAssigner';
 import { UserBanManager } from '@/components/admin/UserBanManager';
 import { AdminAccountLookup } from '@/components/admin/AdminAccountLookup';
 import { AdminUIDManager } from '@/components/admin/AdminUIDManager';
+import { AdminPurchaseHistory } from '@/components/admin/AdminPurchaseHistory';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { BadgeRequestForm } from '@/components/dashboard/BadgeRequestForm';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
@@ -1295,6 +1296,9 @@ export default function Dashboard() {
                     <AdminBadgeRemover />
                   </div>
                 </div>
+
+                {/* Purchase History - Full Width */}
+                <AdminPurchaseHistory />
 
                 {/* Full Width Bottom Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
