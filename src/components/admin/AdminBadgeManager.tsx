@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { BadgeIconUploader } from './BadgeIconUploader';
 import {
   Dialog,
   DialogContent,
@@ -187,14 +188,12 @@ export function AdminBadgeManager() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Icon URL</Label>
-                  <Input
-                    value={formData.icon_url}
-                    onChange={(e) => setFormData({ ...formData, icon_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
+                <BadgeIconUploader
+                  currentUrl={formData.icon_url}
+                  onUpload={(url) => setFormData({ ...formData, icon_url: url })}
+                  onRemove={() => setFormData({ ...formData, icon_url: '' })}
+                  color={formData.color}
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
