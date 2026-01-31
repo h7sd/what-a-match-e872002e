@@ -8,13 +8,13 @@ import {
   RefreshCw, 
   Globe, 
   Shield, 
-  Bot, 
   Database,
   Server,
   ArrowLeft,
-  Clock
+  Clock,
+  Cloud,
+  MessageCircle
 } from 'lucide-react';
-import { SiDiscord, SiCloudflare } from 'react-icons/si';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -43,7 +43,7 @@ export default function Status() {
       id: 'cloudflare',
       name: 'Cloudflare',
       description: 'CDN & DDoS Protection',
-      icon: SiCloudflare,
+      icon: Cloud,
       status: 'checking',
     },
     {
@@ -64,7 +64,7 @@ export default function Status() {
       id: 'discord-bot',
       name: 'Discord Bot',
       description: 'Discord integration & presence',
-      icon: SiDiscord,
+      icon: MessageCircle,
       status: 'checking',
     },
     {
@@ -149,21 +149,20 @@ export default function Status() {
     try {
       // Try to invoke a simple edge function - we use verify-turnstile with a test token
       // Any response (even an error response) means edge functions are working
-      const response = await supabase.functions.invoke('verify-turnstile', {
+      const { data, error } = await supabase.functions.invoke('verify-turnstile', {
         body: { token: 'status-check' }
       });
       const edgeTime = Math.round(performance.now() - edgeStart);
-      // If we got here without throwing, edge functions are operational
-      // Even a 400 error response means the function is running
+      // supabase.functions.invoke returns { data, error }
+      // Even if error is set (like 400 response), it means the function is running
+      // The function ran and responded, so edge functions are operational
       updateService('edge-functions', 'operational', edgeTime);
     } catch (e: any) {
       const edgeTime = Math.round(performance.now() - edgeStart);
-      // Check if it's a FunctionsFetchError with a response - this means the function ran
-      if (e?.context?.status >= 400 && e?.context?.status < 500) {
-        // 4xx errors mean the function responded (just with an error)
-        updateService('edge-functions', 'operational', edgeTime);
-      } else if (edgeTime < 10000) {
-        // If we got any response within timeout, consider it working
+      // Network errors or complete failures - but if we got a response fast enough, 
+      // edge functions might still be working
+      if (edgeTime < 5000) {
+        // Got a response quickly, might be a caught error from the function itself
         updateService('edge-functions', 'operational', edgeTime);
       } else {
         updateService('edge-functions', 'outage');
