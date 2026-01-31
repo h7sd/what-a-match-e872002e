@@ -47,6 +47,7 @@ export function EarlyBadgeCountdown() {
   const earlyBadge = globalBadges.find(b => b.name.toLowerCase() === 'early');
   const hasEarlyBadge = userBadges.some(ub => ub.badge_id === earlyBadge?.id);
   const isExpired = timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0;
+  const isSoldOut = !!earlyBadge?.max_claims && (earlyBadge.claims_count ?? 0) >= earlyBadge.max_claims;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -57,7 +58,7 @@ export function EarlyBadgeCountdown() {
   }, []);
 
   const handleClaim = async () => {
-    if (!earlyBadge || hasEarlyBadge || isExpired) return;
+    if (!earlyBadge || hasEarlyBadge || isExpired || isSoldOut) return;
 
     setIsClaiming(true);
     try {
@@ -109,6 +110,27 @@ export function EarlyBadgeCountdown() {
           <div>
             <h3 className="font-semibold text-red-400">EARLY Badge Expired</h3>
             <p className="text-sm text-muted-foreground">The claiming period has ended</p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Show sold out state
+  if (isSoldOut) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-5 border border-red-500/30 bg-red-500/5"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
+            <Clock className="w-6 h-6 text-red-500" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-red-400">EARLY Badge Limit Reached</h3>
+            <p className="text-sm text-muted-foreground">All available claims have been used</p>
           </div>
         </div>
       </motion.div>
