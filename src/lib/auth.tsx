@@ -52,24 +52,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Check if input is a username (not an email)
     if (!emailOrUsername.includes('@')) {
-      // Look up email by username
+      const usernameInput = emailOrUsername.toLowerCase().trim();
+      
+      // Look up email by username or alias_username
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('user_id')
-        .or(`username.eq.${emailOrUsername.toLowerCase()},alias_username.eq.${emailOrUsername.toLowerCase()}`)
+        .or(`username.ilike.${usernameInput},alias_username.ilike.${usernameInput}`)
         .maybeSingle();
       
-      if (profileError || !profile) {
+      if (profileError) {
+        console.error('Profile lookup error:', profileError);
         return { error: new Error('Invalid username or password') };
       }
       
-      // Get user email from auth.users via admin function (we need an edge function for this)
-      // For now, we'll try to get the email from a lookup
-      const { data: userData } = await supabase.functions.invoke('get-user-email', {
+      if (!profile) {
+        return { error: new Error('Invalid username or password') };
+      }
+      
+      // Get user email from auth.users via admin function
+      const { data: userData, error: userError } = await supabase.functions.invoke('get-user-email', {
         body: { user_id: profile.user_id }
       });
       
-      if (!userData?.email) {
+      if (userError || !userData?.email) {
+        console.error('Get user email error:', userError);
         return { error: new Error('Invalid username or password') };
       }
       
