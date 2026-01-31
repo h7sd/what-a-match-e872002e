@@ -147,15 +147,13 @@ export default function Status() {
     // Check Edge Functions
     const edgeStart = performance.now();
     try {
-      // Try to invoke a simple edge function - we use verify-turnstile with a test token
-      // Any response (even an error response) means edge functions are working
-      const { data, error } = await supabase.functions.invoke('verify-turnstile', {
-        body: { token: 'status-check' }
+      // Invoke a lightweight health function.
+      // This avoids calling security-sensitive functions (like Turnstile verification)
+      // with dummy payloads that are expected to return 4xx.
+      await supabase.functions.invoke('health', {
+        body: { source: 'status-page' }
       });
       const edgeTime = Math.round(performance.now() - edgeStart);
-      // supabase.functions.invoke returns { data, error }
-      // Even if error is set (like 400 response), it means the function is running
-      // The function ran and responded, so edge functions are operational
       updateService('edge-functions', 'operational', edgeTime);
     } catch (e: any) {
       const edgeTime = Math.round(performance.now() - edgeStart);
