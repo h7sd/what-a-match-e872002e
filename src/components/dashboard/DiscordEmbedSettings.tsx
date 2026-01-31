@@ -399,7 +399,7 @@ export function DiscordEmbedSettings({
                     <label className="flex-1 h-20 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center cursor-pointer transition-colors bg-card/50">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.gif"
                         className="hidden"
                         onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'icon')}
                         disabled={uploading === 'icon'}
@@ -416,7 +416,7 @@ export function DiscordEmbedSettings({
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 32x32px or 64x64px PNG/ICO
+                  Recommended: 32x32px or 64x64px PNG/ICO/GIF
                 </p>
               </div>
 
@@ -498,7 +498,7 @@ export function DiscordEmbedSettings({
                     <label className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center cursor-pointer transition-colors bg-card/50">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.gif"
                         className="hidden"
                         onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'image')}
                         disabled={uploading === 'image'}
@@ -514,7 +514,7 @@ export function DiscordEmbedSettings({
                     </label>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Recommended: 1200x630px for best display on Discord & Twitter
+                    Recommended: 1200x630px for best display on Discord & Twitter. GIFs are supported!
                   </p>
                 </div>
               </div>
