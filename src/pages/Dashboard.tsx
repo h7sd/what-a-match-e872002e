@@ -71,6 +71,7 @@ import { BadgeRequestForm } from '@/components/dashboard/BadgeRequestForm';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { LiveProfilePreview } from '@/components/dashboard/LiveProfilePreview';
+import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSection';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'widgets' | 'effects' | 'badges' | 'admin' | 'settings';
@@ -715,6 +716,9 @@ export default function Dashboard() {
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-6">
+                {/* Alias Requests Section - shows only if there are pending requests */}
+                <AliasRequestsSection />
+
                 <OverviewStats
                   profileViews={profile.views_count || 0}
                   uidNumber={(profile as any).uid_number || 1}
