@@ -152,7 +152,7 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
         />
 
         {currentUrl && type !== 'audio' ? (
-          <div className="relative aspect-video">
+          <div className={`relative ${type === 'avatar' ? 'aspect-square' : 'aspect-video'}`}>
             {type === 'background' && (currentUrl.includes('.mp4') || currentUrl.includes('.mov') || currentUrl.includes('.MOV')) ? (
               <video src={currentUrl} className="w-full h-full object-cover" muted autoPlay loop />
             ) : (

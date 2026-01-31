@@ -769,31 +769,27 @@ export default function Dashboard() {
                       <h3 className="font-semibold">Avatar</h3>
                     </div>
                     
-                    <div className="flex items-start gap-4">
-                      <div className="w-24 flex-shrink-0">
-                        <FileUploader
-                          type="avatar"
-                          currentUrl={avatarUrl}
-                          onUpload={setAvatarUrl}
-                          onRemove={() => setAvatarUrl('')}
-                        />
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Avatar Shape</Label>
-                          <div className="flex gap-2 mt-2">
-                            {['square', 'soft', 'rounded', 'circle'].map((shape) => (
-                              <Button
-                                key={shape}
-                                variant={avatarShape === shape ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setAvatarShape(shape)}
-                                className="capitalize"
-                              >
-                                {shape}
-                              </Button>
-                            ))}
-                          </div>
+                    <div className="space-y-4">
+                      <FileUploader
+                        type="avatar"
+                        currentUrl={avatarUrl}
+                        onUpload={setAvatarUrl}
+                        onRemove={() => setAvatarUrl('')}
+                      />
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Avatar Shape</Label>
+                        <div className="flex gap-2 mt-2">
+                          {['square', 'soft', 'rounded', 'circle'].map((shape) => (
+                            <Button
+                              key={shape}
+                              variant={avatarShape === shape ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setAvatarShape(shape)}
+                              className="capitalize"
+                            >
+                              {shape}
+                            </Button>
+                          ))}
                         </div>
                       </div>
                     </div>
