@@ -589,25 +589,17 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
         description="Glows, animations & styles"
       >
         <div className="space-y-4">
-          {/* Glow Settings */}
+          {/* Element Glow Settings */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Glow Effects</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Button 
-                variant={props.glowUsername ? "default" : "outline"} 
-                size="sm"
-                onClick={() => props.setGlowUsername(!props.glowUsername)}
-                className="text-xs h-8"
-              >
-                ✨ Username
-              </Button>
+            <Label className="text-xs text-muted-foreground">Element Glows</Label>
+            <div className="grid grid-cols-2 gap-2">
               <Button 
                 variant={props.glowSocials ? "default" : "outline"} 
                 size="sm"
                 onClick={() => props.setGlowSocials(!props.glowSocials)}
                 className="text-xs h-8"
               >
-                🌐 Socials
+                🌐 Social Links
               </Button>
               <Button 
                 variant={props.glowBadges ? "default" : "outline"} 
@@ -620,31 +612,44 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
             </div>
           </div>
 
-          {/* Username Effects */}
+          {/* Username Text Effects */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Username Effects</Label>
+            <Label className="text-xs text-muted-foreground">Username Text Effects</Label>
             <div className="grid grid-cols-2 gap-2">
               <ToggleItem
-                label="Glitch Effect"
+                label="🌈 Rainbow Gradient"
+                checked={props.enableProfileGradient}
+                onChange={props.setEnableProfileGradient}
+              />
+              <ToggleItem
+                label="💫 Glow Pulse"
+                checked={props.glowUsername}
+                onChange={props.setGlowUsername}
+              />
+              <ToggleItem
+                label="⚡ Glitch Effect"
                 checked={props.effects.glow}
                 onChange={(checked) => props.setEffects({ ...props.effects, glow: checked })}
               />
               <ToggleItem
-                label="Typewriter"
+                label="⌨️ Typewriter"
                 checked={props.effects.typewriter}
                 onChange={(checked) => props.setEffects({ ...props.effects, typewriter: checked })}
               />
               <ToggleItem
-                label="Sparkles"
+                label="✨ Sparkles"
                 checked={props.effects.sparkles}
                 onChange={(checked) => props.setEffects({ ...props.effects, sparkles: checked })}
               />
               <ToggleItem
-                label="3D Tilt"
+                label="🎯 3D Tilt Card"
                 checked={props.effects.tilt}
                 onChange={(checked) => props.setEffects({ ...props.effects, tilt: checked })}
               />
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Note: Only one text effect applies at a time (priority: Rainbow → Glow → Typewriter → Glitch → Sparkles)
+            </p>
           </div>
 
           {/* Badge Style */}
@@ -669,13 +674,6 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
               </Button>
             </div>
           </div>
-
-          {/* Rainbow Gradient */}
-          <ToggleItem
-            label="Rainbow Gradient Username"
-            checked={props.enableProfileGradient}
-            onChange={props.setEnableProfileGradient}
-          />
         </div>
       </CollapsibleSection>
 
