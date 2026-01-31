@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { PayPalProvider } from "@/components/premium/PayPalProvider";
@@ -15,28 +15,21 @@ import { Button } from "@/components/ui/button";
 import { Crown, Check, Loader2 } from "lucide-react";
 
 interface PremiumDialogProps {
-  children: React.ReactNode;
-  defaultOpen?: boolean;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function PremiumDialog({ children, defaultOpen = false }: PremiumDialogProps) {
+export function PremiumDialog({ children, open: controlledOpen, onOpenChange }: PremiumDialogProps) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Check for premium redirect after login
-  useEffect(() => {
-    const showPremium = searchParams.get("showPremium");
-    if (showPremium === "true" && user && !authLoading) {
-      setOpen(true);
-      // Remove the query param
-      searchParams.delete("showPremium");
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams, user, authLoading, setSearchParams]);
+  // Use controlled or uncontrolled mode
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
 
   useEffect(() => {
     async function checkPremiumStatus() {
@@ -71,14 +64,21 @@ export function PremiumDialog({ children, defaultOpen = false }: PremiumDialogPr
       navigate("/auth?redirect=premium");
       return;
     }
-    setOpen(newOpen);
+    
+    if (isControlled) {
+      onOpenChange?.(newOpen);
+    } else {
+      setInternalOpen(newOpen);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      {children && (
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border-primary/20">
         {authLoading || loading ? (
           <div className="flex items-center justify-center py-12">
@@ -115,7 +115,7 @@ export function PremiumDialog({ children, defaultOpen = false }: PremiumDialogPr
                 <span>Premium Badge auf deinem Profil</span>
               </div>
             </div>
-            <Button onClick={() => { setOpen(false); navigate("/dashboard"); }}>
+            <Button onClick={() => { handleOpenChange(false); navigate("/dashboard"); }}>
               Zum Dashboard
             </Button>
           </div>
