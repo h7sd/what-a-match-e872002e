@@ -305,6 +305,7 @@ export type Database = {
       profiles: {
         Row: {
           accent_color: string | null
+          alias_changed_at: string | null
           alias_username: string | null
           animated_title: boolean | null
           ascii_size: number | null
@@ -381,6 +382,7 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          alias_changed_at?: string | null
           alias_username?: string | null
           animated_title?: boolean | null
           ascii_size?: number | null
@@ -457,6 +459,7 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          alias_changed_at?: string | null
           alias_username?: string | null
           animated_title?: boolean | null
           ascii_size?: number | null
