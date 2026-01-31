@@ -84,6 +84,8 @@ interface StartScreenSettingsProps {
   onAsciiSizeChange?: (size: number) => void;
   asciiWaves?: boolean;
   onAsciiWavesChange?: (enabled: boolean) => void;
+  /** If true, audio is present and start screen cannot be disabled */
+  hasAudio?: boolean;
 }
 
 export function StartScreenSettings({
@@ -103,20 +105,39 @@ export function StartScreenSettings({
   onAsciiSizeChange,
   asciiWaves = true,
   onAsciiWavesChange,
+  hasAudio = false,
 }: StartScreenSettingsProps) {
+  // If audio is present, start screen is forced on and cannot be disabled
+  const isForced = hasAudio;
+  const effectiveEnabled = isForced ? true : enabled;
+
+  const handleToggle = (checked: boolean) => {
+    if (!isForced) {
+      onEnabledChange(checked);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-foreground">Enable Start Screen</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Show a "Click to enter" screen before your profile
+            {isForced 
+              ? "Required for audio playback (browser policy)"
+              : "Show a \"Click to enter\" screen before your profile"
+            }
           </p>
         </div>
-        <Switch checked={enabled} onCheckedChange={onEnabledChange} />
+        <Switch 
+          checked={effectiveEnabled} 
+          onCheckedChange={handleToggle} 
+          disabled={isForced}
+          className={isForced ? "opacity-50 cursor-not-allowed" : ""}
+        />
       </div>
 
-      {enabled && (
+      {effectiveEnabled && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}

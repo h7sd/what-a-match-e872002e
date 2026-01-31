@@ -1004,6 +1004,7 @@ export default function Dashboard() {
                       onAsciiSizeChange={setAsciiSize}
                       asciiWaves={asciiWaves}
                       onAsciiWavesChange={setAsciiWaves}
+                      hasAudio={Boolean(musicUrl || backgroundVideoUrl)}
                     />
                   </div>
 
