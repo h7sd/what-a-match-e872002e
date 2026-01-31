@@ -105,10 +105,10 @@ export function AliasRequestsBell() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to respond');
 
-      toast({ title: response === 'approved' ? 'Anfrage angenommen' : 'Anfrage abgelehnt' });
+      toast({ title: response === 'approved' ? 'Request approved' : 'Request denied' });
       setRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (e: any) {
-      toast({ title: 'Fehler', description: e?.message || 'Konnte nicht antworten', variant: 'destructive' });
+      toast({ title: 'Error', description: e?.message || 'Could not respond', variant: 'destructive' });
     } finally {
       setResponding(null);
     }
@@ -123,7 +123,7 @@ export function AliasRequestsBell() {
         size="icon"
         onClick={() => setOpen(true)}
         className="relative"
-        aria-label="Alias-Anfragen öffnen"
+        aria-label="Open alias requests"
       >
         <Bell className="w-5 h-5" />
         {count > 0 && (
@@ -138,7 +138,7 @@ export function AliasRequestsBell() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              Alias-Anfragen
+              Alias Requests
               {count > 0 && (
                 <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                   {count}
@@ -146,7 +146,7 @@ export function AliasRequestsBell() {
               )}
             </DialogTitle>
             <DialogDescription>
-              Du kannst Anfragen hier oder per E-Mail annehmen/ablehnen.
+              You can approve or deny requests here or via email.
             </DialogDescription>
           </DialogHeader>
 
@@ -156,7 +156,7 @@ export function AliasRequestsBell() {
             </div>
           ) : count === 0 ? (
             <div className="py-6 text-sm text-muted-foreground">
-              Keine offenen Alias-Anfragen.
+              No pending alias requests.
             </div>
           ) : (
             <div className="space-y-3 max-h-[60vh] overflow-auto pr-1">
@@ -173,7 +173,7 @@ export function AliasRequestsBell() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">
                           <span className="text-primary">@{request.requester_username || 'unknown'}</span>
-                          {' möchte '}
+                          {' wants '}
                           <span className="text-foreground">@{request.requested_alias}</span>
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
