@@ -211,17 +211,22 @@ export function AdminUserManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold">User Role Management</h3>
+          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Shield className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Role Manager</h3>
+            <p className="text-xs text-muted-foreground">Manage staff roles</p>
+          </div>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Role
+            <Button size="sm" variant="outline" className="h-7 text-xs">
+              <UserPlus className="w-3 h-3 mr-1" />
+              Add
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -231,18 +236,17 @@ export function AdminUserManager() {
             <div className="space-y-4">
               <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as 'username' | 'uid')}>
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="username">By Username</TabsTrigger>
-                  <TabsTrigger value="uid">By User ID</TabsTrigger>
+                  <TabsTrigger value="username">Username</TabsTrigger>
+                  <TabsTrigger value="uid">UID</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="username" className="space-y-2">
-                  <Label>Search User by Username</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Enter username..."
+                      placeholder="Username..."
                       className="pl-10"
                     />
                     {isSearching && (
@@ -252,14 +256,13 @@ export function AdminUserManager() {
                 </TabsContent>
                 
                 <TabsContent value="uid" className="space-y-2">
-                  <Label>Search User by UID</Label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       type="number"
                       value={uidSearch}
                       onChange={(e) => setUidSearch(e.target.value)}
-                      placeholder="Enter User ID (e.g. 1)"
+                      placeholder="UID..."
                       className="pl-10"
                     />
                     {isSearching && (
@@ -269,157 +272,105 @@ export function AdminUserManager() {
                 </TabsContent>
               </Tabs>
 
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as AppRole)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="moderator">Moderator</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="moderator">Moderator</SelectItem>
+                </SelectContent>
+              </Select>
 
               {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Select User</Label>
-                  <div className="max-h-48 overflow-auto space-y-2">
-                    {searchResults.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-secondary overflow-hidden">
-                              {user.avatar_url ? (
-                                <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                  {user.username[0]?.toUpperCase()}
-                                </div>
-                              )}
-                            </div>
-                            <span className="absolute -bottom-1 -right-1 text-[9px] bg-primary px-1 rounded text-white">
-                              #{user.uid_number}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{user.display_name || user.username}</p>
-                            <p className="text-sm text-muted-foreground">@{user.username}</p>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => addRole.mutate({ userId: user.user_id, role: selectedRole })}
-                          disabled={addRole.isPending}
-                        >
-                          {addRole.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="max-h-48 overflow-auto space-y-2">
+                  {searchResults.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-2 rounded-lg bg-secondary/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
                           ) : (
-                            <Plus className="w-4 h-4" />
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                              {user.username[0]?.toUpperCase()}
+                            </div>
                           )}
-                        </Button>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{user.username}</p>
+                          <p className="text-xs text-muted-foreground">#{user.uid_number}</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      <Button
+                        size="sm"
+                        className="h-7"
+                        onClick={() => addRole.mutate({ userId: user.user_id, role: selectedRole })}
+                        disabled={addRole.isPending}
+                      >
+                        {addRole.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              )}
-
-              {searchResults.length === 0 && (searchQuery || uidSearch) && !isSearching && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No users found.
-                </p>
               )}
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-4">
+      <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
         {userRoles.map((userRole) => (
-          <motion.div
+          <div
             key={userRole.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card p-4 flex items-center gap-4"
+            className="flex items-center justify-between p-2 rounded-lg bg-secondary/30"
           >
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-secondary overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-secondary overflow-hidden flex-shrink-0">
                 {userRole.profile?.avatar_url ? (
-                  <img
-                    src={userRole.profile.avatar_url}
-                    alt={userRole.profile.username}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={userRole.profile.avatar_url} alt={userRole.profile.username} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-lg">
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
                     {userRole.profile?.username?.[0]?.toUpperCase() || '?'}
                   </div>
                 )}
               </div>
-              {userRole.profile?.uid_number && (
-                <span className="absolute -bottom-1 -right-1 text-[9px] bg-primary px-1 rounded text-white">
-                  #{userRole.profile.uid_number}
-                </span>
-              )}
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h4 className="font-medium">
-                  {userRole.profile?.display_name || userRole.profile?.username || 'Unknown User'}
-                </h4>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full border capitalize ${getRoleBadgeColor(userRole.role)}`}
-                >
+              <div className="min-w-0">
+                <p className="font-medium text-xs truncate">{userRole.profile?.username || 'Unknown'}</p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border capitalize ${getRoleBadgeColor(userRole.role)}`}>
                   {userRole.role}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                @{userRole.profile?.username || 'unknown'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Added: {new Date(userRole.created_at).toLocaleDateString()}
-              </p>
             </div>
-
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" disabled={removeRole.isPending}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" disabled={removeRole.isPending}>
+                  <Trash2 className="w-3 h-3 text-destructive" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Remove Role?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to remove the {userRole.role} role from{' '}
-                    {userRole.profile?.username || 'this user'}? This action cannot be undone.
+                    Remove {userRole.role} from {userRole.profile?.username}?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => removeRole.mutate(userRole.id)}
-                    className="bg-destructive hover:bg-destructive/90"
-                  >
+                  <AlertDialogAction onClick={() => removeRole.mutate(userRole.id)} className="bg-destructive hover:bg-destructive/90">
                     Remove
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </motion.div>
+          </div>
         ))}
 
         {userRoles.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Shield className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p>No user roles configured yet.</p>
-            <p className="text-sm">Add your first admin or moderator!</p>
+          <div className="text-center py-6 text-muted-foreground text-xs">
+            No staff roles configured
           </div>
         )}
       </div>

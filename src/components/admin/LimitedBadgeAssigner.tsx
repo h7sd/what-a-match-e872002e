@@ -106,58 +106,46 @@ export function LimitedBadgeAssigner() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Crown className="w-5 h-5 text-yellow-500" />
-        <h3 className="font-semibold">Limited Badges (Admin Only)</h3>
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+          <Crown className="w-4 h-4 text-amber-500" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm">Limited Badges</h3>
+          <p className="text-xs text-muted-foreground">Assign rare badges</p>
+        </div>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-4">
-        Click on a limited badge to assign it to a user.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
         {limitedBadges.map((badge) => {
           const Icon = getBadgeIcon(badge.name);
 
           return (
-            <motion.div
+            <div
               key={badge.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               onClick={() => handleBadgeClick(badge)}
-              className="relative p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10 cursor-pointer transition-all duration-300"
+              className="flex items-center justify-between p-2 rounded-lg border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer transition-colors"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 min-w-0">
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: `${badge.color || '#8B5CF6'}20` }}
                 >
                   {badge.icon_url ? (
-                    <img src={badge.icon_url} alt={badge.name} className="w-6 h-6" />
+                    <img src={badge.icon_url} alt={badge.name} className="w-4 h-4" />
                   ) : (
-                    <Icon className="w-5 h-5" style={{ color: badge.color || '#8B5CF6' }} />
+                    <Icon className="w-4 h-4" style={{ color: badge.color || '#8B5CF6' }} />
                   )}
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm truncate">{badge.name}</h4>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {badge.description || 'Limited badge'}
+                <div className="min-w-0">
+                  <p className="font-medium text-xs truncate">{badge.name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {badge.claims_count || 0}/{badge.max_claims || '∞'}
                   </p>
                 </div>
-
-                <UserPlus className="w-4 h-4 text-yellow-500" />
               </div>
-
-              {/* Rarity indicator */}
-              {badge.rarity && (
-                <div 
-                  className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full capitalize bg-yellow-500/20 text-yellow-500"
-                >
-                  {badge.rarity}
-                </div>
-              )}
-            </motion.div>
+              <UserPlus className="w-3 h-3 text-amber-500 flex-shrink-0" />
+            </div>
           );
         })}
       </div>

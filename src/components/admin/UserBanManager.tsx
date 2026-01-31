@@ -102,23 +102,24 @@ export function UserBanManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Ban className="w-5 h-5 text-red-500" />
-        <h3 className="font-semibold">Ban Users</h3>
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-destructive/20 flex items-center justify-center">
+          <Ban className="w-4 h-4 text-destructive" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm">Ban Manager</h3>
+          <p className="text-xs text-muted-foreground">Ban users from platform</p>
+        </div>
       </div>
-
-      <p className="text-sm text-muted-foreground mb-4">
-        Search for a user to ban them from the platform.
-      </p>
 
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Search by username..."
+          placeholder="Username..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
+          className="pl-9 h-9 text-sm"
         />
         {isSearching && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
@@ -127,37 +128,32 @@ export function UserBanManager() {
 
       {/* Search Results */}
       {searchResults.length > 0 && (
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
           {searchResults.map((user) => (
             <div
               key={user.id}
-              className="p-3 rounded-lg border border-border bg-secondary/20 flex items-center justify-between"
+              className="p-2 rounded-lg border border-border bg-secondary/20 flex items-center justify-between"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 min-w-0">
                 {user.avatar_url ? (
-                  <img 
-                    src={user.avatar_url} 
-                    alt={user.username}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
+                  <img src={user.avatar_url} alt={user.username} className="w-7 h-7 rounded-full object-cover" />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-xs font-medium">
-                      {user.username?.charAt(0).toUpperCase()}
-                    </span>
+                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-xs font-medium">{user.username?.charAt(0).toUpperCase()}</span>
                   </div>
                 )}
-                <div>
-                  <p className="font-medium text-sm">{user.display_name || user.username}</p>
-                  <p className="text-xs text-muted-foreground">@{user.username} · UID: {user.uid_number}</p>
+                <div className="min-w-0">
+                  <p className="font-medium text-xs truncate">{user.username}</p>
+                  <p className="text-[10px] text-muted-foreground">UID #{user.uid_number}</p>
                 </div>
               </div>
               <Button
                 variant="destructive"
                 size="sm"
+                className="h-7 text-xs"
                 onClick={() => handleBanClick(user)}
               >
-                <UserX className="w-4 h-4 mr-1" />
+                <UserX className="w-3 h-3 mr-1" />
                 Ban
               </Button>
             </div>
@@ -166,8 +162,8 @@ export function UserBanManager() {
       )}
 
       {searchResults.length === 0 && searchQuery && !isSearching && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No users found for "{searchQuery}"
+        <p className="text-xs text-muted-foreground text-center py-4">
+          No users found
         </p>
       )}
 

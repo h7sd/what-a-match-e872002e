@@ -110,22 +110,24 @@ export function AdminBadgeRemover() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <UserMinus className="w-5 h-5 text-red-500" />
-        <h3 className="font-semibold">Remove Badges from Users</h3>
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-destructive/20 flex items-center justify-center">
+          <UserMinus className="w-4 h-4 text-destructive" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm">Badge Remover</h3>
+          <p className="text-xs text-muted-foreground">Remove user badges</p>
+        </div>
       </div>
-
-      <p className="text-sm text-muted-foreground mb-4">
-        Search for a user to view and remove their badges.
-      </p>
 
       <Button
         variant="outline"
+        size="sm"
         onClick={() => setIsDialogOpen(true)}
-        className="border-red-500/30 hover:bg-red-500/10"
+        className="w-full border-destructive/30 hover:bg-destructive/10 text-xs h-8"
       >
-        <Trash2 className="w-4 h-4 mr-2 text-red-500" />
-        Manage User Badges
+        <Trash2 className="w-3 h-3 mr-1.5 text-destructive" />
+        Manage Badges
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
