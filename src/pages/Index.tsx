@@ -15,6 +15,7 @@ import { ClaimBanner } from "@/components/landing/ClaimBanner";
 import { ProfileSearch } from "@/components/landing/ProfileSearch";
 import { FeaturedProfiles } from "@/components/landing/FeaturedProfiles";
 import { ClaimedUsernamesSidebar } from "@/components/landing/ClaimedUsernamesSidebar";
+import { PremiumDialog } from "@/components/landing/PremiumDialog";
 
 export default function Index() {
   const { user } = useAuth();
@@ -87,12 +88,13 @@ export default function Index() {
                 UserVault.cc
               </Link>
               <nav className="hidden md:flex items-center gap-6">
-                <a 
-                  href="#features" 
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Premium
-                </a>
+                <PremiumDialog>
+                  <button 
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Premium
+                  </button>
+                </PremiumDialog>
                 <a 
                   href="#" 
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
