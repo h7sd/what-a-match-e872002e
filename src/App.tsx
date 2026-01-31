@@ -15,6 +15,7 @@ import Imprint from "./pages/Imprint";
 import ShareRedirect from "./pages/ShareRedirect";
 import Status from "./pages/Status";
 import AliasRespond from "./pages/AliasRespond";
+import Premium from "./pages/Premium";
 import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/premium" element={<Premium />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/imprint" element={<Imprint />} />

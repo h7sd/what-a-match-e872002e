@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.x67ytf6t9f85hzohjoi90879sft7t623ui23u4g]
 verify_jwt = false
+
+[functions.verify-paypal-payment]
+verify_jwt = false
+
+[functions.get-paypal-config]
+verify_jwt = false

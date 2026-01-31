@@ -35,6 +35,7 @@ import {
   X,
   Volume2,
   Send,
+  Crown,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -643,6 +644,27 @@ export default function Dashboard() {
 
       {/* Bottom section */}
       <div className="p-2 sm:p-4 border-t border-border space-y-2">
+        {/* Premium Button */}
+        {!(profile as any)?.is_premium && (
+          <Button 
+            variant="outline" 
+            className="w-full justify-start gap-3 border-amber-500/50 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400" 
+            asChild
+          >
+            <Link to="/premium">
+              <Crown className="w-4 h-4" />
+              Upgrade to Premium
+            </Link>
+          </Button>
+        )}
+        
+        {(profile as any)?.is_premium && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/30">
+            <Crown className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-medium text-amber-500">Premium</span>
+          </div>
+        )}
+
         <Button 
           variant="outline" 
           className="w-full justify-start gap-3" 

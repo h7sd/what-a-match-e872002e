@@ -374,6 +374,7 @@ export type Database = {
           icon_links_opacity: number | null
           icon_only_links: boolean | null
           id: string
+          is_premium: boolean | null
           layout_style: string | null
           location: string | null
           monochrome_icons: boolean | null
@@ -385,6 +386,8 @@ export type Database = {
           og_image_url: string | null
           og_title: string | null
           og_title_animation: string | null
+          paypal_order_id: string | null
+          premium_purchased_at: string | null
           profile_blur: number | null
           profile_opacity: number | null
           show_avatar: boolean | null
@@ -451,6 +454,7 @@ export type Database = {
           icon_links_opacity?: number | null
           icon_only_links?: boolean | null
           id?: string
+          is_premium?: boolean | null
           layout_style?: string | null
           location?: string | null
           monochrome_icons?: boolean | null
@@ -462,6 +466,8 @@ export type Database = {
           og_image_url?: string | null
           og_title?: string | null
           og_title_animation?: string | null
+          paypal_order_id?: string | null
+          premium_purchased_at?: string | null
           profile_blur?: number | null
           profile_opacity?: number | null
           show_avatar?: boolean | null
@@ -528,6 +534,7 @@ export type Database = {
           icon_links_opacity?: number | null
           icon_only_links?: boolean | null
           id?: string
+          is_premium?: boolean | null
           layout_style?: string | null
           location?: string | null
           monochrome_icons?: boolean | null
@@ -539,6 +546,8 @@ export type Database = {
           og_image_url?: string | null
           og_title?: string | null
           og_title_animation?: string | null
+          paypal_order_id?: string | null
+          premium_purchased_at?: string | null
           profile_blur?: number | null
           profile_opacity?: number | null
           show_avatar?: boolean | null

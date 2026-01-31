@@ -7,7 +7,8 @@ import {
   Sparkles,
   Settings,
   LogOut,
-  Eye
+  Eye,
+  Crown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button';
 interface SidebarProps {
   username: string;
   onSignOut: () => void;
+  isPremium?: boolean;
 }
 
 const navItems = [
@@ -25,7 +27,7 @@ const navItems = [
   { icon: Sparkles, label: 'Effects', href: '/dashboard', tab: 'effects' },
 ];
 
-export function Sidebar({ username, onSignOut }: SidebarProps) {
+export function Sidebar({ username, onSignOut, isPremium = false }: SidebarProps) {
   const location = useLocation();
 
   return (
@@ -67,6 +69,27 @@ export function Sidebar({ username, onSignOut }: SidebarProps) {
 
       {/* Bottom section */}
       <div className="p-4 border-t border-border space-y-2">
+        {/* Premium Button */}
+        {!isPremium && (
+          <Button 
+            variant="outline" 
+            className="w-full justify-start gap-3 border-amber-500/50 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400" 
+            asChild
+          >
+            <Link to="/premium">
+              <Crown className="w-4 h-4" />
+              Upgrade to Premium
+            </Link>
+          </Button>
+        )}
+        
+        {isPremium && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/30">
+            <Crown className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-medium text-amber-500">Premium</span>
+          </div>
+        )}
+        
         <Button 
           variant="outline" 
           className="w-full justify-start gap-3" 
