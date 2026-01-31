@@ -13,19 +13,39 @@ interface ResetPasswordRequest {
   newPassword: string;
 }
 
+// Add random delay to prevent timing attacks (200-400ms)
+const addTimingJitter = async () => {
+  const delay = 200 + Math.random() * 200;
+  await new Promise(resolve => setTimeout(resolve, delay));
+};
+
+// Hash email for logging (privacy)
+const hashEmail = async (email: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(email.toLowerCase());
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Start timing normalization
+  const startTime = Date.now();
+
   try {
     const { email, code, newPassword }: ResetPasswordRequest = await req.json();
 
     if (!email || !code || !newPassword) {
+      await addTimingJitter();
       throw new Error("Missing required fields: email, code, and newPassword");
     }
 
     if (newPassword.length < 6) {
+      await addTimingJitter();
       throw new Error("Password must be at least 6 characters");
     }
 
@@ -49,7 +69,9 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1);
 
     if (fetchError || !codes || codes.length === 0) {
-      console.error("Code verification failed:", fetchError);
+      const emailHash = await hashEmail(email);
+      console.error("Code verification failed for email hash:", emailHash);
+      await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Invalid or expired reset code" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -62,45 +84,45 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ used_at: new Date().toISOString() })
       .eq("id", codes[0].id);
 
-    // Get user by email using getUserByEmail instead of listUsers (more reliable)
-    // First try to find user in profiles table to get user_id
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id")
-      .ilike("username", email.toLowerCase())
-      .maybeSingle();
-    
-    let userId: string | null = null;
-    
-    // Try to get user directly by iterating through pages
+    // Get user by email - use listUsers with filter for efficiency
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1,
+    });
+
+    // Search through users (with timing normalization)
+    let foundUser = null;
     let page = 1;
     const perPage = 1000;
-    let foundUser = null;
     
     while (!foundUser) {
-      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers({
+      const { data: pageData, error: pageError } = await supabaseAdmin.auth.admin.listUsers({
         page,
         perPage,
       });
       
-      if (userError) {
-        console.error("Error listing users:", userError);
+      if (pageError) {
+        const emailHash = await hashEmail(email);
+        console.error("Error listing users for hash:", emailHash);
+        await addTimingJitter();
         return new Response(
           JSON.stringify({ error: "Invalid or expired reset code" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
       
-      foundUser = userData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      foundUser = pageData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
       
       if (foundUser) break;
-      if (userData.users.length < perPage) break; // No more pages
+      if (pageData.users.length < perPage) break;
       page++;
-      if (page > 10) break; // Safety limit
+      if (page > 10) break;
     }
     
     if (!foundUser) {
-      console.log("User not found for email:", email);
+      const emailHash = await hashEmail(email);
+      console.log("User not found for email hash:", emailHash);
+      await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Invalid or expired reset code" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -116,18 +138,24 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     if (updateError) {
-      console.error("Error updating password:", updateError);
+      console.error("Error updating password:", updateError.message);
+      await addTimingJitter();
       throw new Error("Failed to update password");
     }
 
-    console.log("Password reset successful for:", email);
+    const emailHash = await hashEmail(email);
+    console.log("Password reset successful for hash:", emailHash);
+
+    // Normalize response time to prevent timing attacks
+    await addTimingJitter();
 
     return new Response(
       JSON.stringify({ success: true, message: "Password updated successfully" }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
-    console.error("Error in reset-password function:", error);
+    console.error("Error in reset-password function:", error.message);
+    await addTimingJitter();
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

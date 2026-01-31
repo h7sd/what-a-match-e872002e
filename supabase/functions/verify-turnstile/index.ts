@@ -19,15 +19,6 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { token }: TurnstileRequest = await req.json();
 
-    // Allow bypass token for development/preview environments
-    if (token === 'BYPASS_DEV') {
-      console.log("Turnstile bypassed for development environment");
-      return new Response(
-        JSON.stringify({ success: true, bypassed: true }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
     if (!token) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing turnstile token" }),
@@ -37,10 +28,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const secretKey = Deno.env.get("CLOUDFLARE_TURNSTILE_SECRET_KEY");
     if (!secretKey) {
-      console.warn("CLOUDFLARE_TURNSTILE_SECRET_KEY not configured - allowing bypass");
+      console.error("CLOUDFLARE_TURNSTILE_SECRET_KEY not configured - failing closed");
       return new Response(
-        JSON.stringify({ success: true, bypassed: true }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ success: false, error: "Verification service unavailable" }),
+        { status: 503, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -66,7 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const verifyResult = await verifyResponse.json();
-    console.log("Turnstile verification result:", verifyResult);
+    console.log("Turnstile verification result:", verifyResult.success ? "success" : "failed");
 
     if (verifyResult.success) {
       return new Response(
@@ -74,16 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     } else {
-      // Check if it's an invalid secret error - allow bypass in this case
       const errorCodes = verifyResult["error-codes"] || [];
-      if (errorCodes.includes("invalid-input-secret")) {
-        console.warn("Invalid Turnstile secret key - allowing bypass for now");
-        return new Response(
-          JSON.stringify({ success: true, bypassed: true, warning: "Secret key invalid" }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-      
       console.error("Turnstile verification failed:", errorCodes);
       return new Response(
         JSON.stringify({ 
@@ -97,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in verify-turnstile function:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: "Verification failed" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
