@@ -156,6 +156,7 @@ export default function Dashboard() {
     tilt: true,
     glow: false,
     typewriter: false,
+    cursorTrail: false,
   });
   const [backgroundEffect, setBackgroundEffect] = useState('particles');
   const [audioVolume, setAudioVolume] = useState(0.5);
@@ -380,12 +381,13 @@ export default function Dashboard() {
       setOgImageUrl((profile as any).og_image_url || '');
       setOgIconUrl((profile as any).og_icon_url || '');
       setOgTitleAnimation((profile as any).og_title_animation || 'none');
-      const config = profile.effects_config || {};
+      const config = profile.effects_config as Record<string, any> || {};
       setEffects({
         sparkles: config.sparkles ?? false,
         tilt: config.tilt ?? true,
         glow: config.glow ?? false,
         typewriter: config.typewriter ?? false,
+        cursorTrail: config.cursorTrail ?? false,
       });
     }
   }, [profile]);

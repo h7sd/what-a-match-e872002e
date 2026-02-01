@@ -166,6 +166,7 @@ interface CustomizationPanelProps {
     tilt: boolean;
     glow: boolean;
     typewriter: boolean;
+    cursorTrail?: boolean;
   };
   setEffects: (effects: any) => void;
   
@@ -655,6 +656,11 @@ export function CustomizationPanel(props: CustomizationPanelProps) {
                   label="🎯 3D Tilt Card"
                   checked={props.effects.tilt}
                   onChange={(checked) => props.setEffects({ ...props.effects, tilt: checked })}
+                />
+                <ToggleItem
+                  label="🖱️ Cursor Trail"
+                  checked={props.effects.cursorTrail || false}
+                  onChange={(checked) => props.setEffects({ ...props.effects, cursorTrail: checked })}
                 />
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">

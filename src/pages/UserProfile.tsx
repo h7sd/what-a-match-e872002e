@@ -292,8 +292,10 @@ export default function UserProfile() {
     );
   }
 
-  const showCursorTrail = profile.effects_config?.sparkles;
-  const customCursorUrl = (profile as any).custom_cursor_url;
+  // Check effects_config for cursor settings - support both old and new field names
+  const effectsConfig = profile.effects_config as Record<string, any> | null;
+  const showCursorTrail = effectsConfig?.cursorTrail ?? effectsConfig?.sparkles ?? false;
+  const customCursorUrl = (profile as any).custom_cursor_url as string | null;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -326,8 +328,8 @@ export default function UserProfile() {
       {(showCursorTrail || customCursorUrl) && hasInteracted && (
         <CustomCursor 
           color={accentColor} 
-          showTrail={showCursorTrail} 
-          cursorUrl={customCursorUrl}
+          showTrail={!!showCursorTrail} 
+          cursorUrl={customCursorUrl || undefined}
         />
       )}
 
