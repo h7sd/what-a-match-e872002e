@@ -10,8 +10,6 @@ interface MfaChallenge {
 interface BanStatus {
   isBanned: boolean;
   reason: string | null;
-  appealDeadline: string;
-  canAppeal: boolean;
   appealSubmitted: boolean;
 }
 
@@ -96,8 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setBanStatus({
             isBanned: true,
             reason: banData.reason,
-            appealDeadline: banData.appealDeadline,
-            canAppeal: banData.canAppeal,
             appealSubmitted: banData.appealSubmitted
           });
           return { error: null, isBanned: true };

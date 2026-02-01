@@ -591,8 +591,6 @@ export default function Auth() {
       <BanAppealScreen
         userId={user.id}
         reason={banStatus.reason}
-        appealDeadline={banStatus.appealDeadline}
-        canAppeal={banStatus.canAppeal}
         appealSubmitted={banStatus.appealSubmitted}
         onLogout={async () => {
           clearBanStatus();
