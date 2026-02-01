@@ -102,16 +102,14 @@ export default function Index() {
                 UserVault.cc
               </Link>
               <nav className="hidden md:flex items-center gap-6">
-                <PremiumDialog 
-                  open={showPremiumDialog} 
-                  onOpenChange={setShowPremiumDialog}
+                <a 
+                  href="https://uservault.de"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <button 
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Premium
-                  </button>
-                </PremiumDialog>
+                  Livestreaming Platform
+                </a>
                 <a 
                   href="#" 
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
