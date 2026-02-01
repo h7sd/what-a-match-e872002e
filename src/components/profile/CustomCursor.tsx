@@ -18,11 +18,21 @@ interface CustomCursorProps {
   cursorUrl?: string;
 }
 
+// Check if the file is a native cursor format (.cur or .ani)
+function isNativeCursorFormat(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.endsWith('.cur') || lower.endsWith('.ani');
+}
+
 export function CustomCursor({ color = '#8b5cf6', showTrail = true, cursorUrl }: CustomCursorProps) {
   const [position, setPosition] = useState<CursorPosition>({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState(false);
   const [trails, setTrails] = useState<Trail[]>([]);
   const trailIdRef = useRef(0);
+
+  // Check if using native cursor format
+  const useNativeCursor = cursorUrl && isNativeCursorFormat(cursorUrl);
+  const useImageCursor = cursorUrl && !useNativeCursor;
 
   useEffect(() => {
     const updatePosition = (e: MouseEvent) => {
@@ -63,6 +73,40 @@ export function CustomCursor({ color = '#8b5cf6', showTrail = true, cursorUrl }:
 
   if (typeof window === 'undefined') return null;
 
+  // For native cursor formats (.cur, .ani), use CSS cursor property
+  if (useNativeCursor) {
+    return (
+      <>
+        <style>{`
+          * { cursor: url('${cursorUrl}'), auto !important; }
+        `}</style>
+        
+        {/* Trail still works with native cursors */}
+        <AnimatePresence>
+          {showTrail && trails.map((trail) => (
+            <motion.div
+              key={trail.id}
+              initial={{ opacity: 0.6, scale: 1 }}
+              animate={{ opacity: 0, scale: 0.3 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="fixed pointer-events-none z-[9998]"
+              style={{
+                left: trail.x - 4,
+                top: trail.y - 4,
+                width: 8,
+                height: 8,
+                backgroundColor: color,
+                borderRadius: '50%',
+                filter: 'blur(2px)',
+              }}
+            />
+          ))}
+        </AnimatePresence>
+      </>
+    );
+  }
+
   return (
     <>
       <style>{`
@@ -95,8 +139,8 @@ export function CustomCursor({ color = '#8b5cf6', showTrail = true, cursorUrl }:
       {/* Main cursor */}
       {isVisible && (
         <>
-          {cursorUrl ? (
-            // Custom image cursor
+          {useImageCursor ? (
+            // Custom image cursor (png, gif)
             <motion.img
               src={cursorUrl}
               alt="cursor"
