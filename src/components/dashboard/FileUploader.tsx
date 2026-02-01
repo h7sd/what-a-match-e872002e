@@ -156,9 +156,13 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
         />
 
         {currentUrl && type !== 'audio' && !isNonPreviewableCursor ? (
-          <div className={`relative ${type === 'avatar' ? 'aspect-square' : 'aspect-video'}`}>
+          <div className={`relative ${type === 'avatar' ? 'aspect-square' : type === 'cursor' ? 'aspect-square' : 'aspect-video'}`}>
             {type === 'background' && (currentUrl.includes('.mp4') || currentUrl.includes('.mov') || currentUrl.includes('.MOV')) ? (
               <video src={currentUrl} className="w-full h-full object-cover" muted autoPlay loop />
+            ) : type === 'cursor' ? (
+              <div className="w-full h-full flex items-center justify-center bg-secondary/30 p-4">
+                <img src={currentUrl} alt={config.label} className="max-w-full max-h-full object-contain" style={{ imageRendering: 'pixelated' }} />
+              </div>
             ) : (
               <img src={currentUrl} alt={config.label} className="w-full h-full object-cover" />
             )}
@@ -168,10 +172,10 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
           </div>
         ) : currentUrl && isNonPreviewableCursor ? (
           <div className="py-8 px-4 flex flex-col items-center justify-center text-center">
-            <Icon className={`w-8 h-8 mb-2 ${config.color} opacity-50`} />
-            <p className="text-xs text-muted-foreground">Cursor uploaded ✓</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Preview for .cur/.ani isn&apos;t supported here — for animated cursors use GIF/APNG.
+            <Icon className={`w-8 h-8 mb-2 ${config.color}`} />
+            <p className="text-xs text-primary font-medium">Cursor uploaded ✓</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              .cur/.ani preview not supported — use GIF/PNG for animated cursors
             </p>
           </div>
         ) : (

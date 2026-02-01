@@ -1047,6 +1047,7 @@ export default function Dashboard() {
                     iconLinksOpacity={iconLinksOpacity}
                     enableRainbow={enableProfileGradient}
                     glowUsername={glowUsername}
+                    customCursorUrl={customCursorUrl}
                   />
                 </div>
 

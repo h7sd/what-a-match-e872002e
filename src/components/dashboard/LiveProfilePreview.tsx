@@ -52,6 +52,7 @@ interface LiveProfilePreviewProps {
     tilt?: boolean;
     glow?: boolean;
     typewriter?: boolean;
+    cursorTrail?: boolean;
   };
   occupation?: string;
   location?: string;
@@ -61,6 +62,7 @@ interface LiveProfilePreviewProps {
   iconLinksOpacity?: number;
   enableRainbow?: boolean;
   glowUsername?: boolean;
+  customCursorUrl?: string;
 }
 
 export function LiveProfilePreview({
@@ -102,6 +104,7 @@ export function LiveProfilePreview({
   iconLinksOpacity = 100,
   enableRainbow = false,
   glowUsername = false,
+  customCursorUrl,
 }: LiveProfilePreviewProps) {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(true);
@@ -272,10 +275,11 @@ export function LiveProfilePreview({
 
           {/* Preview Content */}
           <div 
-            className="relative overflow-hidden"
+            className="relative overflow-hidden group"
             style={{ 
               backgroundColor,
               height: '500px',
+              cursor: customCursorUrl ? `url(${customCursorUrl}) 16 16, auto` : undefined,
             }}
           >
             {/* Background Video */}
@@ -311,6 +315,13 @@ export function LiveProfilePreview({
                 background: `radial-gradient(ellipse at 50% 0%, ${accentColor}30, transparent 60%)`,
               }}
             />
+
+            {/* Custom cursor hint */}
+            {customCursorUrl && (
+              <div className="absolute top-2 right-2 z-20 px-2 py-1 rounded bg-black/60 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">
+                Custom cursor active
+              </div>
+            )}
 
             {/* Profile Content */}
             <div className="relative z-10 h-full flex flex-col items-center justify-center p-6 overflow-y-auto">
