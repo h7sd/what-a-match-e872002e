@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Ban } from 'lucide-react';
 import { useProfileByUsername, useSocialLinks, useRecordProfileView, useProfileByAlias } from '@/hooks/useProfile';
 import { useProfileBadges } from '@/hooks/useBadges';
 import { ProfileCard } from '@/components/profile/ProfileCard';
@@ -13,6 +13,7 @@ import { StartScreen } from '@/components/profile/StartScreen';
 import { ControlsBar } from '@/components/profile/ControlsBar';
 import { SimpleVolumeBar } from '@/components/profile/SimpleVolumeBar';
 import { GlitchOverlay } from '@/components/profile/GlitchOverlay';
+import { supabase } from '@/integrations/supabase/client';
 
 // Custom hook for animated document title
 function useAnimatedDocumentTitle(
@@ -166,6 +167,8 @@ export default function UserProfile() {
   const [transparency, setTransparency] = useState(1);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [enableVideoAudio, setEnableVideoAudio] = useState(true);
+  const [isBanned, setIsBanned] = useState(false);
+  const [banCheckDone, setBanCheckDone] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Get accent color from profile
@@ -179,12 +182,36 @@ export default function UserProfile() {
   // Apply animated document title
   useAnimatedDocumentTitle(ogTitle, ogAnimation, ogIconUrl);
 
+  // Check if user is banned
+  useEffect(() => {
+    const checkBanStatus = async () => {
+      if (profile?.user_id) {
+        try {
+          const { data } = await supabase
+            .from('banned_users')
+            .select('id')
+            .eq('user_id', profile.user_id)
+            .maybeSingle();
+          
+          setIsBanned(!!data);
+        } catch (err) {
+          console.error('Error checking ban status:', err);
+        }
+      }
+      setBanCheckDone(true);
+    };
+    
+    if (profile) {
+      checkBanStatus();
+    }
+  }, [profile?.user_id]);
+
   // Record profile view
   useEffect(() => {
-    if (profile?.id) {
+    if (profile?.id && !isBanned) {
       recordView.mutate(profile.id);
     }
-  }, [profile?.id]);
+  }, [profile?.id, isBanned]);
 
   // Handle start screen click
   const handleStart = () => {
@@ -205,7 +232,7 @@ export default function UserProfile() {
     }
   }, [volume]);
 
-  const isLoading = aliasLoading || profileLoading;
+  const isLoading = aliasLoading || profileLoading || !banCheckDone;
 
   if (isLoading) {
     return (
@@ -225,6 +252,34 @@ export default function UserProfile() {
         >
           <h1 className="text-4xl font-bold mb-2">404</h1>
           <p className="text-muted-foreground mb-6">User not found</p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Go back home
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show suspended screen if user is banned
+  if (isBanned) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md"
+        >
+          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+            <Ban className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2 text-destructive">Profile Suspended</h1>
+          <p className="text-muted-foreground mb-6">
+            This profile is temporarily unavailable due to a violation of our terms of service.
+          </p>
           <Link
             to="/"
             className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
