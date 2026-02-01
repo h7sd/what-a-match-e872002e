@@ -180,65 +180,65 @@ export function AdminSupportTickets() {
   const progressCount = tickets.filter((t) => t.status === 'in_progress').length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 w-full max-w-4xl">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Mail className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Mail className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Support Tickets</h3>
-            <p className="text-xs text-muted-foreground">Manage email inquiries</p>
+            <h3 className="font-semibold text-base">Support Tickets</h3>
+            <p className="text-sm text-muted-foreground">support@uservault.cc</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="h-7" onClick={loadTickets} disabled={isLoading}>
-          <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button variant="ghost" size="sm" onClick={loadTickets} disabled={isLoading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-8">
-          <TabsTrigger value="open" className="text-xs">
+        <TabsList className="grid w-full grid-cols-3 h-10">
+          <TabsTrigger value="open" className="text-sm">
             Open {openCount > 0 && `(${openCount})`}
           </TabsTrigger>
-          <TabsTrigger value="progress" className="text-xs">
+          <TabsTrigger value="progress" className="text-sm">
             In Progress {progressCount > 0 && `(${progressCount})`}
           </TabsTrigger>
-          <TabsTrigger value="closed" className="text-xs">
+          <TabsTrigger value="closed" className="text-sm">
             Closed
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-3">
+        <TabsContent value={activeTab} className="mt-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : filteredTickets.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">
+            <p className="text-sm text-muted-foreground text-center py-12">
               No tickets in this category
             </p>
           ) : (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {filteredTickets.map((ticket) => (
                 <div
                   key={ticket.id}
-                  className="p-3 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors"
+                  className="p-4 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors"
                   onClick={() => openTicket(ticket)}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-2">
                         {getStatusBadge(ticket.status)}
                         {ticket.username && (
-                          <span className="text-[10px] text-primary">@{ticket.username}</span>
+                          <span className="text-xs text-primary font-medium">@{ticket.username}</span>
                         )}
                       </div>
-                      <p className="font-medium text-xs truncate">{ticket.subject}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{ticket.email}</p>
+                      <p className="font-medium text-sm truncate mb-1">{ticket.subject}</p>
+                      <p className="text-xs text-muted-foreground truncate">{ticket.email}</p>
                     </div>
-                    <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(ticket.created_at).toLocaleDateString('de-DE')}
                     </div>
                   </div>

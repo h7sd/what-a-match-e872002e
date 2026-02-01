@@ -57,6 +57,20 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Only process emails sent to support@uservault.cc
+    const toAddresses = emailData.to || [];
+    const isSupportEmail = toAddresses.some(
+      (addr: string) => addr.toLowerCase().includes('support@uservault.cc')
+    );
+
+    if (!isSupportEmail) {
+      console.log("Email not addressed to support@uservault.cc, ignoring:", toAddresses);
+      return new Response(
+        JSON.stringify({ success: true, message: "Email ignored - not addressed to support" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Extract sender email from "Name <email@domain.com>" format
     const fromMatch = emailData.from.match(/<([^>]+)>/) || [null, emailData.from];
     const senderEmail = fromMatch[1] || emailData.from;
