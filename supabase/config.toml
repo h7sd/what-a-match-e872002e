@@ -74,3 +74,12 @@ verify_jwt = false
 
 [functions.send-premium-email]
 verify_jwt = false
+
+[functions.unban-user]
+verify_jwt = false
+
+[functions.receive-support-email]
+verify_jwt = false
+
+[functions.reply-support-email]
+verify_jwt = false
