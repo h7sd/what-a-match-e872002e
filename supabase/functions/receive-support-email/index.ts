@@ -10,7 +10,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, svix-id, svix-timestamp, svix-signature",
 };
 
-interface ResendInboundEmail {
+interface ResendEmailData {
   from: string;
   to: string[];
   subject: string;
@@ -18,6 +18,11 @@ interface ResendInboundEmail {
   html?: string;
   created_at?: string;
   headers?: Array<{ name: string; value: string }>;
+}
+
+interface ResendWebhookPayload {
+  type: string;
+  data: ResendEmailData;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -28,18 +33,33 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Parse the incoming email from Resend webhook
-    const payload: ResendInboundEmail = await req.json();
+    // Parse the incoming webhook from Resend
+    const rawPayload = await req.json();
     
-    console.log("Received inbound email:", {
-      from: payload.from,
-      to: payload.to,
-      subject: payload.subject,
+    console.log("Raw webhook payload:", JSON.stringify(rawPayload));
+    
+    // Resend webhooks wrap email data in a "data" object
+    // Handle both direct email format and webhook format
+    const emailData: ResendEmailData = rawPayload.data || rawPayload;
+    
+    console.log("Parsed email data:", {
+      from: emailData.from,
+      to: emailData.to,
+      subject: emailData.subject,
     });
 
+    // Validate required fields
+    if (!emailData.from) {
+      console.error("Missing 'from' field in payload");
+      return new Response(
+        JSON.stringify({ error: "Missing 'from' field" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // Extract sender email from "Name <email@domain.com>" format
-    const fromMatch = payload.from.match(/<([^>]+)>/) || [null, payload.from];
-    const senderEmail = fromMatch[1] || payload.from;
+    const fromMatch = emailData.from.match(/<([^>]+)>/) || [null, emailData.from];
+    const senderEmail = fromMatch[1] || emailData.from;
 
     // Try to find user by email
     const { data: userData } = await supabase.auth.admin.listUsers();
@@ -62,8 +82,8 @@ const handler = async (req: Request): Promise<Response> => {
       .from("support_tickets")
       .insert({
         email: senderEmail,
-        subject: payload.subject || "No Subject",
-        message: payload.text || payload.html || "No content",
+        subject: emailData.subject || "No Subject",
+        message: emailData.text || emailData.html || "No content",
         user_id: matchedUser?.id || null,
         username: username,
         status: "open",
@@ -81,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("support_messages")
       .insert({
         ticket_id: ticket.id,
-        message: payload.text || payload.html || "No content",
+        message: emailData.text || emailData.html || "No content",
         sender_type: "user",
         sender_id: matchedUser?.id || null,
       });
