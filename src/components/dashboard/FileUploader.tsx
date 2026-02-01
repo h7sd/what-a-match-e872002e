@@ -54,6 +54,10 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
   const config = typeConfig[type];
   const Icon = config.icon;
 
+  const lowerUrl = (currentUrl || '').toLowerCase();
+  const isNonPreviewableCursor =
+    type === 'cursor' && (lowerUrl.endsWith('.cur') || lowerUrl.endsWith('.ani'));
+
   const handleUpload = async (file: File) => {
     if (!user) {
       toast({ title: 'Not authenticated', variant: 'destructive' });
@@ -151,7 +155,7 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
           className="hidden"
         />
 
-        {currentUrl && type !== 'audio' ? (
+        {currentUrl && type !== 'audio' && !isNonPreviewableCursor ? (
           <div className={`relative ${type === 'avatar' ? 'aspect-square' : 'aspect-video'}`}>
             {type === 'background' && (currentUrl.includes('.mp4') || currentUrl.includes('.mov') || currentUrl.includes('.MOV')) ? (
               <video src={currentUrl} className="w-full h-full object-cover" muted autoPlay loop />
@@ -161,6 +165,14 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
               <p className="text-xs text-white">Click to change</p>
             </div>
+          </div>
+        ) : currentUrl && isNonPreviewableCursor ? (
+          <div className="py-8 px-4 flex flex-col items-center justify-center text-center">
+            <Icon className={`w-8 h-8 mb-2 ${config.color} opacity-50`} />
+            <p className="text-xs text-muted-foreground">Cursor uploaded ✓</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Preview for .cur/.ani isn&apos;t supported here — for animated cursors use GIF/APNG.
+            </p>
           </div>
         ) : (
           <div className="py-8 px-4 flex flex-col items-center justify-center text-center">

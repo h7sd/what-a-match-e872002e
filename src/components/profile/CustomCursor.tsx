@@ -31,8 +31,12 @@ export function CustomCursor({ color = '#8b5cf6', showTrail = true, cursorUrl }:
   const trailIdRef = useRef(0);
 
   // Check if using native cursor format
-  const useNativeCursor = cursorUrl && isNativeCursorFormat(cursorUrl);
-  const useImageCursor = cursorUrl && !useNativeCursor;
+  const lowerCursorUrl = (cursorUrl || '').toLowerCase();
+  // NOTE: .ani is a Windows-native animated cursor format and is not supported by most modern browsers.
+  // We treat it as non-native to avoid silently falling back to the default OS cursor.
+  const isAniCursor = !!cursorUrl && lowerCursorUrl.endsWith('.ani');
+  const useNativeCursor = !!cursorUrl && isNativeCursorFormat(cursorUrl) && !isAniCursor;
+  const useImageCursor = !!cursorUrl && !useNativeCursor && !isAniCursor;
 
   useEffect(() => {
     const updatePosition = (e: MouseEvent) => {
