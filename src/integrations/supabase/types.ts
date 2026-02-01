@@ -139,6 +139,45 @@ export type Database = {
           },
         ]
       }
+      banned_users: {
+        Row: {
+          appeal_deadline: string
+          appeal_submitted_at: string | null
+          appeal_text: string | null
+          banned_at: string
+          banned_by: string
+          email: string | null
+          id: string
+          reason: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          appeal_deadline?: string
+          appeal_submitted_at?: string | null
+          appeal_text?: string | null
+          banned_at?: string
+          banned_by: string
+          email?: string | null
+          id?: string
+          reason?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          appeal_deadline?: string
+          appeal_submitted_at?: string | null
+          appeal_text?: string | null
+          banned_at?: string
+          banned_by?: string
+          email?: string | null
+          id?: string
+          reason?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       discord_integrations: {
         Row: {
           avatar: string | null

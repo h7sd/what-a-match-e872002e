@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Mail, Shield } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-// OAuth removed - lovable import no longer needed
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
@@ -68,7 +68,7 @@ export default function Auth() {
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
-  const { signIn, signUp, verifyMfa, user, mfaChallenge } = useAuth();
+  const { signIn, signUp, signOut, verifyMfa, user, mfaChallenge, banStatus, clearBanStatus } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -338,7 +338,7 @@ export default function Auth() {
           return;
         }
 
-        const { error, needsMfa, factorId } = await signIn(emailOrUsername, password);
+        const { error, needsMfa, factorId, isBanned } = await signIn(emailOrUsername, password);
         if (error) {
           toast({
             title: 'Login failed',
@@ -350,6 +350,13 @@ export default function Auth() {
           // Reset turnstile on error
           setTurnstileToken(null);
           renderTurnstile();
+        } else if (isBanned) {
+          // Ban screen will be shown via banStatus in auth context
+          toast({ 
+            title: 'Account Suspended', 
+            description: 'Your account has been suspended.',
+            variant: 'destructive'
+          });
         } else if (needsMfa && factorId) {
           setMfaFactorId(factorId);
           setStep('mfa-verify');
@@ -577,6 +584,23 @@ export default function Auth() {
       default: return '';
     }
   };
+
+  // Show ban appeal screen if user is banned
+  if (banStatus?.isBanned && user) {
+    return (
+      <BanAppealScreen
+        userId={user.id}
+        reason={banStatus.reason}
+        appealDeadline={banStatus.appealDeadline}
+        canAppeal={banStatus.canAppeal}
+        appealSubmitted={banStatus.appealSubmitted}
+        onLogout={async () => {
+          clearBanStatus();
+          await signOut();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen animated-bg flex items-center justify-center p-4">

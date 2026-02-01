@@ -76,16 +76,19 @@ export function UserBanManager() {
 
     setIsBanning(true);
     try {
-      // For now, we'll just show a success message since full ban implementation
-      // would require additional database schema changes
-      // In a real implementation, you would:
-      // 1. Add a banned_users table or is_banned column to profiles
-      // 2. Update the user's record
-      // 3. Optionally revoke their session
+      const { data, error } = await supabase.functions.invoke('ban-user', {
+        body: {
+          userId: selectedUser.user_id,
+          username: selectedUser.username,
+          reason: banReason || 'No reason provided'
+        }
+      });
+
+      if (error) throw error;
 
       toast({ 
         title: 'User Banned', 
-        description: `${selectedUser.username} has been banned. Reason: ${banReason || 'No reason provided'}`,
+        description: `${selectedUser.username} has been banned and notified via email.`,
       });
 
       setIsDialogOpen(false);
@@ -94,6 +97,7 @@ export function UserBanManager() {
       setSearchQuery('');
       setSearchResults([]);
     } catch (error: any) {
+      console.error('Error banning user:', error);
       toast({ title: error.message || 'Error banning user', variant: 'destructive' });
     } finally {
       setIsBanning(false);

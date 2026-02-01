@@ -125,7 +125,15 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
 
   // Discord Connection State
   const [discordIntegration, setDiscordIntegration] = useState<any>(null);
-  const [isConnectingDiscord, setIsConnectingDiscord] = useState(false);
+
+  // Email Change State
+  const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailChangeStep, setEmailChangeStep] = useState<'input' | 'verify' | 'mfa'>('input');
+  const [emailChangeCode, setEmailChangeCode] = useState('');
+  const [emailChangeMfaCode, setEmailChangeMfaCode] = useState('');
+  const [isSendingEmailCode, setIsSendingEmailCode] = useState(false);
+  const [isVerifyingEmailChange, setIsVerifyingEmailChange] = useState(false);
 
   useEffect(() => {
     if (profile?.username) {
@@ -416,42 +424,7 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
     }
   };
 
-  const handleConnectDiscord = async () => {
-    setIsConnectingDiscord(true);
-    try {
-      // Discord OAuth URL - redirect to Discord for authorization
-      const discordClientId = '1285371693300551781'; // Your Discord app client ID
-      const redirectUri = `${window.location.origin}/dashboard`;
-      const scope = 'identify';
-      
-      const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${discordClientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}`;
-      
-      // Open Discord OAuth in a popup
-      const popup = window.open(discordAuthUrl, 'discord-auth', 'width=500,height=700,left=100,top=100');
-      
-      if (!popup) {
-        toast({ 
-          title: 'Please allow popups for this site', 
-          variant: 'destructive' 
-        });
-        setIsConnectingDiscord(false);
-        return;
-      }
-
-      // Listen for the popup to close or redirect
-      const checkPopup = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkPopup);
-          setIsConnectingDiscord(false);
-          fetchDiscordIntegration();
-        }
-      }, 500);
-    } catch (error: any) {
-      console.error('Discord connect error:', error);
-      toast({ title: 'Failed to connect Discord', variant: 'destructive' });
-      setIsConnectingDiscord(false);
-    }
-  };
+  // Discord connection is disabled - Coming Soon
 
   const handleDisconnectDiscord = async () => {
     try {
@@ -528,6 +501,131 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  // Email Change Handlers
+  const handleSendEmailChangeCode = async () => {
+    if (!newEmail || !newEmail.includes('@')) {
+      toast({ title: 'Please enter a valid email address', variant: 'destructive' });
+      return;
+    }
+
+    setIsSendingEmailCode(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email-change-code', {
+        body: { newEmail }
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Verification code sent to your current email' });
+      setEmailChangeStep('verify');
+    } catch (error: any) {
+      console.error('Error sending email change code:', error);
+      toast({ 
+        title: 'Failed to send verification code', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSendingEmailCode(false);
+    }
+  };
+
+  const handleVerifyEmailChange = async () => {
+    if (emailChangeCode.length !== 6) {
+      toast({ title: 'Please enter the 6-digit code', variant: 'destructive' });
+      return;
+    }
+
+    // Check if user has MFA enabled - if so, require MFA code
+    if (isMfaEnabled) {
+      setEmailChangeStep('mfa');
+      return;
+    }
+
+    // Proceed with email change
+    await completeEmailChange();
+  };
+
+  const handleMfaVerifyForEmailChange = async () => {
+    if (emailChangeMfaCode.length !== 6) {
+      toast({ title: 'Please enter the 6-digit MFA code', variant: 'destructive' });
+      return;
+    }
+
+    // Verify MFA code
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    if (!factorsData?.totp.length) {
+      toast({ title: 'No MFA factor found', variant: 'destructive' });
+      return;
+    }
+
+    const factor = factorsData.totp.find(f => f.status === 'verified');
+    if (!factor) {
+      toast({ title: 'No verified MFA factor found', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: factor.id
+      });
+
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: factor.id,
+        challengeId: challengeData.id,
+        code: emailChangeMfaCode
+      });
+
+      if (verifyError) throw verifyError;
+
+      // MFA verified, proceed with email change
+      await completeEmailChange();
+    } catch (error: any) {
+      console.error('MFA verification error:', error);
+      toast({ 
+        title: 'Invalid MFA code', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const completeEmailChange = async () => {
+    setIsVerifyingEmailChange(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-email-change', {
+        body: { code: emailChangeCode, newEmail }
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Email changed successfully! Please log in again.' });
+      resetEmailChangeDialog();
+      
+      // Sign out since email changed
+      await signOut();
+    } catch (error: any) {
+      console.error('Error changing email:', error);
+      toast({ 
+        title: 'Failed to change email', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsVerifyingEmailChange(false);
+    }
+  };
+
+  const resetEmailChangeDialog = () => {
+    setShowEmailChangeDialog(false);
+    setNewEmail('');
+    setEmailChangeStep('input');
+    setEmailChangeCode('');
+    setEmailChangeMfaCode('');
   };
 
   const maskedEmail = user?.email 
@@ -879,7 +977,11 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
             Regenerate Recovery Codes
           </Button>
 
-          <Button variant="outline" className="w-full text-primary">
+          <Button 
+            variant="outline" 
+            className="w-full text-primary"
+            onClick={() => setShowEmailChangeDialog(true)}
+          >
             <Mail className="w-4 h-4 mr-2" />
             Change Email
           </Button>
@@ -918,16 +1020,11 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
           ) : (
             <Button 
               variant="outline" 
-              className="w-full"
-              onClick={handleConnectDiscord}
-              disabled={isConnectingDiscord}
+              className="w-full opacity-60 cursor-not-allowed"
+              disabled={true}
             >
-              {isConnectingDiscord ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <FaDiscord className="w-4 h-4 mr-2 text-[#5865F2]" />
-              )}
-              Connect Discord
+              <FaDiscord className="w-4 h-4 mr-2 text-[#5865F2]" />
+              Coming Soon
             </Button>
           )}
 
@@ -1075,6 +1172,124 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
               ) : null}
               Delete My Account
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Change Dialog */}
+      <Dialog open={showEmailChangeDialog} onOpenChange={(open) => !open && resetEmailChangeDialog()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-primary" />
+              Change Email Address
+            </DialogTitle>
+            <DialogDescription>
+              {emailChangeStep === 'input' && 'Enter your new email address. A verification code will be sent to your current email.'}
+              {emailChangeStep === 'verify' && 'Enter the 6-digit verification code sent to your current email.'}
+              {emailChangeStep === 'mfa' && 'Enter your 2FA code from your authenticator app to confirm the email change.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {emailChangeStep === 'input' && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Current Email</label>
+                  <div className="p-3 rounded-lg bg-secondary/30 border border-border text-sm text-muted-foreground">
+                    {user?.email}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">New Email</label>
+                  <Input
+                    type="email"
+                    placeholder="Enter new email address"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {emailChangeStep === 'verify' && (
+              <div className="flex flex-col items-center gap-4">
+                <p className="text-sm text-center text-muted-foreground">
+                  We sent a code to <strong>{user?.email}</strong>
+                </p>
+                <InputOTP
+                  maxLength={6}
+                  value={emailChangeCode}
+                  onChange={setEmailChangeCode}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+                <p className="text-xs text-muted-foreground">Code expires in 15 minutes</p>
+              </div>
+            )}
+
+            {emailChangeStep === 'mfa' && (
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <ShieldCheck className="w-8 h-8 text-primary mx-auto mb-2" />
+                  <p className="text-sm text-center">Two-Factor Authentication Required</p>
+                </div>
+                <InputOTP
+                  maxLength={6}
+                  value={emailChangeMfaCode}
+                  onChange={setEmailChangeMfaCode}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+                <p className="text-xs text-muted-foreground">Enter the code from your authenticator app</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={resetEmailChangeDialog}>
+              Cancel
+            </Button>
+            {emailChangeStep === 'input' && (
+              <Button 
+                onClick={handleSendEmailChangeCode} 
+                disabled={isSendingEmailCode || !newEmail}
+              >
+                {isSendingEmailCode ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Send Code
+              </Button>
+            )}
+            {emailChangeStep === 'verify' && (
+              <Button 
+                onClick={handleVerifyEmailChange} 
+                disabled={emailChangeCode.length !== 6}
+              >
+                {isMfaEnabled ? 'Continue' : 'Change Email'}
+              </Button>
+            )}
+            {emailChangeStep === 'mfa' && (
+              <Button 
+                onClick={handleMfaVerifyForEmailChange} 
+                disabled={isVerifyingEmailChange || emailChangeMfaCode.length !== 6}
+              >
+                {isVerifyingEmailChange ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Confirm Change
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -7,16 +7,26 @@ interface MfaChallenge {
   needsMfa: boolean;
 }
 
+interface BanStatus {
+  isBanned: boolean;
+  reason: string | null;
+  appealDeadline: string;
+  canAppeal: boolean;
+  appealSubmitted: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   mfaChallenge: MfaChallenge | null;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null; needsMfa?: boolean; factorId?: string }>;
+  banStatus: BanStatus | null;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; needsMfa?: boolean; factorId?: string; isBanned?: boolean }>;
   signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null; data?: { user: User | null } }>;
   signOut: () => Promise<void>;
   verifyMfa: (factorId: string, code: string) => Promise<{ error: Error | null }>;
   clearMfaChallenge: () => void;
+  clearBanStatus: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallenge | null>(null);
+  const [banStatus, setBanStatus] = useState<BanStatus | null>(null);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -73,6 +84,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) return { error };
+
+    // Check if user is banned
+    if (data.user) {
+      try {
+        const { data: banData } = await supabase.functions.invoke('check-ban-status', {
+          body: { userId: data.user.id }
+        });
+
+        if (banData?.isBanned) {
+          setBanStatus({
+            isBanned: true,
+            reason: banData.reason,
+            appealDeadline: banData.appealDeadline,
+            canAppeal: banData.canAppeal,
+            appealSubmitted: banData.appealSubmitted
+          });
+          return { error: null, isBanned: true };
+        }
+      } catch (banError) {
+        console.error('Error checking ban status:', banError);
+        // Continue with login if ban check fails
+      }
+    }
 
     // Check if user has MFA enabled - use getAuthenticatorAssuranceLevel for accurate MFA detection
     const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -133,6 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMfaChallenge(null);
   };
 
+  const clearBanStatus = () => {
+    setBanStatus(null);
+  };
+
   const signUp = async (email: string, password: string, username: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -180,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setMfaChallenge(null);
+    setBanStatus(null);
     await supabase.auth.signOut();
   };
 
@@ -189,11 +228,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session, 
       loading, 
       mfaChallenge,
+      banStatus,
       signIn, 
       signUp, 
       signOut,
       verifyMfa,
-      clearMfaChallenge
+      clearMfaChallenge,
+      clearBanStatus
     }}>
       {children}
     </AuthContext.Provider>
