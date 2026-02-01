@@ -571,6 +571,45 @@ function getSpotifyImage(spotifyActivity) {
 }
 
 // ============================================
+// BOOSTER BADGE EDGE FUNCTION
+// ============================================
+const BOOSTER_BADGE_URL = process.env.BOOSTER_BADGE_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/assign-booster-badge';
+
+async function handleBoosterBadge(discordUserId, action) {
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const payload = JSON.stringify({ action, discordUserId });
+    const signature = generateSignature(payload, timestamp);
+
+    console.log(`🎉 ${action === 'boost_start' ? 'Assigning' : 'Removing'} booster badge for Discord user ${discordUserId}`);
+
+    const response = await fetch(BOOSTER_BADGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-signature': signature,
+        'x-timestamp': timestamp.toString(),
+      },
+      body: payload,
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success) {
+        console.log(`✅ Booster badge ${action === 'boost_start' ? 'assigned' : 'removed'} successfully`);
+      } else {
+        console.log(`⚠️ Booster badge action skipped: ${result.error || 'Unknown reason'}`);
+      }
+    } else {
+      const text = await response.text().catch(() => '');
+      console.error(`❌ Failed to ${action === 'boost_start' ? 'assign' : 'remove'} booster badge:`, response.status, text);
+    }
+  } catch (err) {
+    console.error('❌ Error handling booster badge:', err.message);
+  }
+}
+
+// ============================================
 // EVENT HANDLERS
 // ============================================
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
@@ -589,6 +628,28 @@ client.on('guildMemberRemove', async (member) => {
   console.log(`👋 ${member.user.username} left`);
   // Set offline
   await updatePresence(member.id, { status: 'offline', activities: [] }, member.user);
+});
+
+// ============================================
+// BOOST DETECTION (guildMemberUpdate)
+// ============================================
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+  if (newMember.user.bot) return;
+
+  const wasBoosting = !!oldMember.premiumSince;
+  const isBoosting = !!newMember.premiumSince;
+
+  // User started boosting
+  if (!wasBoosting && isBoosting) {
+    console.log(`🚀 ${newMember.user.username} started boosting the server!`);
+    await handleBoosterBadge(newMember.id, 'boost_start');
+  }
+
+  // User stopped boosting
+  if (wasBoosting && !isBoosting) {
+    console.log(`😢 ${newMember.user.username} stopped boosting the server.`);
+    await handleBoosterBadge(newMember.id, 'boost_end');
+  }
 });
 
 // ============================================

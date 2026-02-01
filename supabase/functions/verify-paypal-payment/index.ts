@@ -262,6 +262,33 @@ Deno.serve(async (req) => {
       console.log('Purchase recorded:', invoiceNumber)
     }
 
+    // Assign Discord Premium role if user has linked Discord
+    try {
+      const discordRoleResponse = await fetch(`${supabaseUrl}/functions/v1/assign-discord-role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          action: 'add_premium_role',
+          userId: user.id,
+        }),
+      })
+
+      if (discordRoleResponse.ok) {
+        const roleResult = await discordRoleResponse.json()
+        if (roleResult.success) {
+          console.log('Discord premium role assigned successfully')
+        } else {
+          console.log('Discord role not assigned:', roleResult.error || 'No Discord linked')
+        }
+      }
+    } catch (discordError) {
+      console.error('Error assigning Discord role:', discordError)
+      // Don't fail the whole request if Discord role fails
+    }
+
     // Send confirmation email with invoice
     try {
       const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-premium-email`, {
