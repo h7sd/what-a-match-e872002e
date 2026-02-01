@@ -34,6 +34,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getBadgeIcon } from '@/lib/badges';
 import { Link } from 'react-router-dom';
 import { AdminUserDashboard } from './AdminUserDashboard';
+import { BadgeAssignmentSection } from './BadgeAssignmentSection';
 
 interface UserProfile {
   id: string;
@@ -599,6 +600,13 @@ export function AdminAccountLookup() {
                     )}
                   </>
                 )}
+
+                {/* Badge Assignment Section */}
+                <BadgeAssignmentSection
+                  userId={selectedUser.user_id}
+                  userBadgeIds={userBadges.map(ub => ub.badge_id)}
+                  onBadgeAssigned={refreshUserDetails}
+                />
               </TabsContent>
 
               {/* Settings Tab */}
