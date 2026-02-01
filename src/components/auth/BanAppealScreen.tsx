@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ban, LogOut, Loader2, Send, Clock, CheckCircle } from 'lucide-react';
+import { Ban, LogOut, Loader2, Send, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -8,8 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 interface BanAppealScreenProps {
   userId: string;
   reason: string | null;
-  appealDeadline: string;
-  canAppeal: boolean;
   appealSubmitted: boolean;
   onLogout: () => void;
 }
@@ -17,8 +15,6 @@ interface BanAppealScreenProps {
 export function BanAppealScreen({ 
   userId, 
   reason, 
-  appealDeadline, 
-  canAppeal, 
   appealSubmitted,
   onLogout 
 }: BanAppealScreenProps) {
@@ -26,8 +22,6 @@ export function BanAppealScreen({
   const [appealText, setAppealText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(appealSubmitted);
-
-  const daysRemaining = Math.max(0, Math.ceil((new Date(appealDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
   const handleSubmitAppeal = async () => {
     if (appealText.trim().length < 10) {
@@ -87,20 +81,14 @@ export function BanAppealScreen({
                 Your appeal is under review. We will notify you of the decision via email.
               </p>
             </div>
-          ) : canAppeal ? (
+          ) : (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-amber-500">
-                <Clock className="w-4 h-4" />
-                <span>{daysRemaining} days remaining to submit an appeal</span>
-              </div>
-
               <div className="space-y-2">
-                <label className="text-sm font-medium">Appeal Request</label>
                 <Textarea
-                  placeholder="Explain why you believe this suspension should be reconsidered..."
+                  placeholder="Explain why you believe this suspension was not justified..."
                   value={appealText}
                   onChange={(e) => setAppealText(e.target.value)}
-                  rows={5}
+                  rows={6}
                   maxLength={2000}
                   className="resize-none"
                 />
@@ -109,36 +97,42 @@ export function BanAppealScreen({
                 </p>
               </div>
 
-              <Button 
-                className="w-full" 
-                onClick={handleSubmitAppeal}
-                disabled={isSubmitting || appealText.trim().length < 10}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4 mr-2" />
-                )}
-                Send Request
-              </Button>
-            </div>
-          ) : (
-            <div className="p-4 rounded-lg bg-muted/50 text-center">
-              <p className="text-sm text-muted-foreground">
-                The appeal deadline has passed. You can no longer submit an appeal.
-              </p>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={onLogout}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  onClick={handleSubmitAppeal}
+                  disabled={isSubmitting || appealText.trim().length < 10}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Send Appeal
+                </Button>
+              </div>
             </div>
           )}
 
-          {/* Logout Button */}
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={onLogout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          {/* Only show separate logout when appeal is submitted */}
+          {submitted && (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={onLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -3,12 +3,82 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const DISCORD_BAN_APPEAL_WEBHOOK = Deno.env.get("DISCORD_BAN_APPEAL_WEBHOOK");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function sendDiscordWebhook(banRecord: any, appealText: string) {
+  if (!DISCORD_BAN_APPEAL_WEBHOOK) {
+    console.log("No Discord webhook configured for ban appeals");
+    return;
+  }
+
+  try {
+    const embed = {
+      title: "🔔 New Ban Appeal",
+      color: 0xFFA500, // Orange
+      fields: [
+        {
+          name: "Username",
+          value: banRecord.username || "Unknown",
+          inline: true,
+        },
+        {
+          name: "Email",
+          value: banRecord.email || "Unknown",
+          inline: true,
+        },
+        {
+          name: "User ID",
+          value: banRecord.user_id,
+          inline: false,
+        },
+        {
+          name: "Original Ban Reason",
+          value: banRecord.reason || "No reason provided",
+          inline: false,
+        },
+        {
+          name: "Appeal Text",
+          value: appealText.length > 1000 ? appealText.substring(0, 997) + "..." : appealText,
+          inline: false,
+        },
+        {
+          name: "Banned At",
+          value: new Date(banRecord.banned_at).toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+          inline: true,
+        },
+        {
+          name: "Appeal Deadline",
+          value: new Date(banRecord.appeal_deadline).toLocaleString("de-DE", { timeZone: "Europe/Berlin" }),
+          inline: true,
+        },
+      ],
+      timestamp: new Date().toISOString(),
+    };
+
+    const response = await fetch(DISCORD_BAN_APPEAL_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "<@h9sd> <@qo5c> New ban appeal submitted!",
+        embeds: [embed],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to send Discord webhook:", await response.text());
+    } else {
+      console.log("Discord webhook sent successfully");
+    }
+  } catch (error) {
+    console.error("Error sending Discord webhook:", error);
+  }
+}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -32,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check if user is banned and appeal deadline hasn't passed
+    // Check if user is banned
     const { data: banRecord, error: banError } = await supabaseClient
       .from('banned_users')
       .select('*')
@@ -41,11 +111,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (banError || !banRecord) {
       throw new Error("No ban record found");
-    }
-
-    // Check if appeal deadline has passed
-    if (new Date(banRecord.appeal_deadline) < new Date()) {
-      throw new Error("Appeal deadline has passed");
     }
 
     // Check if already appealed
@@ -68,6 +133,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Appeal submitted for user:", userId);
+
+    // Send Discord webhook notification
+    await sendDiscordWebhook(banRecord, appealText.trim());
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
