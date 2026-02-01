@@ -68,6 +68,7 @@ import { AdminBadgeRemover } from '@/components/admin/AdminBadgeRemover';
 import { AllBadgeAssigner } from '@/components/admin/AllBadgeAssigner';
 import { UserBanManager } from '@/components/admin/UserBanManager';
 import { AdminSupportTickets } from '@/components/admin/AdminSupportTickets';
+import { AdminLiveChat } from '@/components/admin/AdminLiveChat';
 import { AdminAccountLookup } from '@/components/admin/AdminAccountLookup';
 import { AdminUIDManager } from '@/components/admin/AdminUIDManager';
 import { AdminPurchaseHistory } from '@/components/admin/AdminPurchaseHistory';
@@ -1374,6 +1375,11 @@ export default function Dashboard() {
                   <div className="glass-card p-5">
                     <AdminBadgeRemover />
                   </div>
+                </div>
+
+                {/* Live Chat - Full Width */}
+                <div className="glass-card p-6">
+                  <AdminLiveChat />
                 </div>
 
                 {/* Support Tickets - Full Width */}

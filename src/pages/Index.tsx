@@ -17,6 +17,7 @@ import { ProfileSearch } from "@/components/landing/ProfileSearch";
 import { FeaturedProfiles } from "@/components/landing/FeaturedProfiles";
 import { ClaimedUsernamesSidebar } from "@/components/landing/ClaimedUsernamesSidebar";
 import { PremiumDialog } from "@/components/landing/PremiumDialog";
+import { LiveChatWidget } from "@/components/chat/LiveChatWidget";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -225,6 +226,9 @@ export default function Index() {
 
         {/* Footer */}
         <Footer />
+        
+        {/* Live Chat Widget */}
+        <LiveChatWidget />
       </div>
     </div>
   );

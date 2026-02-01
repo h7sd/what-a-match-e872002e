@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error updating ticket:", updateError);
     }
 
-    // Send email reply
+    // Send email reply with clean English template
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -105,27 +105,51 @@ const handler = async (req: Request): Promise<Response> => {
         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
           <tr>
             <td align="center">
-              <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px;">
+                <!-- Logo -->
                 <tr>
-                  <td align="center" style="padding-bottom: 30px;">
-                    <div style="font-size: 48px; font-weight: bold; background: linear-gradient(135deg, #8B5CF6, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">UV</div>
+                  <td align="center" style="padding-bottom: 32px;">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="width: 56px; height: 56px; background: linear-gradient(135deg, #8B5CF6, #EC4899); border-radius: 14px;">
+                          <span style="color: white; font-weight: bold; font-size: 22px; line-height: 56px;">UV</span>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
+                
+                <!-- Main Card -->
                 <tr>
-                  <td align="center" style="padding-bottom: 20px;">
-                    <h1 style="color: #ffffff; font-size: 24px; margin: 0;">Support Reply</h1>
-                    <p style="color: #71717a; font-size: 14px; margin: 10px 0 0 0;">Re: ${ticket.subject}</p>
+                  <td style="background-color: #111111; border: 1px solid #222222; border-radius: 16px; padding: 32px;">
+                    <h1 style="color: #ffffff; margin: 0 0 8px 0; font-size: 20px; font-weight: 600; text-align: center;">
+                      Support Reply
+                    </h1>
+                    <p style="color: #666666; margin: 0 0 24px 0; font-size: 13px; text-align: center;">
+                      Re: ${ticket.subject}
+                    </p>
+                    
+                    <!-- Message Content -->
+                    <div style="background-color: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                      <p style="color: #e5e5e5; font-size: 14px; line-height: 1.7; margin: 0; white-space: pre-wrap;">${message.replace(/\n/g, '<br>')}</p>
+                    </div>
+                    
+                    <!-- Footer Note -->
+                    <p style="color: #555555; font-size: 12px; text-align: center; margin: 0;">
+                      Reply to this email to continue the conversation.
+                    </p>
                   </td>
                 </tr>
+                
+                <!-- Footer -->
                 <tr>
-                  <td style="color: #e4e4e7; font-size: 16px; line-height: 1.8; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 8px; white-space: pre-wrap;">
-                    ${message.replace(/\n/g, '<br>')}
-                  </td>
-                </tr>
-                <tr>
-                  <td align="center" style="color: #71717a; font-size: 12px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 20px;">
-                    <p style="margin: 0;">Reply to this email to continue the conversation.</p>
-                    <p style="margin: 8px 0 0 0;">UserVault Support Team</p>
+                  <td style="padding-top: 24px; text-align: center;">
+                    <p style="color: #444444; font-size: 11px; margin: 0;">
+                      UserVault Support Team
+                    </p>
+                    <p style="color: #333333; font-size: 10px; margin: 8px 0 0 0;">
+                      © ${new Date().getFullYear()} UserVault. All rights reserved.
+                    </p>
                   </td>
                 </tr>
               </table>
