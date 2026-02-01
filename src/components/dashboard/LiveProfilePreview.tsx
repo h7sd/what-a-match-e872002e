@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Monitor, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -109,6 +109,51 @@ export function LiveProfilePreview({
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(true);
 
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const [cursorVisible, setCursorVisible] = useState(false);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
+  const cursorType = useMemo(() => {
+    const url = (customCursorUrl || '').toLowerCase();
+    if (!url) return 'none' as const;
+    if (url.endsWith('.ani')) return 'ani' as const;
+    if (url.endsWith('.cur')) return 'cur' as const;
+    if (url.endsWith('.gif')) return 'gif' as const;
+    if (url.endsWith('.png')) return 'png' as const;
+    return 'other' as const;
+  }, [customCursorUrl]);
+
+  const useOverlayCursor = !!customCursorUrl && (cursorType === 'gif' || cursorType === 'png');
+  const useCssCursor = !!customCursorUrl && !useOverlayCursor;
+
+  useEffect(() => {
+    if (!useOverlayCursor) return;
+    const el = previewRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    const onMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setCursorPos({ x, y }));
+    };
+    const onEnter = () => setCursorVisible(true);
+    const onLeave = () => setCursorVisible(false);
+
+    el.addEventListener('mousemove', onMove);
+    el.addEventListener('mouseenter', onEnter);
+    el.addEventListener('mouseleave', onLeave);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener('mousemove', onMove);
+      el.removeEventListener('mouseenter', onEnter);
+      el.removeEventListener('mouseleave', onLeave);
+    };
+  }, [useOverlayCursor]);
+
   // Build a mock profile object for ProfileCard
   const mockProfile: Profile = {
     id: 'preview',
@@ -170,10 +215,21 @@ export function LiveProfilePreview({
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-b-xl z-20" />
               
               {/* Screen */}
-              <div 
-                className="relative rounded-[1.5rem] overflow-hidden"
-                style={{ backgroundColor, height: '460px' }}
-              >
+               <div
+                 ref={previewRef}
+                 className="relative rounded-[1.5rem] overflow-hidden live-preview-cursor"
+                 style={{
+                   backgroundColor,
+                   height: '460px',
+                 }}
+               >
+                 {customCursorUrl && (
+                   <style>{`
+                     .live-preview-cursor, .live-preview-cursor * {
+                       cursor: ${useOverlayCursor ? 'none' : useCssCursor ? `url(${customCursorUrl}) 16 16, auto` : 'auto'} !important;
+                     }
+                   `}</style>
+                 )}
                 {/* Background */}
                 {backgroundVideoUrl ? (
                   <video
@@ -193,6 +249,23 @@ export function LiveProfilePreview({
                   className="absolute inset-0"
                   style={{ background: `radial-gradient(circle at 50% 0%, ${accentColor}20 0%, transparent 60%)` }}
                 />
+
+                 {/* Overlay cursor preview for PNG/GIF */}
+                 {useOverlayCursor && cursorVisible && (
+                   <img
+                     src={customCursorUrl}
+                     alt="custom cursor"
+                     className="absolute z-30 pointer-events-none"
+                     style={{
+                       left: cursorPos.x,
+                       top: cursorPos.y,
+                       width: 28,
+                       height: 28,
+                       transform: 'translate(-20%, -20%)',
+                       objectFit: 'contain',
+                     }}
+                   />
+                 )}
 
                 {/* Content - Scaled down */}
                 <div className="relative z-10 h-full flex flex-col items-center justify-center p-3 overflow-y-auto" style={{ transform: 'scale(0.75)', transformOrigin: 'center center' }}>
@@ -274,14 +347,21 @@ export function LiveProfilePreview({
           </div>
 
           {/* Preview Content */}
-          <div 
-            className="relative overflow-hidden group"
-            style={{ 
+          <div
+            ref={previewRef}
+            className="relative overflow-hidden group live-preview-cursor"
+            style={{
               backgroundColor,
               height: '500px',
-              cursor: customCursorUrl ? `url(${customCursorUrl}) 16 16, auto` : undefined,
             }}
           >
+            {customCursorUrl && (
+              <style>{`
+                .live-preview-cursor, .live-preview-cursor * {
+                  cursor: ${useOverlayCursor ? 'none' : useCssCursor ? `url(${customCursorUrl}) 16 16, auto` : 'auto'} !important;
+                }
+              `}</style>
+            )}
             {/* Background Video */}
             {backgroundVideoUrl && (
               <video
@@ -316,10 +396,26 @@ export function LiveProfilePreview({
               }}
             />
 
-            {/* Custom cursor hint */}
-            {customCursorUrl && (
-              <div className="absolute top-2 right-2 z-20 px-2 py-1 rounded bg-black/60 text-[10px] text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                Custom cursor active
+            {/* Overlay cursor preview for PNG/GIF */}
+            {useOverlayCursor && cursorVisible && (
+              <img
+                src={customCursorUrl}
+                alt="custom cursor"
+                className="absolute z-30 pointer-events-none"
+                style={{
+                  left: cursorPos.x,
+                  top: cursorPos.y,
+                  width: 28,
+                  height: 28,
+                  transform: 'translate(-20%, -20%)',
+                  objectFit: 'contain',
+                }}
+              />
+            )}
+
+            {customCursorUrl && (cursorType === 'ani' || cursorType === 'cur') && (
+              <div className="absolute top-2 right-2 z-20 px-2 py-1 rounded bg-muted/70 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                {cursorType.toUpperCase()} preview is browser-limited
               </div>
             )}
 
