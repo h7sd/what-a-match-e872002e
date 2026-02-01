@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Loader2, RefreshCw, Send, X, MessageSquare, User, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, Loader2, RefreshCw, Send, MessageSquare, User, Clock, CheckCircle, AlertCircle, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/lib/auth';
 
 interface SupportTicket {
   id: string;
@@ -22,6 +24,8 @@ interface SupportTicket {
   status: string;
   username: string | null;
   user_id: string | null;
+  claimed_by: string | null;
+  claimed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,8 +39,16 @@ interface SupportMessage {
   created_at: string;
 }
 
+interface AdminProfile {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 export function AdminSupportTickets() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -45,10 +57,27 @@ export function AdminSupportTickets() {
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [activeTab, setActiveTab] = useState('open');
+  const [adminProfiles, setAdminProfiles] = useState<Record<string, AdminProfile>>({});
+  const [currentAdminProfile, setCurrentAdminProfile] = useState<AdminProfile | null>(null);
 
   useEffect(() => {
     loadTickets();
-  }, []);
+    loadCurrentAdminProfile();
+  }, [user]);
+
+  const loadCurrentAdminProfile = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('user_id, username, display_name, avatar_url')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (data) {
+      setCurrentAdminProfile(data);
+    }
+  };
 
   const loadTickets = async () => {
     setIsLoading(true);
@@ -60,6 +89,21 @@ export function AdminSupportTickets() {
 
       if (error) throw error;
       setTickets(data || []);
+      
+      // Load admin profiles for claimed tickets
+      const claimedByIds = [...new Set((data || []).filter(t => t.claimed_by).map(t => t.claimed_by))];
+      if (claimedByIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .in('user_id', claimedByIds);
+        
+        if (profiles) {
+          const profileMap: Record<string, AdminProfile> = {};
+          profiles.forEach(p => { profileMap[p.user_id] = p; });
+          setAdminProfiles(profileMap);
+        }
+      }
     } catch (error: any) {
       console.error('Error loading tickets:', error);
       toast({ title: 'Error loading tickets', variant: 'destructive' });
@@ -90,6 +134,48 @@ export function AdminSupportTickets() {
     await loadMessages(ticket.id);
   };
 
+  const claimTicket = async (ticketId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('support_tickets')
+        .update({ 
+          claimed_by: user.id, 
+          claimed_at: new Date().toISOString(),
+          status: 'in_progress'
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setTickets(prev => prev.map(t => 
+        t.id === ticketId 
+          ? { ...t, claimed_by: user.id, claimed_at: new Date().toISOString(), status: 'in_progress' } 
+          : t
+      ));
+      
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket(prev => prev ? { 
+          ...prev, 
+          claimed_by: user.id, 
+          claimed_at: new Date().toISOString(),
+          status: 'in_progress'
+        } : null);
+      }
+      
+      // Add current admin to profiles cache
+      if (currentAdminProfile) {
+        setAdminProfiles(prev => ({ ...prev, [user.id]: currentAdminProfile }));
+      }
+      
+      toast({ title: 'Ticket claimed successfully' });
+    } catch (error: any) {
+      toast({ title: 'Error claiming ticket', variant: 'destructive' });
+    }
+  };
+
   const sendReply = async (closeTicket = false) => {
     if (!selectedTicket || !replyText.trim()) return;
 
@@ -112,19 +198,15 @@ export function AdminSupportTickets() {
 
       setReplyText('');
       
-      // Update local state immediately to avoid duplicates
       if (closeTicket) {
-        // Update the ticket status in local state
         setTickets(prev => prev.map(t => 
           t.id === selectedTicket.id 
             ? { ...t, status: 'closed', updated_at: new Date().toISOString() } 
             : t
         ));
-        // Update selected ticket state
         setSelectedTicket(prev => prev ? { ...prev, status: 'closed' } : null);
         setIsDialogOpen(false);
       } else {
-        // Update ticket to in_progress
         setTickets(prev => prev.map(t => 
           t.id === selectedTicket.id 
             ? { ...t, status: 'in_progress', updated_at: new Date().toISOString() } 
@@ -167,6 +249,11 @@ export function AdminSupportTickets() {
       default:
         return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
     }
+  };
+
+  const getAdminInfo = (userId: string | null) => {
+    if (!userId) return null;
+    return adminProfiles[userId] || null;
   };
 
   const filteredTickets = tickets.filter((t) => {
@@ -221,29 +308,63 @@ export function AdminSupportTickets() {
             </p>
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
-              {filteredTickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="p-4 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors"
-                  onClick={() => openTicket(ticket)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        {getStatusBadge(ticket.status)}
-                        {ticket.username && (
-                          <span className="text-xs text-primary font-medium">@{ticket.username}</span>
+              {filteredTickets.map((ticket) => {
+                const claimedAdmin = getAdminInfo(ticket.claimed_by);
+                return (
+                  <div
+                    key={ticket.id}
+                    className="p-4 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors"
+                    onClick={() => openTicket(ticket)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          {getStatusBadge(ticket.status)}
+                          {ticket.username && (
+                            <span className="text-xs text-primary font-medium">@{ticket.username}</span>
+                          )}
+                        </div>
+                        <p className="font-medium text-sm truncate mb-1">{ticket.subject}</p>
+                        <p className="text-xs text-muted-foreground truncate">{ticket.email}</p>
+                        
+                        {/* Show claimed info */}
+                        {claimedAdmin && (
+                          <div className="flex items-center gap-2 mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={claimedAdmin.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px] bg-primary/20">
+                                {(claimedAdmin.display_name || claimedAdmin.username)?.[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-primary">
+                              Claimed by <strong>{claimedAdmin.display_name || claimedAdmin.username}</strong>
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <p className="font-medium text-sm truncate mb-1">{ticket.subject}</p>
-                      <p className="text-xs text-muted-foreground truncate">{ticket.email}</p>
-                    </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(ticket.created_at).toLocaleDateString('de-DE')}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(ticket.created_at).toLocaleDateString('en-US')}
+                        </div>
+                        {!ticket.claimed_by && ticket.status === 'open' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              claimTicket(ticket.id);
+                            }}
+                          >
+                            <UserCheck className="w-3 h-3 mr-1" />
+                            Claim
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -267,35 +388,85 @@ export function AdminSupportTickets() {
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {selectedTicket && new Date(selectedTicket.created_at).toLocaleString('de-DE')}
+                {selectedTicket && new Date(selectedTicket.created_at).toLocaleString('en-US')}
               </span>
               {selectedTicket && getStatusBadge(selectedTicket.status)}
             </div>
           </DialogHeader>
 
+          {/* Claimed Banner */}
+          {selectedTicket?.claimed_by && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={getAdminInfo(selectedTicket.claimed_by)?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-xs">
+                  {(getAdminInfo(selectedTicket.claimed_by)?.display_name || 
+                    getAdminInfo(selectedTicket.claimed_by)?.username)?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-primary">
+                  {getAdminInfo(selectedTicket.claimed_by)?.display_name || 
+                   getAdminInfo(selectedTicket.claimed_by)?.username} has claimed this ticket
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Will be processed as soon as possible
+                </p>
+              </div>
+              <UserCheck className="w-5 h-5 text-primary" />
+            </div>
+          )}
+
+          {/* Claim Button if not claimed */}
+          {selectedTicket && !selectedTicket.claimed_by && selectedTicket.status !== 'closed' && (
+            <Button
+              variant="outline"
+              className="w-full border-primary/50 text-primary hover:bg-primary/10"
+              onClick={() => claimTicket(selectedTicket.id)}
+            >
+              <UserCheck className="w-4 h-4 mr-2" />
+              Claim this ticket
+            </Button>
+          )}
+
           {/* Messages */}
           <ScrollArea className="flex-1 min-h-[200px] max-h-[300px] pr-4">
             <div className="space-y-3">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`p-3 rounded-lg ${
-                    msg.sender_type === 'admin'
-                      ? 'bg-primary/10 border border-primary/30 ml-8'
-                      : 'bg-secondary/50 border border-border mr-8'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium">
-                      {msg.sender_type === 'admin' ? 'Support Team' : 'User'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {new Date(msg.created_at).toLocaleString('de-DE')}
-                    </span>
+              {messages.map((msg) => {
+                const senderAdmin = msg.sender_type === 'admin' ? getAdminInfo(msg.sender_id) : null;
+                return (
+                  <div
+                    key={msg.id}
+                    className={`p-3 rounded-lg ${
+                      msg.sender_type === 'admin'
+                        ? 'bg-primary/10 border border-primary/30 ml-8'
+                        : 'bg-secondary/50 border border-border mr-8'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {msg.sender_type === 'admin' && senderAdmin && (
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={senderAdmin.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px] bg-primary/20">
+                              {(senderAdmin.display_name || senderAdmin.username)?.[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        <span className="text-xs font-medium">
+                          {msg.sender_type === 'admin' 
+                            ? (senderAdmin?.display_name || senderAdmin?.username || 'Support Team')
+                            : 'User'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(msg.created_at).toLocaleString('en-US')}
+                      </span>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
 

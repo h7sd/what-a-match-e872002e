@@ -917,6 +917,8 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          claimed_at: string | null
+          claimed_by: string | null
           created_at: string
           email: string
           id: string
@@ -928,6 +930,8 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
           created_at?: string
           email: string
           id?: string
@@ -939,6 +943,8 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
           created_at?: string
           email?: string
           id?: string
