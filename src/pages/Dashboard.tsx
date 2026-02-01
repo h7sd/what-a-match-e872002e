@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
 import { useCurrentUserProfile, useUpdateProfile, useSocialLinks, useCreateSocialLink, useDeleteSocialLink } from '@/hooks/useProfile';
 import { useIsAdmin, useUserBadges, useGlobalBadges, useClaimBadge } from '@/hooks/useBadges';
+import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { FileUploader } from '@/components/dashboard/FileUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -219,15 +220,74 @@ export default function Dashboard() {
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Ban status state
+  const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
+  const [appealSubmitted, setAppealSubmitted] = useState(false);
+  const [banCheckDone, setBanCheckDone] = useState(false);
+
   // Links state
   const [newLinkPlatform, setNewLinkPlatform] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkTitle, setNewLinkTitle] = useState('');
 
+  // Check ban status (server-side) to ensure suspended users cannot access /dashboard even via manual URL.
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkBanStatus = async () => {
+      // No user => nothing to check
+      if (!user) {
+        if (!cancelled) {
+          setIsBanned(false);
+          setBanReason(null);
+          setAppealSubmitted(false);
+          setBanCheckDone(true);
+        }
+        return;
+      }
+
+      if (!cancelled) setBanCheckDone(false);
+
+      try {
+        const { data, error } = await supabase.functions.invoke('check-ban-status', {
+          body: { userId: user.id },
+        });
+
+        if (error) throw error;
+
+        if (!cancelled) {
+          setIsBanned(!!data?.isBanned);
+          setBanReason(data?.reason ?? null);
+          setAppealSubmitted(!!data?.appealSubmitted);
+        }
+      } catch (err) {
+        console.error('Error checking ban status:', err);
+        if (!cancelled) {
+          // Fail-safe: if ban check fails, do not lock out the dashboard.
+          setIsBanned(false);
+          setBanReason(null);
+          setAppealSubmitted(false);
+        }
+      } finally {
+        if (!cancelled) setBanCheckDone(true);
+      }
+    };
+
+    checkBanStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   // Check MFA status and redirect if not verified
   useEffect(() => {
     const checkMfaStatus = async () => {
-      if (!authLoading && !user) {
+      if (authLoading) return;
+      if (!banCheckDone) return;
+      if (isBanned) return;
+
+      if (!user) {
         navigate('/auth');
         return;
       }
@@ -247,7 +307,7 @@ export default function Dashboard() {
     };
     
     checkMfaStatus();
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isBanned, banCheckDone]);
 
   // Populate form with profile data
   useEffect(() => {
@@ -554,11 +614,25 @@ export default function Dashboard() {
     navigate(`/dashboard#${tab}`, { replace: true });
   };
 
-  if (authLoading || profileLoading) {
+  // Block rendering until auth/profile AND ban-status have been resolved.
+  // This prevents a banned user from seeing the dashboard briefly (URL can be typed manually).
+  if (authLoading || profileLoading || !banCheckDone) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // If the account is suspended, ALWAYS show the appeal screen (even on /dashboard typed manually).
+  if (isBanned && user) {
+    return (
+      <BanAppealScreen
+        userId={user.id}
+        reason={banReason}
+        appealSubmitted={appealSubmitted}
+        onLogout={handleSignOut}
+      />
     );
   }
 
