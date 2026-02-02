@@ -43,7 +43,7 @@ function FAQItem({ item, index }: { item: FAQItem; index: number }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 * index, duration: 0.4 }}
-      className="border-b border-border/50 last:border-0"
+      className="border-b border-border/30 last:border-0 mx-4"
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -78,15 +78,18 @@ function FAQItem({ item, index }: { item: FAQItem; index: number }) {
 
 export function FAQSection() {
   return (
-    <section className="py-20">
-      <FadeIn className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground">
-          Frequently Asked Questions
-        </h2>
-      </FadeIn>
-
+    <section className="py-24 px-6">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 px-6">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-muted-foreground">
+            Everything you need to know about UserVault
+          </p>
+        </div>
+
+        <div className="glass-card p-2">
           {faqs.map((faq, index) => (
             <FAQItem key={index} item={faq} index={index} />
           ))}

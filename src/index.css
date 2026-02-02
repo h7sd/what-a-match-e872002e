@@ -6,99 +6,99 @@
 
 @layer base {
   :root {
-    /* Dark theme inspired by feds.lol */
-    --background: 0 0% 4%;
+    /* New clean dark theme with subtle warmth */
+    --background: 220 20% 3%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 6%;
+    --card: 220 15% 6%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 8%;
+    --popover: 220 15% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 270 70% 60%;
+    --primary: 250 90% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 15%;
+    --secondary: 220 15% 12%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 5% 18%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 270 70% 60%;
+    --accent: 280 80% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Semantic success (used for “available” state) */
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
 
-    --border: 240 5% 18%;
-    --input: 240 5% 18%;
-    --ring: 270 70% 60%;
+    --border: 220 15% 15%;
+    --input: 220 15% 15%;
+    --ring: 250 90% 65%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    /* Custom colors for feds.lol style */
-    --glass: 0 0% 100% / 0.05;
-    --glass-border: 0 0% 100% / 0.1;
-    --glow-purple: 270 70% 60%;
-    --glow-pink: 330 70% 60%;
-    --glow-blue: 220 70% 60%;
+    /* Custom tokens for new design */
+    --gradient-start: 250 90% 65%;
+    --gradient-mid: 280 80% 60%;
+    --gradient-end: 320 80% 55%;
+    
+    --glass-bg: 220 15% 8%;
+    --glass-border: 220 15% 20%;
+    --glow-primary: 250 90% 65%;
 
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 270 70% 60%;
+    --sidebar-background: 220 20% 3%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 250 90% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 270 70% 60%;
+    --sidebar-accent: 220 15% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 250 90% 65%;
   }
 
   .dark {
-    --background: 0 0% 4%;
+    --background: 220 20% 3%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 6%;
+    --card: 220 15% 6%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 8%;
+    --popover: 220 15% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 270 70% 60%;
+    --primary: 250 90% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 15%;
+    --secondary: 220 15% 12%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 5% 18%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 55%;
 
-    --accent: 270 70% 60%;
+    --accent: 280 80% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Semantic success (used for “available” state) */
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
 
-    --border: 240 5% 18%;
-    --input: 240 5% 18%;
-    --ring: 270 70% 60%;
+    --border: 220 15% 15%;
+    --input: 220 15% 15%;
+    --ring: 250 90% 65%;
 
-    --sidebar-background: 0 0% 4%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 270 70% 60%;
+    --sidebar-background: 220 20% 3%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 250 90% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 270 70% 60%;
+    --sidebar-accent: 220 15% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 250 90% 65%;
   }
 }
 
@@ -118,42 +118,107 @@
 }
 
 @layer utilities {
-  /* Glass morphism effects */
+  /* New Glass morphism effects */
   .glass {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10;
+    @apply backdrop-blur-2xl border border-white/[0.08];
+    background: linear-gradient(
+      135deg,
+      hsl(var(--glass-bg) / 0.6) 0%,
+      hsl(var(--glass-bg) / 0.4) 100%
+    );
   }
 
   .glass-card {
-    @apply backdrop-blur-xl bg-black/40 border border-white/10 rounded-xl;
+    @apply backdrop-blur-2xl rounded-2xl border border-white/[0.08];
+    background: linear-gradient(
+      145deg,
+      hsl(var(--card) / 0.8) 0%,
+      hsl(var(--card) / 0.5) 100%
+    );
   }
 
   .glass-card-hover {
-    @apply glass-card transition-all duration-300 hover:bg-black/50 hover:border-white/20 hover:scale-[1.02];
+    @apply glass-card transition-all duration-500;
+  }
+  
+  .glass-card-hover:hover {
+    @apply border-white/[0.15] scale-[1.02];
+    background: linear-gradient(
+      145deg,
+      hsl(var(--card) / 0.9) 0%,
+      hsl(var(--card) / 0.6) 100%
+    );
+    box-shadow: 
+      0 20px 40px -20px hsl(var(--primary) / 0.15),
+      0 0 60px -30px hsl(var(--primary) / 0.2);
   }
 
-  /* Gradient text */
+  /* New gradient text */
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--gradient-start)) 0%,
+      hsl(var(--gradient-mid)) 50%,
+      hsl(var(--gradient-end)) 100%
+    );
   }
 
-  /* Glow effects */
-  .glow-purple {
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.3), 0 0 80px rgba(139, 92, 246, 0.1);
+  .gradient-text-animated {
+    @apply bg-clip-text text-transparent;
+    background-size: 200% 200%;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--gradient-start)) 0%,
+      hsl(var(--gradient-mid)) 25%,
+      hsl(var(--gradient-end)) 50%,
+      hsl(var(--gradient-mid)) 75%,
+      hsl(var(--gradient-start)) 100%
+    );
+    animation: gradient-shift 6s ease infinite;
   }
 
-  .glow-pink {
-    box-shadow: 0 0 40px rgba(236, 72, 153, 0.3), 0 0 80px rgba(236, 72, 153, 0.1);
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
   }
 
-  .glow-blue {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.3), 0 0 80px rgba(59, 130, 246, 0.1);
+  /* Subtle glow effects */
+  .glow-sm {
+    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.4);
+  }
+
+  .glow-md {
+    box-shadow: 
+      0 0 30px -5px hsl(var(--primary) / 0.3),
+      0 0 60px -10px hsl(var(--accent) / 0.2);
+  }
+
+  .glow-lg {
+    box-shadow: 
+      0 0 50px -10px hsl(var(--primary) / 0.4),
+      0 0 100px -20px hsl(var(--accent) / 0.3);
+  }
+
+  /* Mesh gradient background */
+  .mesh-gradient {
+    background: 
+      radial-gradient(at 20% 20%, hsl(var(--primary) / 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 30%, hsl(var(--accent) / 0.12) 0px, transparent 50%),
+      radial-gradient(at 40% 70%, hsl(var(--gradient-end) / 0.1) 0px, transparent 50%),
+      radial-gradient(at 90% 80%, hsl(var(--primary) / 0.08) 0px, transparent 50%);
   }
 
   /* Animated background */
   .animated-bg {
-    background: linear-gradient(-45deg, #0a0a0a, #1a0a2e, #0a1628, #0a0a0a);
+    background: linear-gradient(-45deg, 
+      hsl(220 20% 3%) 0%, 
+      hsl(250 30% 8%) 25%,
+      hsl(280 25% 6%) 50%,
+      hsl(220 20% 3%) 100%
+    );
     background-size: 400% 400%;
-    animation: gradient 15s ease infinite;
+    animation: gradient 20s ease infinite;
   }
 
   @keyframes gradient {
@@ -162,18 +227,26 @@
     100% { background-position: 0% 50%; }
   }
 
-  @keyframes gradient-x {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-
-  .animate-gradient {
-    animation: gradient-x 3s ease infinite;
+  /* Noise texture overlay */
+  .noise-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    mix-blend-mode: overlay;
   }
 
   /* Radial gradient utility */
   .bg-gradient-radial {
     background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+
+  /* Dot pattern */
+  .dot-pattern {
+    background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 
   /* Sparkle animation */
