@@ -5,6 +5,7 @@ import { ModernHeader } from "@/components/landing/ModernHeader";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { BentoFeatures } from "@/components/landing/BentoFeatures";
 import { ClaimSection } from "@/components/landing/ClaimSection";
+import { PricingSection } from "@/components/landing/PricingSection";
 import { ShowcaseSection } from "@/components/landing/ShowcaseSection";
 import { FAQSection } from "@/components/landing/FAQSection";
 import { ModernFooter } from "@/components/landing/ModernFooter";
@@ -49,6 +50,8 @@ export default function Index() {
           </div>
 
           <ClaimSection />
+
+          <PricingSection />
 
           <ShowcaseSection />
 
