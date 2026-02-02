@@ -5,6 +5,54 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per minute per IP
+
+// In-memory rate limit store (resets on function cold start)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+// Clean up old entries periodically
+function cleanupRateLimitStore() {
+  const now = Date.now();
+  for (const [key, value] of rateLimitStore.entries()) {
+    if (now > value.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
+// Check rate limit for IP
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetTime: number } {
+  cleanupRateLimitStore();
+  
+  const now = Date.now();
+  const key = ip;
+  const entry = rateLimitStore.get(key);
+  
+  if (!entry || now > entry.resetTime) {
+    // New window
+    rateLimitStore.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+  }
+  
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, remaining: 0, resetTime: entry.resetTime };
+  }
+  
+  entry.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - entry.count, resetTime: entry.resetTime };
+}
+
+// Hash IP for logging (privacy)
+async function hashIP(ip: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(ip);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
+}
+
 // Map of allowed actions to prevent arbitrary queries
 const ALLOWED_ACTIONS = [
   'get_stats',
@@ -26,6 +74,38 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Get client IP for rate limiting
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+  
+  // Check rate limit
+  const rateLimit = checkRateLimit(clientIp);
+  
+  const rateLimitHeaders = {
+    ...corsHeaders,
+    'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+    'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+    'X-RateLimit-Reset': Math.ceil(rateLimit.resetTime / 1000).toString(),
+  };
+
+  if (!rateLimit.allowed) {
+    const ipHash = await hashIP(clientIp);
+    console.log(`Rate limit exceeded for IP hash: ${ipHash}`);
+    
+    return new Response(
+      JSON.stringify({ error: 'Too many requests' }),
+      { 
+        status: 429, 
+        headers: { 
+          ...rateLimitHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+        } 
+      }
+    );
+  }
+
   try {
     const { action, params } = await req.json();
 
@@ -33,7 +113,7 @@ Deno.serve(async (req) => {
     if (!ALLOWED_ACTIONS.includes(action)) {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...rateLimitHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -60,14 +140,14 @@ Deno.serve(async (req) => {
       }
 
       case 'get_featured_profiles': {
-        const limit = params?.limit || 50;
+        const limit = Math.min(params?.limit || 50, 100); // Cap at 100
         const { data, error } = await supabase
           .from('profiles')
           .select('username, display_name')
           .limit(limit);
         
         if (error) throw error;
-        // Only return minimal public data
+        // Only return minimal public data with obfuscated keys
         result = (data || []).map(p => ({
           u: p.username,
           d: p.display_name
@@ -79,6 +159,11 @@ Deno.serve(async (req) => {
         const { username, alias } = params || {};
         if (!username && !alias) {
           throw new Error('Username or alias required');
+        }
+
+        // Validate input length to prevent abuse
+        if ((username && username.length > 50) || (alias && alias.length > 50)) {
+          throw new Error('Invalid input');
         }
 
         let query = supabase.from('profiles').select(`
@@ -116,7 +201,7 @@ Deno.serve(async (req) => {
 
       case 'get_profile_links': {
         const { username } = params || {};
-        if (!username) throw new Error('Username required');
+        if (!username || username.length > 50) throw new Error('Invalid username');
 
         // First get profile ID without exposing it
         const { data: profile } = await supabase
@@ -144,7 +229,7 @@ Deno.serve(async (req) => {
 
       case 'get_profile_badges': {
         const { username } = params || {};
-        if (!username) throw new Error('Username required');
+        if (!username || username.length > 50) throw new Error('Invalid username');
 
         // Get profile ID
         const { data: profile } = await supabase
@@ -170,19 +255,22 @@ Deno.serve(async (req) => {
 
       case 'search_profiles': {
         const { query: searchQuery, limit = 10 } = params || {};
-        if (!searchQuery || searchQuery.length < 2) {
+        if (!searchQuery || searchQuery.length < 2 || searchQuery.length > 50) {
           result = [];
           break;
         }
 
+        // Sanitize search query
+        const sanitizedQuery = searchQuery.replace(/[%_]/g, '');
+
         const { data, error } = await supabase
           .from('profiles')
           .select('username, display_name, avatar_url')
-          .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
-          .limit(limit);
+          .or(`username.ilike.%${sanitizedQuery}%,display_name.ilike.%${sanitizedQuery}%`)
+          .limit(Math.min(limit, 20)); // Cap at 20
 
         if (error) throw error;
-        // Return minimal data only
+        // Return minimal data only with obfuscated keys
         result = (data || []).map(p => ({
           u: p.username,
           d: p.display_name,
@@ -195,7 +283,8 @@ Deno.serve(async (req) => {
         const { data, error } = await supabase
           .from('global_badges')
           .select('name, description, icon_url, color, rarity, is_limited, max_claims, claims_count')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100); // Cap results
 
         if (error) throw error;
         result = data || [];
@@ -204,7 +293,7 @@ Deno.serve(async (req) => {
 
       case 'check_username': {
         const { username } = params || {};
-        if (!username) throw new Error('Username required');
+        if (!username || username.length > 50) throw new Error('Invalid username');
 
         const { data } = await supabase
           .from('profiles')
@@ -218,7 +307,7 @@ Deno.serve(async (req) => {
 
       case 'check_alias': {
         const { alias } = params || {};
-        if (!alias) throw new Error('Alias required');
+        if (!alias || alias.length > 50) throw new Error('Invalid alias');
 
         const { data: asUsername } = await supabase
           .from('profiles')
@@ -242,14 +331,14 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ data: result }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...rateLimitHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('API Proxy error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...rateLimitHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
