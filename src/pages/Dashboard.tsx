@@ -80,6 +80,7 @@ import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { LiveProfilePreview } from '@/components/dashboard/LiveProfilePreview';
 import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSection';
 import { AliasRequestsBell } from '@/components/dashboard/AliasRequestsBell';
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
@@ -807,137 +808,211 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-black/50 flex">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 min-h-screen bg-card/50 backdrop-blur-xl border-r border-white/5 flex-col fixed left-0 top-0">
-        <SidebarContent />
-      </aside>
+    <DashboardLayout
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      isAdmin={isAdmin}
+      isPremium={(profile as any)?.is_premium ?? false}
+      username={profile.username}
+      onSignOut={handleSignOut}
+      onSave={handleSave}
+      isSaving={updateProfile.isPending}
+    >
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Alias Requests Section - shows only if there are pending requests */}
+          <AliasRequestsSection />
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-white/5">
-        <div className="flex items-center justify-between p-3">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-white font-bold text-sm">UV</span>
+          <OverviewStats
+            profileViews={profile.views_count || 0}
+            uidNumber={(profile as any).uid_number || 1}
+            username={profile.username}
+          />
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <BadgesCarousel badges={userBadges.map(ub => ({
+                id: ub.badge?.id || ub.id,
+                name: ub.badge?.name || 'Unknown',
+                icon_url: ub.badge?.icon_url,
+                color: ub.badge?.color,
+                description: ub.badge?.description,
+              }))} totalBadges={globalBadges.length || 10} />
             </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">UserVault</span>
-          </Link>
-          
-          <div className="flex items-center gap-2">
-            <AliasRequestsBell />
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={updateProfile.isPending}
-                className="bg-gradient-to-r from-primary to-accent hover:opacity-90 rounded-lg shadow-lg shadow-primary/20"
-              >
-                {updateProfile.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-              </Button>
-            </motion.div>
-            
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="hover:bg-white/5">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl border-white/5">
-                <div className="flex flex-col h-full">
-                  <SidebarContent />
-                </div>
-              </SheetContent>
-            </Sheet>
+            <div>
+              <DiscordCard isConnected={!!discordUserId} />
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <RegisteredUsersList />
+            <EarlyBadgeCountdown />
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <ProfileVisitorsChart 
+              totalVisitors={profile.views_count || 0} 
+              profileId={profile.id}
+            />
+            <TopLinksChart 
+              links={[...socialLinks]
+                .sort((a, b) => ((b as any).click_count || 0) - ((a as any).click_count || 0))
+                .slice(0, 5)
+                .map((link, i) => ({
+                  name: link.title || link.platform,
+                  clicks: (link as any).click_count || 0,
+                  color: ['#3B82F6', '#22C55E', '#EAB308', '#8B5CF6', '#EC4899'][i],
+                  url: link.url,
+                }))}
+            />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Main Content */}
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0">
-        {/* Desktop Header */}
-        <header className="hidden md:block border-b border-white/5 bg-card/30 backdrop-blur-xl sticky top-0 z-50">
-          <div className="px-4 sm:px-8 py-4 flex justify-between items-center">
-            <motion.div 
-              className="flex items-center gap-3"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              key={activeTab}
-            >
-              {navItems.find(item => item.tab === activeTab)?.icon && (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20">
-                  {(() => {
-                    const Icon = navItems.find(item => item.tab === activeTab)?.icon;
-                    return Icon ? <Icon className="w-5 h-5 text-primary" /> : null;
-                  })()}
+      {/* Profile Tab */}
+      {activeTab === 'profile' && (
+        <div className="space-y-6 max-w-4xl">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Avatar Section */}
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center border border-primary/10">
+                  <User className="w-5 h-5 text-primary" />
                 </div>
-              )}
-              <div>
-                <h1 className="text-xl font-bold capitalize bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">{activeTab}</h1>
-                <p className="text-xs text-white/40">Manage your {activeTab}</p>
+                <div>
+                  <h3 className="font-semibold text-white text-sm">Avatar</h3>
+                  <p className="text-xs text-white/40">Your profile picture</p>
+                </div>
               </div>
-            </motion.div>
-            <div className="flex items-center gap-3">
-              <AliasRequestsBell />
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  onClick={handleSave}
-                  disabled={updateProfile.isPending}
-                  className="bg-gradient-to-r from-primary to-accent hover:opacity-90 rounded-xl shadow-lg shadow-primary/20 px-6"
-                >
-                  {updateProfile.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Changes
-                </Button>
-              </motion.div>
+              
+              <div className="space-y-4">
+                <FileUploader
+                  type="avatar"
+                  currentUrl={avatarUrl}
+                  onUpload={setAvatarUrl}
+                  onRemove={() => setAvatarUrl('')}
+                />
+                <div>
+                  <Label className="text-xs text-white/50">Avatar Shape</Label>
+                  <div className="flex gap-2 mt-2">
+                    {['square', 'soft', 'rounded', 'circle'].map((shape) => (
+                      <Button
+                        key={shape}
+                        variant={avatarShape === shape ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setAvatarShape(shape)}
+                        className={`capitalize ${avatarShape === shape ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-white/[0.03] border-white/[0.06] text-white/60 hover:bg-white/[0.06]'}`}
+                      >
+                        {shape}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Basic Info */}
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-6 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white/60">Display Name</Label>
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your display name"
+                  className="bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/30"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white/60">Occupation</Label>
+                  <Input
+                    value={occupation}
+                    onChange={(e) => setOccupation(e.target.value)}
+                    placeholder="Developer"
+                    className="bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/30"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white/60">Location</Label>
+                  <Input
+                    value={location_}
+                    onChange={(e) => setLocation_(e.target.value)}
+                    placeholder="Germany"
+                    className="bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/30"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </header>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6 md:p-8">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Alias Requests Section - shows only if there are pending requests */}
-                <AliasRequestsSection />
+          {/* Bio */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-6 space-y-4">
+            <Label className="text-white/60">Bio</Label>
+            <Textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell the world about yourself..."
+              className="bg-white/[0.03] border-white/[0.06] text-white placeholder:text-white/30 resize-none min-h-[100px]"
+            />
+          </div>
+        </div>
+      )}
 
-                <OverviewStats
-                  profileViews={profile.views_count || 0}
-                  uidNumber={(profile as any).uid_number || 1}
-                  username={profile.username}
-                />
+      {/* Appearance Tab */}
+      {activeTab === 'appearance' && (
+        <div className="space-y-6">
+          {/* Live Preview */}
+          <div className="sticky top-14 md:top-20 z-40">
+            <LiveProfilePreview
+              username={username}
+              displayName={displayName}
+              bio={bio}
+              avatarUrl={avatarUrl}
+              avatarShape={avatarShape}
+              backgroundColor={backgroundColor}
+              accentColor={accentColor}
+              textColor={textColor}
+              backgroundUrl={backgroundUrl}
+              backgroundVideoUrl={backgroundVideoUrl}
+              backgroundEffect={backgroundEffect as any}
+              showUsername={showUsername}
+              showDisplayName={showDisplayName}
+              showBadges={showBadges}
+              showViews={showViews}
+              showAvatar={showAvatar}
+              showDescription={showDescription}
+              showLinks={showLinks}
+              viewsCount={profile?.views_count || 0}
+              badges={userBadges.filter(ub => ub.is_enabled).map(ub => {
+                const badge = globalBadges.find(gb => gb.id === ub.badge_id);
+                return badge ? { id: badge.id, name: badge.name, color: badge.color || null, icon_url: badge.icon_url } : null;
+              }).filter(Boolean) as any[]}
+              socialLinks={socialLinks}
+              cardBorderEnabled={cardBorderEnabled}
+              cardBorderColor={cardBorderColor}
+              cardBorderWidth={cardBorderWidth}
+              nameFont={nameFont}
+              textFont={textFont}
+              iconColor={iconColor}
+              monochromeIcons={monochromeIcons}
+              cardColor={undefined}
+              effects={effects}
+              occupation={occupation}
+              location={location_}
+              uidNumber={(profile as any)?.uid_number || 1}
+              glowSocials={glowSocials}
+              iconOnlyLinks={iconOnlyLinks}
+              iconLinksOpacity={iconLinksOpacity}
+              enableRainbow={enableProfileGradient}
+              glowUsername={glowUsername}
+              customCursorUrl={customCursorUrl}
+            />
+          </div>
 
-                <div className="grid lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <BadgesCarousel badges={userBadges.map(ub => ({
-                      id: ub.badge?.id || ub.id,
-                      name: ub.badge?.name || 'Unknown',
-                      icon_url: ub.badge?.icon_url,
-                      color: ub.badge?.color,
-                      description: ub.badge?.description,
-                    }))} totalBadges={globalBadges.length || 10} />
-                  </div>
-                  <div>
-                    <DiscordCard isConnected={!!discordUserId} />
-                  </div>
-                </div>
-
-                <div className="grid lg:grid-cols-2 gap-6">
-                  <RegisteredUsersList />
-                  <EarlyBadgeCountdown />
+          {/* Settings */}
+          <div className="space-y-6 min-w-0">
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-6">
@@ -1476,18 +1551,15 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Settings Tab */}
-            {activeTab === 'settings' && (
-              <AccountSettings
-                profile={profile ? { ...profile, username, display_name: displayName, alias_username: aliasUsername, uid_number: profile.uid_number } : null}
-                onUpdateUsername={handleUsernameChange}
-                onSaveDisplayName={handleDisplayNameSave}
-                onUpdateAlias={handleAliasChange}
-              />
-            )}
-          </motion.div>
-        </div>
-      </main>
-    </div>
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <AccountSettings
+          profile={profile ? { ...profile, username, display_name: displayName, alias_username: aliasUsername, uid_number: profile.uid_number } : null}
+          onUpdateUsername={handleUsernameChange}
+          onSaveDisplayName={handleDisplayNameSave}
+          onUpdateAlias={handleAliasChange}
+        />
+      )}
+    </DashboardLayout>
   );
 }

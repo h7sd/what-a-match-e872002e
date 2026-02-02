@@ -1,4 +1,4 @@
-import { Eye, Hash, User } from 'lucide-react';
+import { Eye, Hash, User, TrendingUp } from 'lucide-react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
 
@@ -35,19 +35,23 @@ function AnimatedNumber({ value, duration = 1.5 }: { value: number; duration?: n
   return <>{displayValue.toLocaleString()}</>;
 }
 
+interface StatCardProps {
+  icon: React.ElementType;
+  value: string | number;
+  label: string;
+  index: number;
+  isNumber?: boolean;
+  color?: 'primary' | 'blue' | 'amber' | 'emerald';
+}
+
 function StatCard({ 
   icon: Icon, 
   value, 
   label, 
   index,
-  isNumber = true 
-}: { 
-  icon: React.ElementType; 
-  value: string | number; 
-  label: string; 
-  index: number;
-  isNumber?: boolean;
-}) {
+  isNumber = true,
+  color = 'primary'
+}: StatCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -62,6 +66,39 @@ function StatCard({
     mouseY.set(e.clientY - rect.top);
   };
 
+  const colorStyles = {
+    primary: {
+      iconBg: 'from-primary/20 to-primary/5',
+      iconBorder: 'border-primary/20 group-hover:border-primary/40',
+      iconColor: 'text-primary',
+      glow: 'rgba(0, 217, 165, 0.1)',
+      gradientBorder: 'from-primary/20 via-transparent to-accent/20'
+    },
+    blue: {
+      iconBg: 'from-blue-500/20 to-blue-500/5',
+      iconBorder: 'border-blue-500/20 group-hover:border-blue-500/40',
+      iconColor: 'text-blue-400',
+      glow: 'rgba(59, 130, 246, 0.1)',
+      gradientBorder: 'from-blue-500/20 via-transparent to-blue-400/20'
+    },
+    amber: {
+      iconBg: 'from-amber-500/20 to-amber-500/5',
+      iconBorder: 'border-amber-500/20 group-hover:border-amber-500/40',
+      iconColor: 'text-amber-400',
+      glow: 'rgba(245, 158, 11, 0.1)',
+      gradientBorder: 'from-amber-500/20 via-transparent to-amber-400/20'
+    },
+    emerald: {
+      iconBg: 'from-emerald-500/20 to-emerald-500/5',
+      iconBorder: 'border-emerald-500/20 group-hover:border-emerald-500/40',
+      iconColor: 'text-emerald-400',
+      glow: 'rgba(16, 185, 129, 0.1)',
+      gradientBorder: 'from-emerald-500/20 via-transparent to-emerald-400/20'
+    }
+  };
+
+  const styles = colorStyles[color];
+
   return (
     <motion.div
       ref={cardRef}
@@ -69,24 +106,24 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
-      whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl p-6"
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-5"
     >
       {/* Spotlight effect */}
       <motion.div
         className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
-          background: `radial-gradient(400px circle at ${springX}px ${springY}px, rgba(0, 217, 165, 0.1), transparent 40%)`,
+          background: `radial-gradient(400px circle at ${springX}px ${springY}px, ${styles.glow}, transparent 40%)`,
         }}
       />
       
       {/* Content */}
-      <div className="relative z-10 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20 group-hover:border-primary/40 transition-colors">
-          <Icon className="w-6 h-6 text-primary" />
+      <div className="relative z-10">
+        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${styles.iconBg} flex items-center justify-center border ${styles.iconBorder} transition-colors mb-4`}>
+          <Icon className={`w-5 h-5 ${styles.iconColor}`} />
         </div>
-        <div>
-          <p className="text-3xl font-bold text-white">
+        <div className="space-y-1">
+          <p className="text-2xl font-bold text-white">
             {isNumber && typeof value === 'number' ? (
               <AnimatedNumber value={value} />
             ) : (
@@ -99,9 +136,7 @@ function StatCard({
       
       {/* Gradient border on hover */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <div className="absolute inset-0 rounded-2xl" style={{
-          background: 'linear-gradient(135deg, rgba(0, 217, 165, 0.2) 0%, transparent 50%, rgba(0, 180, 216, 0.2) 100%)',
-        }} />
+        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${styles.gradientBorder}`} />
       </div>
     </motion.div>
   );
@@ -109,12 +144,13 @@ function StatCard({
 
 export function OverviewStats({ profileViews, uidNumber, username }: OverviewStatsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard 
         icon={Eye} 
         value={profileViews} 
         label="Profile Views" 
         index={0}
+        color="primary"
       />
       <StatCard 
         icon={Hash} 
@@ -122,13 +158,22 @@ export function OverviewStats({ profileViews, uidNumber, username }: OverviewSta
         label="User ID" 
         index={1}
         isNumber={false}
+        color="blue"
       />
       <StatCard 
         icon={User} 
-        value={username} 
+        value={`@${username}`} 
         label="Username" 
         index={2}
         isNumber={false}
+        color="amber"
+      />
+      <StatCard 
+        icon={TrendingUp} 
+        value={0} 
+        label="Link Clicks" 
+        index={3}
+        color="emerald"
       />
     </div>
   );
