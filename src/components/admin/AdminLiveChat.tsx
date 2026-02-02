@@ -131,8 +131,9 @@ export function AdminLiveChat() {
   useEffect(() => {
     if (!selectedConversation) return;
 
+    const channelName = `typing-admin-${selectedConversation.id}`;
     const channel = supabase
-      .channel(`typing-${selectedConversation.id}`)
+      .channel(channelName)
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload?.sender === 'user') {
           setUserIsTyping(true);
@@ -148,10 +149,13 @@ export function AdminLiveChat() {
     };
   }, [selectedConversation?.id]);
 
-  // Send admin typing indicator
-  const sendTypingIndicator = useCallback(() => {
+  // Send admin typing indicator - using a separate channel instance
+  const sendTypingIndicator = useCallback(async () => {
     if (!selectedConversation) return;
-    supabase.channel(`typing-${selectedConversation.id}`).send({
+    const channelName = `typing-user-${selectedConversation.id}`;
+    const channel = supabase.channel(channelName);
+    await channel.subscribe();
+    await channel.send({
       type: 'broadcast',
       event: 'typing',
       payload: { sender: 'admin' }
@@ -317,6 +321,14 @@ export function AdminLiveChat() {
     if (!selectedConversation) return;
 
     try {
+      // Add closing message for the user
+      await supabase.from('live_chat_messages').insert({
+        conversation_id: selectedConversation.id,
+        sender_type: 'admin',
+        sender_id: user?.id,
+        message: 'This chat has been closed. Thank you for contacting UserVault Support! If you need further assistance, please start a new chat.',
+      });
+
       await supabase
         .from('live_chat_conversations')
         .update({ status: 'closed' })

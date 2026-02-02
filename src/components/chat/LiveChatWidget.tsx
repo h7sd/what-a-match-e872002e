@@ -31,6 +31,7 @@ export function LiveChatWidget() {
   const [agentRequested, setAgentRequested] = useState(false);
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
   const [agentIsTyping, setAgentIsTyping] = useState(false);
+  const [isClosed, setIsClosed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -84,8 +85,9 @@ export function LiveChatWidget() {
   useEffect(() => {
     if (!conversationId) return;
 
+    const channelName = `typing-user-${conversationId}`;
     const channel = supabase
-      .channel(`typing-${conversationId}`)
+      .channel(channelName)
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload?.sender === 'admin') {
           setAgentIsTyping(true);
@@ -101,17 +103,20 @@ export function LiveChatWidget() {
     };
   }, [conversationId]);
 
-  // Send typing indicator
-  const sendTypingIndicator = useCallback(() => {
+  // Send typing indicator - using a separate channel instance
+  const sendTypingIndicator = useCallback(async () => {
     if (!conversationId) return;
-    supabase.channel(`typing-${conversationId}`).send({
+    const channelName = `typing-admin-${conversationId}`;
+    const channel = supabase.channel(channelName);
+    await channel.subscribe();
+    await channel.send({
       type: 'broadcast',
       event: 'typing',
       payload: { sender: 'user' }
     });
   }, [conversationId]);
 
-  // Detect when a live agent takes over, and stop AI replies.
+  // Detect when a live agent takes over OR when chat is closed
   useEffect(() => {
     if (!conversationId) return;
 
@@ -127,6 +132,13 @@ export function LiveChatWidget() {
         },
         async (payload) => {
           const updated = payload.new as any;
+          
+          // Check if chat was closed
+          if (updated?.status === 'closed') {
+            setIsClosed(true);
+            return;
+          }
+          
           if (updated?.assigned_admin_id && !agentInfo) {
             setAgentRequested(true);
             setMode('agent');
@@ -177,6 +189,10 @@ export function LiveChatWidget() {
 
       if (error) throw error;
       setConversationId(data.id);
+      setIsClosed(false);
+      setMode('ai');
+      setAgentRequested(false);
+      setAgentInfo(null);
 
       // Add welcome message
       setMessages([{
@@ -188,6 +204,17 @@ export function LiveChatWidget() {
     } catch (error) {
       console.error('Error creating conversation:', error);
     }
+  };
+
+  const startNewChat = () => {
+    setConversationId(null);
+    setMessages([]);
+    setInputText('');
+    setIsClosed(false);
+    setMode('ai');
+    setAgentRequested(false);
+    setAgentInfo(null);
+    initConversation();
   };
 
   const sendMessage = async () => {
@@ -467,24 +494,34 @@ export function LiveChatWidget() {
 
       {/* Input */}
       <div className="p-4 border-t border-border bg-background">
-        <form 
-          onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
-          className="flex gap-2"
-        >
-          <Input
-            value={inputText}
-            onChange={(e) => {
-              setInputText(e.target.value);
-              if (mode === 'agent') sendTypingIndicator();
-            }}
-            placeholder="Type a message..."
-            className="flex-1"
-            disabled={isLoading}
-          />
-          <Button type="submit" size="icon" disabled={isLoading || !inputText.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
+        {isClosed ? (
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-3">This chat has been closed.</p>
+            <Button onClick={startNewChat} className="w-full">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Start New Chat
+            </Button>
+          </div>
+        ) : (
+          <form 
+            onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+            className="flex gap-2"
+          >
+            <Input
+              value={inputText}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                if (mode === 'agent') sendTypingIndicator();
+              }}
+              placeholder="Type a message..."
+              className="flex-1"
+              disabled={isLoading}
+            />
+            <Button type="submit" size="icon" disabled={isLoading || !inputText.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   );
