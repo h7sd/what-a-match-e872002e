@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
+import { LiquidEther } from '@/components/landing/LiquidEther';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
@@ -601,11 +602,26 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen animated-bg flex items-center justify-center p-4">
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+      {/* Liquid Ether Background */}
+      <div className="fixed inset-0 z-0">
+        <LiquidEther 
+          colors={['#00D9A5', '#00B4D8', '#0077B6']}
+          autoDemo={true}
+          autoSpeed={0.3}
+          autoIntensity={1.5}
+          mouseForce={12}
+          cursorSize={100}
+          resolution={0.5}
+        />
+      </div>
+      
+      {/* Noise texture overlay */}
+      <div className="fixed inset-0 noise-overlay pointer-events-none z-[1]" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
         <Link
           to="/"
