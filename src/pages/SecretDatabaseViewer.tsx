@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Database, Shield, Lock, AlertTriangle, Search, RefreshCw } from 'lucide-react';
+import { Loader2, Database, Shield, Lock, AlertTriangle, Search, RefreshCw, Download } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 // Allowed UID numbers
 const ALLOWED_UIDS = [1, 999, 2];
@@ -63,6 +64,11 @@ export default function SecretDatabaseViewer() {
   const [activeTable, setActiveTable] = useState<TableName>('profiles');
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Download functionality with separate 2FA
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadMfaCode, setDownloadMfaCode] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Check authentication and authorization
@@ -248,6 +254,96 @@ export default function SecretDatabaseViewer() {
     return String(value);
   };
 
+  // Generate SQL INSERT statements for all data
+  const generateSqlExport = (): string => {
+    const lines: string[] = [
+      '-- Database Export',
+      `-- Generated: ${new Date().toISOString()}`,
+      '-- Format: PostgreSQL INSERT statements',
+      '',
+    ];
+
+    for (const tableName of TABLE_NAMES) {
+      const data = tableData[tableName] || [];
+      if (data.length === 0) continue;
+
+      lines.push(`-- Table: ${tableName}`);
+      lines.push(`-- Rows: ${data.length}`);
+      lines.push('');
+
+      for (const row of data) {
+        if (typeof row !== 'object' || row === null) continue;
+        const rowObj = row as Record<string, unknown>;
+        const columns = Object.keys(rowObj);
+        const values = columns.map(col => {
+          const val = rowObj[col];
+          if (val === null || val === undefined) return 'NULL';
+          if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+          if (typeof val === 'number') return String(val);
+          if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+          return `'${String(val).replace(/'/g, "''")}'`;
+        });
+        
+        lines.push(`INSERT INTO public.${tableName} (${columns.join(', ')}) VALUES (${values.join(', ')});`);
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  };
+
+  // Verify 2FA and trigger download
+  const handleDownloadWithMfa = async () => {
+    if (!mfaFactorId || downloadMfaCode.length !== 6) return;
+
+    setIsDownloading(true);
+    try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: mfaFactorId
+      });
+
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challengeData.id,
+        code: downloadMfaCode
+      });
+
+      if (verifyError) throw verifyError;
+
+      // Generate and download SQL
+      const sqlContent = generateSqlExport();
+      const blob = new Blob([sqlContent], { type: 'application/sql' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `database-export-${new Date().toISOString().split('T')[0]}.sql`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Download gestartet',
+        description: 'Die SQL-Datei wird heruntergeladen.'
+      });
+
+      setShowDownloadModal(false);
+      setDownloadMfaCode('');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen';
+      toast({
+        title: '2FA-Verifizierung fehlgeschlagen',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+      setDownloadMfaCode('');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Loading state
   if (authStep === 'loading') {
     return (
@@ -396,6 +492,15 @@ export default function SecretDatabaseViewer() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowDownloadModal(true)}
+                disabled={isLoading || Object.keys(tableData).length === 0}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                SQL Export
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={loadAllTables}
                 disabled={isLoading}
               >
@@ -531,6 +636,63 @@ export default function SecretDatabaseViewer() {
           </div>
         </div>
       </div>
+
+      {/* Download Modal with 2FA */}
+      <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-purple-500" />
+              SQL Export bestätigen
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Gib deinen 6-stelligen 2FA-Code ein, um die gesamte Datenbank als SQL-Datei herunterzuladen.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={downloadMfaCode}
+                onChange={setDownloadMfaCode}
+                disabled={isDownloading}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <InputOTPSlot index={1} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <InputOTPSlot index={2} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <InputOTPSlot index={3} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <InputOTPSlot index={4} className="bg-zinc-800 border-zinc-700 text-white" />
+                  <InputOTPSlot index={5} className="bg-zinc-800 border-zinc-700 text-white" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <div className="text-xs text-zinc-500 text-center">
+              Die exportierte Datei enthält alle {TABLE_NAMES.length} Tabellen als PostgreSQL INSERT-Statements.
+            </div>
+
+            <Button 
+              onClick={handleDownloadWithMfa}
+              className="w-full"
+              disabled={downloadMfaCode.length !== 6 || isDownloading}
+            >
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Exportiere...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download starten
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
