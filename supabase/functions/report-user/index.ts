@@ -7,15 +7,52 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_REPORTS_PER_IP = 10; // max 10 reports per IP per hour
+const MAX_REPORTS_PER_USER = 5; // max 5 reports per user per hour
+
+const ipReports = new Map<string, { count: number; resetTime: number }>();
+const userReports = new Map<string, { count: number; resetTime: number }>();
+
+// Cleanup old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of ipReports.entries()) {
+    if (value.resetTime <= now) ipReports.delete(key);
+  }
+  for (const [key, value] of userReports.entries()) {
+    if (value.resetTime <= now) userReports.delete(key);
+  }
+}, 60 * 1000);
+
+function checkRateLimit(key: string, store: Map<string, { count: number; resetTime: number }>, maxRequests: number): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = store.get(key);
+
+  if (!record || record.resetTime <= now) {
+    store.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: maxRequests - 1 };
+  }
+
+  if (record.count >= maxRequests) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  store.set(key, record);
+  return { allowed: true, remaining: maxRequests - record.count };
+}
+
 type ReportBody = {
   username?: unknown;
   reason?: unknown;
 };
 
-function json(status: number, body: unknown) {
+function json(status: number, body: unknown, extraHeaders?: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", ...extraHeaders },
   });
 }
 
@@ -49,6 +86,17 @@ serve(async (req) => {
     return json(405, { error: "Method not allowed" });
   }
 
+  // Get client IP
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+
+  // Check IP rate limit
+  const ipCheck = checkRateLimit(clientIp, ipReports, MAX_REPORTS_PER_IP);
+  if (!ipCheck.allowed) {
+    return json(429, { error: "Too many reports. Please try again later." }, { "Retry-After": "3600" });
+  }
+
   try {
     // Authentication check
     const authHeader = req.headers.get('Authorization');
@@ -73,6 +121,12 @@ serve(async (req) => {
     const userId = claimsData.claims.sub;
     const userEmail = claimsData.claims.email as string | undefined;
 
+    // Check user rate limit
+    const userCheck = checkRateLimit(userId, userReports, MAX_REPORTS_PER_USER);
+    if (!userCheck.allowed) {
+      return json(429, { error: "You have submitted too many reports. Please try again later." }, { "Retry-After": "3600" });
+    }
+
     const webhookUrl = Deno.env.get("VITE_DISCORD_REPORT_WEBHOOK");
     if (!webhookUrl) {
       console.error("VITE_DISCORD_REPORT_WEBHOOK not configured");
@@ -93,9 +147,7 @@ serve(async (req) => {
     // Sanitize inputs to prevent Discord markdown/mention injection
     const username = sanitizeForDiscord(rawUsername);
     const reason = sanitizeForDiscord(rawReason);
-    const safeReporterEmail = userEmail ? sanitizeForDiscord(userEmail) : userId;
 
-    const userAgent = req.headers.get("user-agent") || "unknown";
     const now = new Date().toISOString();
 
     const discordResponse = await fetch(webhookUrl, {
@@ -108,10 +160,7 @@ serve(async (req) => {
             color: 0xff0000,
             fields: [
               { name: "Reported User", value: username, inline: true },
-              { name: "Reporter", value: safeReporterEmail, inline: true },
-              { name: "Reporter ID", value: userId, inline: true },
               { name: "Reason", value: reason.slice(0, 1024) },
-              { name: "User-Agent", value: userAgent.slice(0, 256) },
             ],
             timestamp: now,
           },
@@ -130,8 +179,8 @@ serve(async (req) => {
       return json(502, { error: "Webhook failed", status: discordResponse.status });
     }
 
-    console.log(`Report submitted by ${userEmail || userId} for user @${username}`);
-    return json(200, { ok: true });
+    console.log(`Report submitted for user @${rawUsername}`);
+    return json(200, { ok: true }, { "X-RateLimit-Remaining": String(userCheck.remaining) });
   } catch (error) {
     console.error("report-user error", error);
     return json(500, { error: "Internal server error" });

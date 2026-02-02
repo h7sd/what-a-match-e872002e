@@ -6,6 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-forwarded-for, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_IP = 60;
+
+const ipRequests = new Map<string, { count: number; resetTime: number }>();
+
+// Cleanup old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of ipRequests.entries()) {
+    if (value.resetTime <= now) ipRequests.delete(key);
+  }
+}, 60 * 1000);
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = ipRequests.get(ip);
+
+  if (!record || record.resetTime <= now) {
+    ipRequests.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: MAX_REQUESTS_PER_IP - 1 };
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_IP) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  ipRequests.set(ip, record);
+  return { allowed: true, remaining: MAX_REQUESTS_PER_IP - record.count };
+}
+
 // Simple hash function for IP anonymization
 async function hashIP(ip: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -19,6 +51,28 @@ serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // Get client IP for rate limiting
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+
+  // Check rate limit
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded' }),
+      { 
+        status: 429, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': '60',
+          'X-RateLimit-Remaining': '0'
+        } 
+      }
+    );
   }
 
   try {
@@ -47,15 +101,17 @@ serve(async (req) => {
     if (!resolvedProfileId) {
       return new Response(
         JSON.stringify({ error: 'Profile not found' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': String(rateCheck.remaining)
+          } 
+        }
       );
     }
 
-    // Get client IP from headers
-    const forwardedFor = req.headers.get('x-forwarded-for');
-    const realIp = req.headers.get('x-real-ip');
-    const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
-    
     // Hash the IP for privacy
     const ipHash = await hashIP(clientIp);
 
@@ -74,7 +130,13 @@ serve(async (req) => {
       // Already viewed recently, skip
       return new Response(
         JSON.stringify({ success: true, recorded: false }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': String(rateCheck.remaining)
+          } 
+        }
       );
     }
 
@@ -90,13 +152,26 @@ serve(async (req) => {
       console.error('Error recording view:', insertError);
       return new Response(
         JSON.stringify({ error: 'Failed to record view' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 500, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': String(rateCheck.remaining)
+          } 
+        }
       );
     }
 
     return new Response(
       JSON.stringify({ success: true, recorded: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': String(rateCheck.remaining)
+        } 
+      }
     );
 
   } catch (error) {

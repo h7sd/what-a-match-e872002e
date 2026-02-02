@@ -8,6 +8,44 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_EMAILS_PER_IP = 5;
+
+const ipRequests = new Map<string, { count: number; resetTime: number }>();
+
+// Cleanup old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of ipRequests.entries()) {
+    if (value.resetTime <= now) ipRequests.delete(key);
+  }
+}, 60 * 1000);
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = ipRequests.get(ip);
+
+  if (!record || record.resetTime <= now) {
+    ipRequests.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: MAX_EMAILS_PER_IP - 1 };
+  }
+
+  if (record.count >= MAX_EMAILS_PER_IP) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  ipRequests.set(ip, record);
+  return { allowed: true, remaining: MAX_EMAILS_PER_IP - record.count };
+}
+
+// Add timing jitter to prevent user enumeration
+const addTimingJitter = async () => {
+  const delay = 200 + Math.random() * 300;
+  await new Promise(resolve => setTimeout(resolve, delay));
+};
+
 interface PasswordResetRequest {
   email: string;
   resetUrl: string;
@@ -41,11 +79,41 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Get client IP
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+
+  // Check rate limit
+  const rateCheck = checkRateLimit(clientIp);
+  if (!rateCheck.allowed) {
+    await addTimingJitter();
+    return new Response(
+      JSON.stringify({ error: "Too many requests. Please try again later." }),
+      { 
+        status: 429, 
+        headers: { 
+          "Content-Type": "application/json", 
+          "Retry-After": "3600",
+          ...corsHeaders 
+        } 
+      }
+    );
+  }
+
   try {
     const { email, resetUrl }: PasswordResetRequest = await req.json();
 
     if (!email || !resetUrl) {
-      throw new Error("Missing required fields: email and resetUrl");
+      await addTimingJitter();
+      throw new Error("Missing required fields");
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      await addTimingJitter();
+      throw new Error("Invalid email format");
     }
 
     const html = `
@@ -123,18 +191,23 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const emailResponse = await sendEmail(email, "Reset Your Password - UserVault", html);
+    await sendEmail(email, "Reset Your Password - UserVault", html);
+    console.log("Password reset email sent");
 
-    console.log("Password reset email sent successfully:", emailResponse);
-
-    return new Response(JSON.stringify({ success: true, data: emailResponse }), {
+    await addTimingJitter();
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-RateLimit-Remaining": String(rateCheck.remaining),
+        ...corsHeaders 
+      },
     });
   } catch (error: any) {
     console.error("Error sending password reset email:", error);
+    await addTimingJitter();
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Failed to send email" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

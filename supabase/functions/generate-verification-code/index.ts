@@ -14,6 +14,49 @@ interface VerificationRequest {
   type: "signup" | "password_reset";
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const MAX_CODES_PER_EMAIL = 5; // max codes per email per hour
+const MAX_CODES_PER_IP = 10; // max codes per IP per hour
+
+const emailCounts = new Map<string, { count: number; resetTime: number }>();
+const ipCounts = new Map<string, { count: number; resetTime: number }>();
+
+// Cleanup old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of emailCounts.entries()) {
+    if (value.resetTime <= now) emailCounts.delete(key);
+  }
+  for (const [key, value] of ipCounts.entries()) {
+    if (value.resetTime <= now) ipCounts.delete(key);
+  }
+}, 60 * 1000);
+
+function checkRateLimit(key: string, store: Map<string, { count: number; resetTime: number }>, maxRequests: number): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = store.get(key);
+
+  if (!record || record.resetTime <= now) {
+    store.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: maxRequests - 1 };
+  }
+
+  if (record.count >= maxRequests) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  store.set(key, record);
+  return { allowed: true, remaining: maxRequests - record.count };
+}
+
+// Add timing jitter to prevent user enumeration
+const addTimingJitter = async () => {
+  const delay = 200 + Math.random() * 300;
+  await new Promise(resolve => setTimeout(resolve, delay));
+};
+
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -191,12 +234,18 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Get client IP
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+
   try {
     const { email, type }: VerificationRequest = await req.json();
 
     if (!email || !type) {
+      await addTimingJitter();
       return new Response(
-        JSON.stringify({ error: "Missing required fields: email and type" }),
+        JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -204,6 +253,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Invalid email format" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -211,9 +261,48 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (type !== "signup" && type !== "password_reset") {
+      await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Invalid type" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check IP rate limit
+    const ipCheck = checkRateLimit(clientIp, ipCounts, MAX_CODES_PER_IP);
+    if (!ipCheck.allowed) {
+      console.log("IP rate limit exceeded for code generation");
+      await addTimingJitter();
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { 
+          status: 429, 
+          headers: { 
+            "Content-Type": "application/json", 
+            "Retry-After": "3600",
+            ...corsHeaders 
+          } 
+        }
+      );
+    }
+
+    // Check email rate limit
+    const emailCheck = checkRateLimit(normalizedEmail, emailCounts, MAX_CODES_PER_EMAIL);
+    if (!emailCheck.allowed) {
+      console.log("Email rate limit exceeded for code generation");
+      await addTimingJitter();
+      return new Response(
+        JSON.stringify({ error: "Too many verification codes requested for this email. Please try again later." }),
+        { 
+          status: 429, 
+          headers: { 
+            "Content-Type": "application/json", 
+            "Retry-After": "3600",
+            ...corsHeaders 
+          } 
+        }
       );
     }
 
@@ -233,7 +322,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: insertError } = await supabaseAdmin
       .from("verification_codes")
       .insert({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         code,
         type,
         expires_at: expiresAt,
@@ -241,6 +330,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (insertError) {
       console.error("Error inserting verification code:", insertError);
+      await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Failed to create verification code" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -249,24 +339,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send appropriate email
     if (type === "signup") {
-      await sendSignupEmail(email, code);
-      console.log("Signup verification email sent to:", email);
+      await sendSignupEmail(normalizedEmail, code);
+      console.log("Signup verification code generated");
     } else {
       // Get origin from request headers for reset URL
       const origin = req.headers.get("origin") || "https://uservault.cc";
-      const resetUrl = `${origin}/auth?type=recovery&email=${encodeURIComponent(email.toLowerCase())}&code=${code}`;
-      await sendPasswordResetEmail(email, code, resetUrl);
-      console.log("Password reset email sent to:", email);
+      const resetUrl = `${origin}/auth?type=recovery&email=${encodeURIComponent(normalizedEmail)}&code=${code}`;
+      await sendPasswordResetEmail(normalizedEmail, code, resetUrl);
+      console.log("Password reset code generated");
     }
 
+    await addTimingJitter();
     return new Response(
       JSON.stringify({ success: true, message: "Verification code sent" }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
     console.error("Error in generate-verification-code:", error);
+    await addTimingJitter();
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: "Failed to send verification code" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
