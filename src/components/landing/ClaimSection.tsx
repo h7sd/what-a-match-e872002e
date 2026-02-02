@@ -14,7 +14,7 @@ export function ClaimSection() {
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
   const checkUsername = async (value: string) => {
-    if (value.length < 3) {
+    if (value.length < 1) {
       setStatus('idle');
       return;
     }
