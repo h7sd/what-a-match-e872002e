@@ -10,7 +10,6 @@ interface RegisteredUser {
   display_name: string | null;
   avatar_url: string | null;
   uid_number: number;
-  created_at: string;
 }
 
 export function RegisteredUsersList() {
@@ -20,9 +19,10 @@ export function RegisteredUsersList() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        // Only fetch public-safe fields - no emails or sensitive data
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url, uid_number, created_at')
+          .select('id, username, display_name, avatar_url, uid_number')
           .order('uid_number', { ascending: true });
 
         if (error) throw error;
