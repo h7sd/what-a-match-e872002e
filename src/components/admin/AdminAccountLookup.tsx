@@ -116,10 +116,10 @@ export function AdminAccountLookup() {
   const handleSearch = async () => {
     setIsSearching(true);
     try {
-      // Search by username, display_name, or UID number
+      // Only select necessary fields for admin view - admin-only component
       let query = supabase
         .from('profiles')
-        .select('*')
+        .select('id, user_id, username, display_name, avatar_url, uid_number, bio, background_url, background_video_url, music_url, discord_user_id, effects_config, show_username, show_display_name, show_badges, show_views, show_avatar, show_links, show_description, start_screen_enabled, email_verified, views_count, created_at')
         .limit(10);
 
       // Check if it's a UID number search

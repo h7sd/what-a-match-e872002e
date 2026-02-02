@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 
 export interface Profile {
   id: string;
-  user_id: string;
+  user_id?: string; // Optional - not included in public queries for privacy
   username: string;
   display_name: string | null;
   bio: string | null;
@@ -51,13 +51,89 @@ export interface Badge {
   created_at: string;
 }
 
+// Public profile fields - excludes sensitive data like user_id
+const PUBLIC_PROFILE_FIELDS = `
+  id,
+  username,
+  display_name,
+  bio,
+  avatar_url,
+  background_url,
+  background_color,
+  accent_color,
+  card_color,
+  effects_config,
+  music_url,
+  views_count,
+  uid_number,
+  created_at,
+  updated_at,
+  background_video_url,
+  avatar_shape,
+  name_font,
+  text_font,
+  occupation,
+  location,
+  discord_user_id,
+  layout_style,
+  card_style,
+  text_color,
+  icon_color,
+  custom_cursor_url,
+  og_title,
+  og_description,
+  og_image_url,
+  og_icon_url,
+  og_title_animation,
+  background_effect,
+  discord_card_style,
+  discord_badge_color,
+  discord_card_opacity,
+  discord_show_badge,
+  discord_avatar_decoration,
+  use_discord_avatar,
+  start_screen_enabled,
+  start_screen_text,
+  start_screen_font,
+  start_screen_color,
+  start_screen_bg_color,
+  start_screen_animation,
+  show_volume_control,
+  show_username,
+  show_badges,
+  show_views,
+  show_avatar,
+  show_links,
+  show_description,
+  show_display_name,
+  card_border_enabled,
+  card_border_width,
+  card_border_color,
+  audio_volume,
+  profile_opacity,
+  profile_blur,
+  monochrome_icons,
+  animated_title,
+  swap_bio_colors,
+  glow_username,
+  glow_socials,
+  glow_badges,
+  enable_profile_gradient,
+  icon_only_links,
+  icon_links_opacity,
+  transparent_badges,
+  ascii_size,
+  ascii_waves,
+  is_premium
+`;
+
 export function useProfileByUsername(username: string) {
   return useQuery({
     queryKey: ['profile', username],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PUBLIC_PROFILE_FIELDS)
         .eq('username', username.toLowerCase())
         .maybeSingle();
 
@@ -74,7 +150,7 @@ export function useProfileByAlias(alias: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PUBLIC_PROFILE_FIELDS)
         .eq('alias_username', alias.toLowerCase())
         .maybeSingle();
 
