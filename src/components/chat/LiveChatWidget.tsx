@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, X, Send, Bot, User, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,9 @@ export function LiveChatWidget() {
   const [mode, setMode] = useState<'ai' | 'agent'>('ai');
   const [agentRequested, setAgentRequested] = useState(false);
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
+  const [agentIsTyping, setAgentIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isOpen && !conversationId) {
@@ -76,7 +78,38 @@ export function LiveChatWidget() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages]);
+  }, [messages, agentIsTyping]);
+
+  // Listen for agent typing via broadcast
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`typing-${conversationId}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (payload.payload?.sender === 'admin') {
+          setAgentIsTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setAgentIsTyping(false), 3000);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [conversationId]);
+
+  // Send typing indicator
+  const sendTypingIndicator = useCallback(() => {
+    if (!conversationId) return;
+    supabase.channel(`typing-${conversationId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { sender: 'user' }
+    });
+  }, [conversationId]);
 
   // Detect when a live agent takes over, and stop AI replies.
   useEffect(() => {
@@ -407,6 +440,27 @@ export function LiveChatWidget() {
               </div>
             </div>
           )}
+          {agentIsTyping && !isLoading && (
+            <div className="flex gap-2 items-center">
+              <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center overflow-hidden">
+                {agentInfo?.avatar_url ? (
+                  <img src={agentInfo.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Users className="w-3.5 h-3.5 text-green-500" />
+                )}
+              </div>
+              <div className="bg-secondary px-4 py-3 rounded-2xl rounded-tl-sm">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {agentInfo?.display_name || agentInfo?.username || 'Agent'} is typing...
+              </span>
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
@@ -419,7 +473,10 @@ export function LiveChatWidget() {
         >
           <Input
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => {
+              setInputText(e.target.value);
+              if (mode === 'agent') sendTypingIndicator();
+            }}
             placeholder="Type a message..."
             className="flex-1"
             disabled={isLoading}
