@@ -11,8 +11,8 @@ export function RegisteredUsersList() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Use secure API proxy - no direct database access
-        const profiles = await getFeaturedProfiles(100);
+        // Use secure API proxy - no direct database access (get all users)
+        const profiles = await getFeaturedProfiles(1000);
         setUsers(profiles);
       } catch (err) {
         console.error('Error fetching users');
