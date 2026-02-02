@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/lib/auth';
+import { maskEmail } from '@/lib/utils/maskEmail';
 
 interface SupportTicket {
   id: string;
@@ -324,7 +325,7 @@ export function AdminSupportTickets() {
                           )}
                         </div>
                         <p className="font-medium text-sm truncate mb-1">{ticket.subject}</p>
-                        <p className="text-xs text-muted-foreground truncate">{ticket.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{maskEmail(ticket.email)}</p>
                         
                         {/* Show claimed info */}
                         {claimedAdmin && (
@@ -380,7 +381,7 @@ export function AdminSupportTickets() {
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <User className="w-3 h-3" />
-                {selectedTicket?.email}
+                {maskEmail(selectedTicket?.email)}
                 {selectedTicket?.username && (
                   <span className="text-primary">(@{selectedTicket.username})</span>
                 )}

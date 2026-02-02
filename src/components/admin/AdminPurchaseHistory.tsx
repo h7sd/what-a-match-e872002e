@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, Receipt, Search, CreditCard, User, Calendar, Euro } from "lucide-react";
 import { format } from "date-fns";
+import { maskEmail } from "@/lib/utils/maskEmail";
 
 interface Purchase {
   id: string;
@@ -133,7 +134,7 @@ export function AdminPurchaseHistory() {
                         {purchase.status}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{purchase.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{maskEmail(purchase.email)}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-green-500">€{Number(purchase.amount).toFixed(2)}</p>
