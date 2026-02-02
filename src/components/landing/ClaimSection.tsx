@@ -38,7 +38,7 @@ export function ClaimSection() {
   };
 
   const handleClaim = () => {
-    if (status === 'available') {
+    if (username.length >= 1) {
       navigate(`/auth?claim=${username}`);
     }
   };
@@ -88,7 +88,7 @@ export function ClaimSection() {
 
             <button
               onClick={handleClaim}
-              disabled={status !== 'available'}
+              disabled={username.length < 1}
               className="ml-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <span>Claim</span>
