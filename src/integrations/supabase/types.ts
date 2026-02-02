@@ -1045,7 +1045,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      alias_requests_safe: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          requested_alias: string | null
+          requester_id: string | null
+          responded_at: string | null
+          status: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          requested_alias?: string | null
+          requester_id?: string | null
+          responded_at?: string | null
+          status?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          requested_alias?: string | null
+          requester_id?: string | null
+          responded_at?: string | null
+          status?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_record_view: {
@@ -1060,6 +1089,30 @@ export type Database = {
         }[]
       }
       cleanup_expired_verification_codes: { Args: never; Returns: number }
+      get_alias_requests_for_me: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          requested_alias: string
+          requester_id: string
+          responded_at: string
+          status: string
+          target_user_id: string
+        }[]
+      }
+      get_my_sent_alias_requests: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          requested_alias: string
+          requester_id: string
+          responded_at: string
+          status: string
+          target_user_id: string
+        }[]
+      }
       get_profile_badges: {
         Args: { p_profile_id: string }
         Returns: {

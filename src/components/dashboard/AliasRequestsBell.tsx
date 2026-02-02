@@ -36,12 +36,14 @@ export function AliasRequestsBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from('alias_requests')
-        .select('*')
-        .eq('target_user_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+      // Use secure RPC function that excludes response_token
+      const { data: allData, error } = await supabase
+        .rpc('get_alias_requests_for_me');
+      
+      // Filter for pending and sort
+      const data = allData
+        ?.filter((r: any) => r.status === 'pending')
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       if (error) throw error;
 

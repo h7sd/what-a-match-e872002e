@@ -25,19 +25,20 @@ export function AliasRequestsSection() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch incoming requests (where current user is target)
+      // Fetch incoming requests using secure RPC function (excludes response_token)
       const { data, error } = await supabase
-        .from('alias_requests')
-        .select('*')
-        .eq('target_user_id', user.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        .rpc('get_alias_requests_for_me');
+      
+      // Filter for pending and sort
+      const pendingData = data
+        ?.filter((r: any) => r.status === 'pending')
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       if (error) throw error;
 
       // Fetch requester profiles
-      if (data && data.length > 0) {
-        const requesterIds = data.map(r => r.requester_id);
+      if (pendingData && pendingData.length > 0) {
+        const requesterIds = pendingData.map((r: any) => r.requester_id);
         
         // Fetch profiles individually to avoid exposing user_id in response
         const profileMap = new Map<string, { username: string; display_name: string | null }>();
@@ -52,7 +53,7 @@ export function AliasRequestsSection() {
           }
         }
         
-        const enrichedRequests = data.map(r => ({
+        const enrichedRequests = pendingData.map((r: any) => ({
           ...r,
           requester_username: profileMap.get(r.requester_id)?.username,
           requester_display_name: profileMap.get(r.requester_id)?.display_name,
