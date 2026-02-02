@@ -350,6 +350,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           visitor_id: string | null
+          visitor_session_token: string | null
         }
         Insert: {
           assigned_admin_id?: string | null
@@ -359,6 +360,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           visitor_id?: string | null
+          visitor_session_token?: string | null
         }
         Update: {
           assigned_admin_id?: string | null
@@ -368,6 +370,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           visitor_id?: string | null
+          visitor_session_token?: string | null
         }
         Relationships: []
       }
@@ -1089,6 +1092,13 @@ export type Database = {
         }[]
       }
       cleanup_expired_verification_codes: { Args: never; Returns: number }
+      create_visitor_conversation: {
+        Args: { p_visitor_id: string }
+        Returns: {
+          conversation_id: string
+          session_token: string
+        }[]
+      }
       get_alias_requests_for_me: {
         Args: never
         Returns: {
@@ -1278,6 +1288,28 @@ export type Database = {
           views_count: number
         }[]
       }
+      get_visitor_conversation: {
+        Args: { p_session_token: string }
+        Returns: {
+          assigned_admin_id: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          visitor_id: string
+        }[]
+      }
+      get_visitor_messages: {
+        Args: { p_session_token: string }
+        Returns: {
+          conversation_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_type: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1291,6 +1323,10 @@ export type Database = {
       }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
       scheduled_security_cleanup: { Args: never; Returns: undefined }
+      send_visitor_message: {
+        Args: { p_message: string; p_session_token: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
