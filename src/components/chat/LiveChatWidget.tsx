@@ -148,7 +148,7 @@ export function LiveChatWidget() {
       // Add welcome message
       setMessages([{
         id: 'welcome',
-        content: "Hi! 👋 I'm the UserVault AI Assistant. How can I help you today? If you need to speak with a human agent, just let me know!",
+        content: "Hey! 👋 Willkommen beim UserVault Support! Ich bin dein KI-Assistent und helfe dir gerne weiter. Was kann ich für dich tun?",
         sender_type: 'ai',
         created_at: new Date().toISOString(),
       }]);
