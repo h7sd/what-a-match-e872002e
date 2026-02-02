@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 interface Message {
   id: string;
   content: string;
-  sender_type: 'user' | 'admin' | 'ai';
+  sender_type: 'user' | 'admin' | 'ai' | 'visitor';
   created_at: string;
 }
 
@@ -20,6 +20,10 @@ interface AgentInfo {
   avatar_url: string | null;
 }
 
+// Secure session storage key
+const SESSION_TOKEN_KEY = 'live_chat_session_token';
+const CONVERSATION_ID_KEY = 'live_chat_conversation_id';
+
 export function LiveChatWidget() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +31,7 @@ export function LiveChatWidget() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [mode, setMode] = useState<'ai' | 'agent'>('ai');
   const [agentRequested, setAgentRequested] = useState(false);
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
@@ -35,11 +40,66 @@ export function LiveChatWidget() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Check for existing session on mount
+  useEffect(() => {
+    const storedToken = sessionStorage.getItem(SESSION_TOKEN_KEY);
+    const storedConvId = sessionStorage.getItem(CONVERSATION_ID_KEY);
+    if (storedToken && storedConvId) {
+      setSessionToken(storedToken);
+      setConversationId(storedConvId);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen && !conversationId) {
       initConversation();
+    } else if (isOpen && conversationId && sessionToken && messages.length === 0) {
+      // Load existing messages for returning visitors
+      loadExistingMessages();
     }
-  }, [isOpen]);
+  }, [isOpen, conversationId, sessionToken]);
+
+  const loadExistingMessages = async () => {
+    if (!sessionToken && !user) return;
+    
+    try {
+      let data;
+      if (user) {
+        // Authenticated users use direct query
+        const result = await supabase
+          .from('live_chat_messages')
+          .select('*')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true });
+        data = result.data;
+      } else if (sessionToken) {
+        // Visitors use secure RPC function
+        const result = await supabase.rpc('get_visitor_messages', { 
+          p_session_token: sessionToken 
+        });
+        data = result.data;
+      }
+      
+      if (data && data.length > 0) {
+        setMessages(data.map((m: any) => ({
+          id: m.id,
+          content: m.message,
+          sender_type: m.sender_type,
+          created_at: m.created_at,
+        })));
+      } else {
+        // Add welcome message for empty conversations
+        setMessages([{
+          id: 'welcome',
+          content: "Hey! 👋 Willkommen beim UserVault Support! Ich bin dein KI-Assistent und helfe dir gerne weiter. Was kann ich für dich tun?",
+          sender_type: 'ai',
+          created_at: new Date().toISOString(),
+        }]);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
 
   useEffect(() => {
     if (!conversationId) return;
@@ -136,6 +196,9 @@ export function LiveChatWidget() {
           // Check if chat was closed
           if (updated?.status === 'closed') {
             setIsClosed(true);
+            // Clear session on close
+            sessionStorage.removeItem(SESSION_TOKEN_KEY);
+            sessionStorage.removeItem(CONVERSATION_ID_KEY);
             return;
           }
           
@@ -175,20 +238,41 @@ export function LiveChatWidget() {
 
   const initConversation = async () => {
     try {
-      const visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      const { data, error } = await supabase
-        .from('live_chat_conversations')
-        .insert({
-          user_id: user?.id || null,
-          visitor_id: user ? null : visitorId,
-          status: 'active',
-        })
-        .select('id')
-        .single();
+      if (user) {
+        // Authenticated users - direct insert with RLS
+        const { data, error } = await supabase
+          .from('live_chat_conversations')
+          .insert({
+            user_id: user.id,
+            visitor_id: null,
+            status: 'active',
+          })
+          .select('id')
+          .single();
 
-      if (error) throw error;
-      setConversationId(data.id);
+        if (error) throw error;
+        setConversationId(data.id);
+      } else {
+        // Anonymous visitors - use secure RPC function
+        const visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const { data, error } = await supabase.rpc('create_visitor_conversation', {
+          p_visitor_id: visitorId
+        });
+
+        if (error) throw error;
+        
+        if (data && data[0]) {
+          const { conversation_id, session_token } = data[0];
+          setConversationId(conversation_id);
+          setSessionToken(session_token);
+          
+          // Store securely in sessionStorage (cleared on browser close)
+          sessionStorage.setItem(SESSION_TOKEN_KEY, session_token);
+          sessionStorage.setItem(CONVERSATION_ID_KEY, conversation_id);
+        }
+      }
+      
       setIsClosed(false);
       setMode('ai');
       setAgentRequested(false);
@@ -207,7 +291,12 @@ export function LiveChatWidget() {
   };
 
   const startNewChat = () => {
+    // Clear stored session
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    sessionStorage.removeItem(CONVERSATION_ID_KEY);
+    
     setConversationId(null);
+    setSessionToken(null);
     setMessages([]);
     setInputText('');
     setIsClosed(false);
@@ -225,20 +314,35 @@ export function LiveChatWidget() {
     
     // Add user message locally
     const userMsgId = `user_${Date.now()}`;
+    const senderType = user ? 'user' : 'visitor';
     setMessages(prev => [...prev, {
       id: userMsgId,
       content: userMessage,
-      sender_type: 'user',
+      sender_type: senderType,
       created_at: new Date().toISOString(),
     }]);
 
     // Save to database
-    await supabase.from('live_chat_messages').insert({
-      conversation_id: conversationId,
-      sender_type: 'user',
-      sender_id: user?.id || null,
-      message: userMessage,
-    });
+    try {
+      if (user) {
+        // Authenticated users - direct insert
+        await supabase.from('live_chat_messages').insert({
+          conversation_id: conversationId,
+          sender_type: 'user',
+          sender_id: user.id,
+          message: userMessage,
+        });
+      } else if (sessionToken) {
+        // Visitors - use secure RPC function
+        await supabase.rpc('send_visitor_message', {
+          p_session_token: sessionToken,
+          p_message: userMessage
+        });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return;
+    }
 
     // Check if user wants to talk to an agent
     const wantsAgent = /agent|human|person|real person|support team|live support/i.test(userMessage);
@@ -255,10 +359,12 @@ export function LiveChatWidget() {
           created_at: new Date().toISOString(),
         }]);
 
-        // Update conversation to request agent
-        await supabase.from('live_chat_conversations')
-          .update({ status: 'waiting_for_agent' })
-          .eq('id', conversationId);
+        // Update conversation to request agent (only for authenticated users)
+        if (user) {
+          await supabase.from('live_chat_conversations')
+            .update({ status: 'waiting_for_agent' })
+            .eq('id', conversationId);
+        }
       }
       return;
     }
@@ -269,7 +375,7 @@ export function LiveChatWidget() {
       const chatMessages = messages
         .filter(m => m.id !== 'welcome')
         .map(m => ({
-          role: m.sender_type === 'user' ? 'user' : 'assistant',
+          role: m.sender_type === 'user' || m.sender_type === 'visitor' ? 'user' : 'assistant',
           content: m.content,
         }));
       
@@ -281,7 +387,11 @@ export function LiveChatWidget() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: chatMessages, conversationId }),
+        body: JSON.stringify({ 
+          messages: chatMessages, 
+          conversationId,
+          sessionToken: sessionToken || undefined 
+        }),
       });
 
       if (!response.ok) {
@@ -427,16 +537,16 @@ export function LiveChatWidget() {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex gap-2 ${msg.sender_type === 'user' ? 'flex-row-reverse' : ''}`}
+              className={`flex gap-2 ${msg.sender_type === 'user' || msg.sender_type === 'visitor' ? 'flex-row-reverse' : ''}`}
             >
               <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${
-                msg.sender_type === 'user' 
+                msg.sender_type === 'user' || msg.sender_type === 'visitor'
                   ? 'bg-primary' 
                   : msg.sender_type === 'admin'
                     ? 'bg-green-500/20'
                     : 'bg-secondary'
               }`}>
-                {msg.sender_type === 'user' ? (
+                {msg.sender_type === 'user' || msg.sender_type === 'visitor' ? (
                   <User className="w-3.5 h-3.5 text-primary-foreground" />
                 ) : msg.sender_type === 'admin' ? (
                   agentInfo?.avatar_url ? (
@@ -449,7 +559,7 @@ export function LiveChatWidget() {
                 )}
               </div>
               <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${
-                msg.sender_type === 'user'
+                msg.sender_type === 'user' || msg.sender_type === 'visitor'
                   ? 'bg-primary text-primary-foreground rounded-tr-sm'
                   : 'bg-secondary rounded-tl-sm'
               }`}>
