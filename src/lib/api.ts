@@ -46,6 +46,7 @@ export async function getPublicStats(): Promise<PublicStats> {
 export interface FeaturedProfile {
   u: string; // username
   d: string | null; // display_name
+  n: number; // uid_number
 }
 
 export async function getFeaturedProfiles(limit = 50): Promise<FeaturedProfile[]> {

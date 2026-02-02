@@ -143,14 +143,16 @@ Deno.serve(async (req) => {
         const limit = Math.min(params?.limit || 50, 100); // Cap at 100
         const { data, error } = await supabase
           .from('profiles')
-          .select('username, display_name')
+          .select('username, display_name, uid_number')
+          .order('uid_number', { ascending: true })
           .limit(limit);
         
         if (error) throw error;
         // Only return minimal public data with obfuscated keys
         result = (data || []).map(p => ({
           u: p.username,
-          d: p.display_name
+          d: p.display_name,
+          n: p.uid_number // uid_number
         }));
         break;
       }

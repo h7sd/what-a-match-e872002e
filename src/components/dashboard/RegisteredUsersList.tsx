@@ -67,7 +67,7 @@ export function RegisteredUsersList() {
                   {user.d || user.u}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  @{user.u}
+                  @{user.u} · #{user.n}
                 </p>
               </div>
 
