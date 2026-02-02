@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       }
 
       case 'get_featured_profiles': {
-        const limit = Math.min(params?.limit || 50, 100); // Cap at 100
+        const limit = Math.min(params?.limit || 50, 1000); // Cap at 1000
         const { data, error } = await supabase
           .from('profiles')
           .select('username, display_name, uid_number')
