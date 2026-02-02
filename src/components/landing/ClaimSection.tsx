@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Loader2, ArrowRight } from 'lucide-react';
+import { Check, X, Loader2, ArrowRight, Eye, Users, Gem } from 'lucide-react';
 import { checkUsernameExists, getPublicStats } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 
@@ -22,12 +22,41 @@ function useStats() {
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
-    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M+';
+    return num.toLocaleString('en-US') + '+';
   }
   if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
+    return num.toLocaleString('en-US') + '+';
   }
-  return num.toString() + '+';
+  return num.toLocaleString('en-US') + '+';
+}
+
+interface StatCardProps {
+  value: string;
+  label: string;
+  icon: React.ElementType;
+  delay: number;
+  isInView: boolean;
+}
+
+function StatCard({ value, label, icon: Icon, delay, isInView }: StatCardProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5, delay }}
+      className="flex-1 min-w-[140px] bg-card/60 backdrop-blur-sm rounded-xl border border-border/50 p-4 md:p-6"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">
+            {value}
+          </p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">{label}</p>
+        </div>
+        <Icon className="w-5 h-5 text-primary" />
+      </div>
+    </motion.div>
+  );
 }
 
 export function ClaimSection() {
@@ -69,23 +98,66 @@ export function ClaimSection() {
     }
   };
 
+  const userCount = stats?.users || 0;
+
   return (
     <section ref={ref} className="py-24 px-6">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6 }}
-        className="max-w-2xl mx-auto text-center"
+        className="max-w-5xl mx-auto text-center"
       >
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-          Claim your username
+        {/* Headline with user count */}
+        <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-3">
+          Over <span className="text-primary">{formatNumber(userCount)}</span> people use UserVault — What are you waiting for?
         </h2>
-        <p className="text-muted-foreground mb-8">
-          Secure your unique link before someone else does
+        <p className="text-muted-foreground mb-10 max-w-3xl mx-auto">
+          Create feature-rich, customizable and modern link-in-bio pages, along with fast and secure file hosting, all with UserVault.
         </p>
 
+        {/* Stats Cards */}
+        <div className="flex flex-wrap justify-center gap-4 mb-12 max-w-4xl mx-auto">
+          <StatCard
+            value={formatNumber(stats?.views || 0)}
+            label="Profile Views"
+            icon={Eye}
+            delay={0.1}
+            isInView={isInView}
+          />
+          <StatCard
+            value={formatNumber(stats?.users || 0)}
+            label="Users"
+            icon={Users}
+            delay={0.2}
+            isInView={isInView}
+          />
+          <StatCard
+            value="99.9%"
+            label="Uptime"
+            icon={Gem}
+            delay={0.3}
+            isInView={isInView}
+          />
+        </div>
+
+        {/* Claim Section Title */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="text-lg md:text-xl font-medium text-foreground mb-6"
+        >
+          Claim your profile and create an account in minutes!
+        </motion.p>
+
         {/* Input container */}
-        <div className="relative max-w-md mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="relative max-w-md mx-auto"
+        >
           <div className="flex items-center gap-0 rounded-2xl glass p-2">
             <div className="flex items-center bg-secondary/50 rounded-xl px-4 py-3 flex-1">
               <span className="text-muted-foreground text-sm mr-1">uservault.cc/</span>
@@ -93,7 +165,7 @@ export function ClaimSection() {
                 type="text"
                 value={username}
                 onChange={handleChange}
-                placeholder="yourname"
+                placeholder="username"
                 maxLength={20}
                 className="bg-transparent border-none outline-none text-foreground flex-1 min-w-0"
               />
@@ -117,8 +189,7 @@ export function ClaimSection() {
               disabled={username.length < 1}
               className="ml-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              <span>Claim</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Claim Now</span>
             </button>
           </div>
 
@@ -138,27 +209,6 @@ export function ClaimSection() {
               <span className="text-destructive">This username is already taken</span>
             )}
           </motion.p>
-        </div>
-
-        {/* Live Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex items-center justify-center gap-8 md:gap-12 mt-12"
-        >
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
-              {formatNumber(stats?.users || 0)}
-            </p>
-            <p className="text-xs md:text-sm text-muted-foreground/60">Active Users</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
-              99.9%
-            </p>
-            <p className="text-xs md:text-sm text-muted-foreground/60">Uptime</p>
-          </div>
         </motion.div>
       </motion.div>
     </section>
