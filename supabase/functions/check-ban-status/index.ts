@@ -16,24 +16,45 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { userId } = await req.json();
-
-    if (!userId) {
-      throw new Error("Missing user ID");
-    }
+    const { userId, username } = await req.json();
 
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Resolve userId from username if needed
+    let resolvedUserId = userId;
+    
+    if (!resolvedUserId && username) {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('user_id')
+        .eq('username', username.toLowerCase())
+        .maybeSingle();
+      
+      if (profile) {
+        resolvedUserId = profile.user_id;
+      }
+    }
+
+    if (!resolvedUserId) {
+      return new Response(JSON.stringify({ isBanned: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
     // Check if user is banned
     const { data: banRecord, error: banError } = await supabaseClient
       .from('banned_users')
-      .select('*')
-      .eq('user_id', userId)
+      .select('reason, banned_at, appeal_deadline, appeal_submitted_at')
+      .eq('user_id', resolvedUserId)
       .maybeSingle();
 
     if (banError) {
       console.error("Error checking ban status:", banError);
-      throw new Error("Failed to check ban status");
+      return new Response(JSON.stringify({ isBanned: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
     if (!banRecord) {
@@ -49,11 +70,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify({
       isBanned: true,
-      reason: banRecord.reason,
-      bannedAt: banRecord.banned_at,
-      appealDeadline: banRecord.appeal_deadline,
-      appealDeadlinePassed,
-      appealSubmitted: !!banRecord.appeal_submitted_at,
       canAppeal,
     }), {
       status: 200,
@@ -62,8 +78,8 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error checking ban status:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ isBanned: false }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };

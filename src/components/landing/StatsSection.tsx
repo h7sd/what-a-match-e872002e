@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Eye, Users, Upload, Gem } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { getPublicStats } from '@/lib/api';
 import { FadeIn } from './FadeIn';
 
 interface StatItem {
@@ -15,36 +15,16 @@ function useStats() {
   return useQuery({
     queryKey: ['landing-stats'],
     queryFn: async () => {
-      // Get total profile views
-      const { data: viewsData } = await supabase
-        .from('profiles')
-        .select('views_count');
-      
-      const totalViews = viewsData?.reduce((sum, p) => sum + (p.views_count || 0), 0) || 0;
-
-      // Get total users - use minimal field for count
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true });
-
-      // Get total social links - use minimal field for count
-      const { count: linksCount } = await supabase
-        .from('social_links')
-        .select('id', { count: 'exact', head: true });
-
-      // Get total badges awarded - use minimal field for count
-      const { count: badgesCount } = await supabase
-        .from('user_badges')
-        .select('id', { count: 'exact', head: true });
-
+      // Use secure API proxy
+      const stats = await getPublicStats();
       return {
-        views: totalViews,
-        users: usersCount || 0,
-        links: linksCount || 0,
-        badges: badgesCount || 0,
+        views: stats.totalViews,
+        users: stats.totalUsers,
+        links: 0, // Not exposed via API for security
+        badges: 0, // Not exposed via API for security
       };
     },
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 60000,
   });
 }
 
@@ -104,18 +84,6 @@ export function StatsSection() {
       icon: Users,
       color: '#8b5cf6',
     },
-    {
-      value: formatNumber(stats?.links || 0),
-      label: 'Social Links',
-      icon: Upload,
-      color: '#6366f1',
-    },
-    {
-      value: formatNumber(stats?.badges || 0),
-      label: 'Badges Earned',
-      icon: Gem,
-      color: '#ec4899',
-    },
   ];
 
   return (
@@ -129,7 +97,7 @@ export function StatsSection() {
         </p>
       </FadeIn>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
         {statItems.map((stat, index) => (
           <StatCard key={stat.label} stat={stat} index={index} />
         ))}

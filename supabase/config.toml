@@ -95,3 +95,33 @@ verify_jwt = false
 
 [functions.chat-ai]
 verify_jwt = false
+
+[functions.check-ban-status]
+verify_jwt = false
+
+[functions.api-proxy]
+verify_jwt = false
+
+[functions.ban-user]
+verify_jwt = false
+
+[functions.claim-support-ticket]
+verify_jwt = false
+
+[functions.get-user-email]
+verify_jwt = false
+
+[functions.og-html]
+verify_jwt = false
+
+[functions.record-link-click]
+verify_jwt = false
+
+[functions.send-email-change-code]
+verify_jwt = false
+
+[functions.submit-ban-appeal]
+verify_jwt = false
+
+[functions.verify-email-change]
+verify_jwt = false

@@ -2,19 +2,18 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, ArrowLeft, Ban } from 'lucide-react';
-import { useProfileByUsername, useSocialLinks, useRecordProfileView, useProfileByAlias } from '@/hooks/useProfile';
-import { useProfileBadges } from '@/hooks/useBadges';
+import { useRecordProfileView } from '@/hooks/useProfile';
+import { getPublicProfile, getPublicProfileByAlias, getProfileLinks, getProfileBadges, PublicProfile, PublicLink, PublicBadge } from '@/lib/api';
 import { ProfileCard } from '@/components/profile/ProfileCard';
 import { SocialLinks } from '@/components/profile/SocialLinks';
 import { BackgroundEffects } from '@/components/profile/BackgroundEffects';
 import { CustomCursor } from '@/components/profile/CustomCursor';
 import { DiscordPresence } from '@/components/profile/DiscordPresence';
 import { StartScreen } from '@/components/profile/StartScreen';
-import { ControlsBar } from '@/components/profile/ControlsBar';
 import { SimpleVolumeBar } from '@/components/profile/SimpleVolumeBar';
-import { GlitchOverlay } from '@/components/profile/GlitchOverlay';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQuery } from '@tanstack/react-query';
 
 // Custom hook for animated document title
 function useAnimatedDocumentTitle(
@@ -144,24 +143,59 @@ function useAnimatedDocumentTitle(
   return animatedTitle;
 }
 
+// Secure profile fetching via API proxy
+function useSecureProfile(username: string) {
+  return useQuery({
+    queryKey: ['secure-profile', username],
+    queryFn: async () => {
+      // First try as alias
+      const aliasProfile = await getPublicProfileByAlias(username);
+      if (aliasProfile) {
+        return { profile: aliasProfile, isAlias: true };
+      }
+      
+      // Then try as username
+      const profile = await getPublicProfile(username);
+      return { profile, isAlias: false };
+    },
+    enabled: !!username,
+  });
+}
+
+function useSecureLinks(username: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['secure-links', username],
+    queryFn: () => getProfileLinks(username),
+    enabled,
+  });
+}
+
+function useSecureBadges(username: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['secure-badges', username],
+    queryFn: () => getProfileBadges(username),
+    enabled,
+  });
+}
+
 export default function UserProfile() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  // First check if this username is an alias
-  const { data: aliasProfile, isLoading: aliasLoading } = useProfileByAlias(username || '');
+  // Use secure API proxy for all profile data
+  const { data: profileData, isLoading: profileLoading, error } = useSecureProfile(username || '');
+  const profile = profileData?.profile;
   
-  // If alias found, redirect to the main username
+  // Redirect if accessing via alias
   useEffect(() => {
-    if (aliasProfile && aliasProfile.username !== username?.toLowerCase()) {
-      navigate(`/${aliasProfile.username}`, { replace: true });
+    if (profileData?.isAlias && profile?.username !== username?.toLowerCase()) {
+      navigate(`/${profile?.username}`, { replace: true });
     }
-  }, [aliasProfile, username, navigate]);
+  }, [profileData, profile, username, navigate]);
   
-  const { data: profile, isLoading: profileLoading, error } = useProfileByUsername(username || '');
-  const { data: socialLinks = [] } = useSocialLinks(profile?.id || '');
-  const { data: badges = [] } = useProfileBadges(profile?.id || '');
+  const { data: socialLinks = [] } = useSecureLinks(profile?.username || '', !!profile);
+  const { data: badges = [] } = useSecureBadges(profile?.username || '', !!profile);
   const recordView = useRecordProfileView();
   
   const [showStartScreen, setShowStartScreen] = useState(true);
@@ -177,27 +211,24 @@ export default function UserProfile() {
   const accentColor = profile?.accent_color || '#8B5CF6';
   
   // Custom title and animation for browser tab
-  const ogTitle = (profile as any)?.og_title || (profile ? `@${profile.username} | uservault.cc` : 'UserVault');
-  const ogAnimation = (profile as any)?.og_title_animation || 'none';
-  const ogIconUrl = (profile as any)?.og_icon_url;
+  const ogTitle = profile?.og_title || (profile ? `@${profile.username} | uservault.cc` : 'UserVault');
+  const ogAnimation = profile?.og_title_animation || 'none';
+  const ogIconUrl = profile?.og_icon_url;
   
   // Apply animated document title
   useAnimatedDocumentTitle(ogTitle, ogAnimation, ogIconUrl);
 
-  // Check if user is banned
+  // Check if user is banned - use edge function for security
   useEffect(() => {
     const checkBanStatus = async () => {
-      if (profile?.user_id) {
+      if (profile?.username) {
         try {
-          const { data } = await supabase
-            .from('banned_users')
-            .select('id')
-            .eq('user_id', profile.user_id)
-            .maybeSingle();
-          
-          setIsBanned(!!data);
+          const { data } = await supabase.functions.invoke('check-ban-status', {
+            body: { username: profile.username }
+          });
+          setIsBanned(data?.isBanned ?? false);
         } catch (err) {
-          console.error('Error checking ban status:', err);
+          console.error('Error checking ban status');
         }
       }
       setBanCheckDone(true);
@@ -206,14 +237,17 @@ export default function UserProfile() {
     if (profile) {
       checkBanStatus();
     }
-  }, [profile?.user_id]);
+  }, [profile?.username]);
 
-  // Record profile view
+  // Record profile view - will use internal ID lookup via edge function
   useEffect(() => {
-    if (profile?.id && !isBanned) {
-      recordView.mutate(profile.id);
+    if (profile?.username && !isBanned) {
+      // Use edge function to record view without exposing profile ID
+      supabase.functions.invoke('record-view', {
+        body: { username: profile.username }
+      }).catch(() => {});
     }
-  }, [profile?.id, isBanned]);
+  }, [profile?.username, isBanned]);
 
   // Handle start screen click
   const handleStart = () => {
@@ -234,7 +268,7 @@ export default function UserProfile() {
     }
   }, [volume]);
 
-  const isLoading = aliasLoading || profileLoading || !banCheckDone;
+  const isLoading = profileLoading || !banCheckDone;
 
   if (isLoading) {
     return (
@@ -294,29 +328,29 @@ export default function UserProfile() {
     );
   }
 
-  // Check effects_config for cursor settings - support both old and new field names
+  // Check effects_config for cursor settings
   const effectsConfig = profile.effects_config as Record<string, any> | null;
   const showCursorTrail = effectsConfig?.cursorTrail ?? effectsConfig?.sparkles ?? false;
-  const customCursorUrl = (profile as any).custom_cursor_url as string | null;
+  const customCursorUrl = profile.custom_cursor_url as string | null;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Start Screen */}
-      {showStartScreen && (profile as any).start_screen_enabled !== false && (
+      {showStartScreen && profile.start_screen_enabled !== false && (
         <StartScreen 
           onStart={handleStart} 
-          message={(profile as any).start_screen_text || "Click anywhere to enter"}
-          font={(profile as any).start_screen_font || "Inter"}
-          textColor={(profile as any).start_screen_color || accentColor}
-          bgColor={(profile as any).start_screen_bg_color || "#000000"}
-          textAnimation={(profile as any).start_screen_animation || "none"}
-          asciiSize={(profile as any).ascii_size ?? 8}
-          asciiWaves={(profile as any).ascii_waves ?? true}
+          message={profile.start_screen_text || "Click anywhere to enter"}
+          font={profile.start_screen_font || "Inter"}
+          textColor={profile.start_screen_color || accentColor}
+          bgColor={profile.start_screen_bg_color || "#000000"}
+          textAnimation={profile.start_screen_animation || "none"}
+          asciiSize={profile.ascii_size ?? 8}
+          asciiWaves={profile.ascii_waves ?? true}
         />
       )}
       
       {/* Auto-start if start screen is disabled */}
-      {(profile as any).start_screen_enabled === false && showStartScreen && (() => {
+      {profile.start_screen_enabled === false && showStartScreen && (() => {
         setTimeout(() => handleStart(), 100);
         return null;
       })()}
@@ -335,16 +369,14 @@ export default function UserProfile() {
         />
       )}
 
-      {/* Glitch overlay effect - disabled for simplicity */}
-
       <BackgroundEffects
         backgroundUrl={profile.background_url}
-        backgroundVideoUrl={(profile as any).background_video_url}
+        backgroundVideoUrl={profile.background_video_url}
         backgroundColor={profile.background_color}
         accentColor={accentColor}
         enableAudio={enableVideoAudio && hasInteracted}
         audioVolume={volume}
-        effectType={(profile as any).background_effect || 'particles'}
+        effectType={(profile.background_effect || 'particles') as any}
       />
 
       <div 
@@ -358,47 +390,59 @@ export default function UserProfile() {
           className="w-full max-w-md mx-auto space-y-6"
         >
           <ProfileCard 
-            profile={{...profile, accent_color: accentColor}} 
-            badges={badges.map(b => ({
-              id: b.id,
+            profile={{...profile, accent_color: accentColor} as any} 
+            badges={badges.map((b: PublicBadge) => ({
+              id: b.name, // Use name as ID since we don't expose real IDs
               name: b.name,
               color: b.color,
               icon_url: b.icon_url,
             }))}
-            showUsername={(profile as any).show_username ?? true}
-            showDisplayName={(profile as any).show_display_name ?? true}
-            showBadges={(profile as any).show_badges ?? true}
-            showViews={(profile as any).show_views ?? true}
-            showAvatar={(profile as any).show_avatar ?? true}
-            showDescription={(profile as any).show_description ?? true}
-            borderEnabled={(profile as any).card_border_enabled ?? true}
-            borderColor={(profile as any).card_border_color}
-            borderWidth={(profile as any).card_border_width ?? 1}
-            transparentBadges={(profile as any).transparent_badges ?? false}
+            showUsername={profile.show_username ?? true}
+            showDisplayName={profile.show_display_name ?? true}
+            showBadges={profile.show_badges ?? true}
+            showViews={profile.show_views ?? true}
+            showAvatar={profile.show_avatar ?? true}
+            showDescription={profile.show_description ?? true}
+            borderEnabled={profile.card_border_enabled ?? true}
+            borderColor={profile.card_border_color}
+            borderWidth={profile.card_border_width ?? 1}
+            transparentBadges={profile.transparent_badges ?? false}
           />
 
           {/* Discord Presence Widget - Only show when border/card is enabled */}
-          {(profile as any).discord_user_id && (profile as any).card_border_enabled !== false && (
+          {profile.discord_user_id && profile.card_border_enabled !== false && (
             <div className="flex justify-center">
               <DiscordPresence
-                discordUserId={(profile as any).discord_user_id}
+                discordUserId={profile.discord_user_id}
                 accentColor={accentColor}
-                cardStyle={(profile as any).discord_card_style || 'glass'}
-                cardOpacity={(profile as any).discord_card_opacity ?? 100}
-                showBadge={(profile as any).discord_show_badge ?? true}
-                badgeColor={(profile as any).discord_badge_color || '#ec4899'}
+                cardStyle={(profile.discord_card_style || 'glass') as any}
+                cardOpacity={profile.discord_card_opacity ?? 100}
+                showBadge={profile.discord_show_badge ?? true}
+                badgeColor={profile.discord_badge_color || '#ec4899'}
               />
             </div>
           )}
 
           {/* Social Links - respect visibility setting */}
-          {((profile as any).show_links ?? true) && socialLinks.length > 0 && (
+          {(profile.show_links ?? true) && socialLinks.length > 0 && (
             <SocialLinks 
-              links={socialLinks} 
+              links={socialLinks.map((l: PublicLink) => ({
+                id: l.url, // Use URL as ID since we don't expose real IDs
+                profile_id: '',
+                platform: l.platform,
+                url: l.url,
+                title: l.title,
+                icon: l.icon,
+                description: l.description,
+                style: l.style,
+                display_order: l.display_order,
+                is_visible: l.is_visible,
+                created_at: '',
+              }))} 
               accentColor={accentColor}
-              glowingIcons={(profile as any).glow_socials ?? false}
-              iconOnly={(profile as any).icon_only_links ?? false}
-              iconOpacity={(profile as any).icon_links_opacity ?? 100}
+              glowingIcons={profile.glow_socials ?? false}
+              iconOnly={profile.icon_only_links ?? false}
+              iconOpacity={profile.icon_links_opacity ?? 100}
             />
           )}
         </motion.div>
@@ -406,7 +450,7 @@ export default function UserProfile() {
       </div>
 
       {/* Controls Bar - Only show if profile has music and volume control is enabled */}
-      {!showStartScreen && profile.music_url && ((profile as any).show_volume_control ?? true) && (
+      {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
         <SimpleVolumeBar
           volume={volume}
           onVolumeChange={setVolume}

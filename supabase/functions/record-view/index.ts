@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-forwarded-for',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-forwarded-for, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Simple hash function for IP anonymization
@@ -22,11 +22,31 @@ serve(async (req) => {
   }
 
   try {
-    const { profile_id } = await req.json();
+    const { profile_id, username } = await req.json();
 
-    if (!profile_id) {
+    // Create Supabase client with service role
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Resolve profile_id from username if needed
+    let resolvedProfileId = profile_id;
+    
+    if (!resolvedProfileId && username) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username.toLowerCase())
+        .maybeSingle();
+      
+      if (profile) {
+        resolvedProfileId = profile.id;
+      }
+    }
+
+    if (!resolvedProfileId) {
       return new Response(
-        JSON.stringify({ error: 'profile_id is required' }),
+        JSON.stringify({ error: 'Profile not found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -39,28 +59,21 @@ serve(async (req) => {
     // Hash the IP for privacy
     const ipHash = await hashIP(clientIp);
 
-    // Create Supabase client with service role
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Check if this IP has already viewed this profile recently (30 min window)
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     
     const { data: existingView } = await supabase
       .from('profile_views')
       .select('id')
-      .eq('profile_id', profile_id)
+      .eq('profile_id', resolvedProfileId)
       .eq('viewer_ip_hash', ipHash)
       .gte('viewed_at', thirtyMinutesAgo)
       .limit(1);
 
     if (existingView && existingView.length > 0) {
       // Already viewed recently, skip
-      console.log(`Duplicate view blocked for profile ${profile_id} from IP hash ${ipHash.slice(0, 8)}...`);
       return new Response(
-        JSON.stringify({ success: true, recorded: false, reason: 'duplicate' }),
+        JSON.stringify({ success: true, recorded: false }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -69,7 +82,7 @@ serve(async (req) => {
     const { error: insertError } = await supabase
       .from('profile_views')
       .insert({
-        profile_id,
+        profile_id: resolvedProfileId,
         viewer_ip_hash: ipHash,
       });
 
@@ -80,8 +93,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log(`View recorded for profile ${profile_id} from IP hash ${ipHash.slice(0, 8)}...`);
 
     return new Response(
       JSON.stringify({ success: true, recorded: true }),

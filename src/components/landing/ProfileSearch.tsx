@@ -3,26 +3,15 @@ import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { getFeaturedProfiles, searchProfiles, FeaturedProfile, SearchResult } from '@/lib/api';
 import { FadeIn } from './FadeIn';
-
-interface Profile {
-  id: string;
-  username: string;
-  display_name: string | null;
-}
 
 function useAllProfiles() {
   return useQuery({
     queryKey: ['all-profiles-landing'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, display_name')
-        .limit(50);
-      
-      if (error) throw error;
-      return data as Profile[];
+      // Use secure API proxy
+      return getFeaturedProfiles(50);
     },
     staleTime: 60000,
   });
@@ -32,7 +21,7 @@ function FloatingRow({
   profiles, 
   direction 
 }: { 
-  profiles: Profile[]; 
+  profiles: FeaturedProfile[]; 
   direction: 'left' | 'right';
 }) {
   // Duplicate profiles for seamless loop
@@ -54,9 +43,9 @@ function FloatingRow({
         }}
       >
         {duplicatedProfiles.map((profile, i) => (
-          <li key={`${profile.id}-${i}`} className="shrink-0">
+          <li key={`${profile.u}-${i}`} className="shrink-0">
             <span className="text-muted-foreground/40 whitespace-nowrap text-sm">
-              uservault.cc/@{profile.username}
+              uservault.cc/@{profile.u}
             </span>
           </li>
         ))}
@@ -67,7 +56,7 @@ function FloatingRow({
 
 export function ProfileSearch() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
+  const [filteredProfiles, setFilteredProfiles] = useState<SearchResult[]>([]);
   const navigate = useNavigate();
   const { data: profiles } = useAllProfiles();
 
@@ -81,16 +70,19 @@ export function ProfileSearch() {
   const bottomRowProfiles = shuffledProfiles.slice(Math.ceil(shuffledProfiles.length / 2));
 
   useEffect(() => {
-    if (searchQuery.trim() && profiles) {
-      const filtered = profiles.filter(p => 
-        p.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5);
-      setFilteredProfiles(filtered);
-    } else {
-      setFilteredProfiles([]);
-    }
-  }, [searchQuery, profiles]);
+    const doSearch = async () => {
+      if (searchQuery.trim() && searchQuery.length >= 2) {
+        // Use secure API proxy for search
+        const results = await searchProfiles(searchQuery, 5);
+        setFilteredProfiles(results);
+      } else {
+        setFilteredProfiles([]);
+      }
+    };
+
+    const timeout = setTimeout(doSearch, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   const handleProfileClick = (username: string) => {
     navigate(`/${username}`);
@@ -138,16 +130,16 @@ export function ProfileSearch() {
               animate={{ opacity: 1, y: 0 }}
               className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-md rounded-xl border border-border/50 overflow-hidden shadow-xl z-20"
             >
-              {filteredProfiles.map((profile) => (
+              {filteredProfiles.map((profile, index) => (
                 <button
-                  key={profile.id}
-                  onClick={() => handleProfileClick(profile.username)}
+                  key={index}
+                  onClick={() => handleProfileClick(profile.u)}
                   className="w-full px-4 py-3 text-left hover:bg-primary/10 transition-colors flex items-center gap-3"
                 >
                   <span className="text-muted-foreground text-sm">uservault.cc/</span>
-                  <span className="text-foreground font-medium">@{profile.username}</span>
-                  {profile.display_name && (
-                    <span className="text-muted-foreground text-sm ml-auto">{profile.display_name}</span>
+                  <span className="text-foreground font-medium">@{profile.u}</span>
+                  {profile.d && (
+                    <span className="text-muted-foreground text-sm ml-auto">{profile.d}</span>
                   )}
                 </button>
               ))}

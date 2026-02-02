@@ -2,33 +2,20 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, ExternalLink, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-
-interface RegisteredUser {
-  id: string;
-  username: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  uid_number: number;
-}
+import { getFeaturedProfiles, FeaturedProfile } from '@/lib/api';
 
 export function RegisteredUsersList() {
-  const [users, setUsers] = useState<RegisteredUser[]>([]);
+  const [users, setUsers] = useState<FeaturedProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Only fetch public-safe fields - no emails or sensitive data
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url, uid_number')
-          .order('uid_number', { ascending: true });
-
-        if (error) throw error;
-        setUsers(data || []);
+        // Use secure API proxy - no direct database access
+        const profiles = await getFeaturedProfiles(100);
+        setUsers(profiles);
       } catch (err) {
-        console.error('Error fetching users:', err);
+        console.error('Error fetching users');
       } finally {
         setIsLoading(false);
       }
@@ -58,40 +45,29 @@ export function RegisteredUsersList() {
       <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
         {users.map((user, index) => (
           <motion.div
-            key={user.id}
+            key={index}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.05 }}
           >
             <Link
-              to={`/${user.username}`}
+              to={`/${user.u}`}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors group"
             >
               <div className="relative">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.username}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-xs font-medium">
-                      {user.username.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                <span className="absolute -bottom-1 -right-1 text-[10px] bg-secondary px-1 rounded">
-                  #{user.uid_number}
-                </span>
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-xs font-medium">
+                    {user.u.charAt(0).toUpperCase()}
+                  </span>
+                </div>
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {user.display_name || user.username}
+                  {user.d || user.u}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  @{user.username}
+                  @{user.u}
                 </p>
               </div>
 

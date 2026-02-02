@@ -1,89 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, User, Award, ArrowRightLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { ChevronLeft, ChevronRight, User, Award } from 'lucide-react';
+import { getFeaturedProfiles, FeaturedProfile } from '@/lib/api';
 import { Link } from 'react-router-dom';
-
-interface ClaimedUsername {
-  id: string;
-  username: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  uid_number: number;
-}
-
-interface ApprovedAliasRequest {
-  id: string;
-  requested_alias: string;
-  requester_username: string;
-  requester_display_name: string | null;
-  responded_at: string;
-}
 
 export function ClaimedUsernamesSidebar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [rareUsers, setRareUsers] = useState<ClaimedUsername[]>([]);
-  const [approvedRequests, setApprovedRequests] = useState<ApprovedAliasRequest[]>([]);
+  const [rareUsers, setRareUsers] = useState<FeaturedProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch rare users (low UID numbers = early adopters)
-        const { data: rareUsersData } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url, uid_number')
-          .order('uid_number', { ascending: true })
-          .limit(20);
-
-        if (rareUsersData) {
-          setRareUsers(rareUsersData);
-        }
-
-        // Fetch approved alias requests
-        const { data: requestsData } = await supabase
-          .from('alias_requests')
-          .select('id, requested_alias, requester_id, responded_at')
-          .eq('status', 'approved')
-          .order('responded_at', { ascending: false })
-          .limit(20);
-
-        if (requestsData && requestsData.length > 0) {
-          // Fetch requester profiles - only get public fields, map by requester_id
-          const requesterIds = requestsData.map(r => r.requester_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, username, display_name')
-            .in('user_id', requesterIds);
-
-          // Create a map using the original requester_id to match back
-          const profileMap = new Map<string, { username: string; display_name: string | null }>();
-          
-          // We need to match profiles back to requester_ids - since we can't return user_id,
-          // we'll use a different approach: fetch by user_id but only return safe fields
-          for (let i = 0; i < requesterIds.length; i++) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, display_name')
-              .eq('user_id', requesterIds[i])
-              .maybeSingle();
-            if (profile) {
-              profileMap.set(requesterIds[i], profile);
-            }
-          }
-
-          const enrichedRequests: ApprovedAliasRequest[] = requestsData.map(r => ({
-            id: r.id,
-            requested_alias: r.requested_alias,
-            requester_username: profileMap.get(r.requester_id)?.username || 'Unknown',
-            requester_display_name: profileMap.get(r.requester_id)?.display_name || null,
-            responded_at: r.responded_at || '',
-          }));
-
-          setApprovedRequests(enrichedRequests);
-        }
+        // Use secure API proxy - no direct database access
+        const profiles = await getFeaturedProfiles(20);
+        setRareUsers(profiles);
       } catch (error) {
-        console.error('Error fetching sidebar data:', error);
+        console.error('Error fetching sidebar data');
       } finally {
         setLoading(false);
       }
@@ -121,7 +54,7 @@ export function ClaimedUsernamesSidebar() {
             {/* Header */}
             <div className="p-4 border-b border-border">
               <h2 className="text-lg font-bold gradient-text">UserVault Highlights</h2>
-              <p className="text-xs text-muted-foreground mt-1">Rare users & claimed usernames</p>
+              <p className="text-xs text-muted-foreground mt-1">Featured users</p>
             </div>
 
             {/* Content */}
@@ -132,72 +65,38 @@ export function ClaimedUsernamesSidebar() {
                 </div>
               ) : (
                 <>
-                  {/* Rare Users Section */}
+                  {/* Featured Users Section */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Award className="w-4 h-4 text-primary" />
-                      <h3 className="text-sm font-semibold">Early Adopters</h3>
+                      <h3 className="text-sm font-semibold">Featured Users</h3>
                     </div>
                     <div className="space-y-2">
-                      {rareUsers.slice(0, 10).map((user) => (
+                      {rareUsers.slice(0, 10).map((user, index) => (
                         <Link
-                          key={user.id}
-                          to={`/${user.username}`}
+                          key={index}
+                          to={`/${user.u}`}
                           className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/30 transition-colors group"
                         >
                           <div className="w-8 h-8 rounded-full bg-secondary/50 overflow-hidden flex-shrink-0">
-                            {user.avatar_url ? (
-                              <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <User className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                            )}
+                            <div className="w-full h-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                              @{user.username}
+                              @{user.u}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              UID #{user.uid_number}
-                            </p>
+                            {user.d && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {user.d}
+                              </p>
+                            )}
                           </div>
                         </Link>
                       ))}
                     </div>
                   </div>
-
-                  {/* Claimed Usernames Section */}
-                  {approvedRequests.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <ArrowRightLeft className="w-4 h-4 text-primary" />
-                        <h3 className="text-sm font-semibold">Recently Claimed</h3>
-                      </div>
-                      <div className="space-y-2">
-                        {approvedRequests.map((request) => (
-                          <Link
-                            key={request.id}
-                            to={`/${request.requester_username}`}
-                            className="block p-2 rounded-lg hover:bg-secondary/30 transition-colors group"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-primary">
-                                @{request.requested_alias}
-                              </span>
-                              <span className="text-xs text-muted-foreground">→</span>
-                              <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                                @{request.requester_username}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(request.responded_at).toLocaleDateString()}
-                            </p>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
             </div>
