@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Loader2, ArrowRight, Eye, Users, Gem } from 'lucide-react';
+import { Check, X, Loader2, ArrowRight, Eye, Users, Gem, Sparkles } from 'lucide-react';
 import { checkUsernameExists, getPublicStats } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
+import { CountUp } from './CountUp';
+import { GradientText } from './GradientText';
+import { Magnet } from './Magnet';
 
 function useStats() {
   return useQuery({
@@ -20,40 +23,38 @@ function useStats() {
   });
 }
 
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return num.toLocaleString('en-US') + '+';
-  }
-  if (num >= 1000) {
-    return num.toLocaleString('en-US') + '+';
-  }
-  return num.toLocaleString('en-US') + '+';
-}
-
 interface StatCardProps {
-  value: string;
+  value: number;
   label: string;
   icon: React.ElementType;
   delay: number;
   isInView: boolean;
+  suffix?: string;
 }
 
-function StatCard({ value, label, icon: Icon, delay, isInView }: StatCardProps) {
+function StatCard({ value, label, icon: Icon, delay, isInView, suffix = '+' }: StatCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay }}
-      className="flex-1 min-w-[140px] bg-card/60 backdrop-blur-sm rounded-xl border border-border/50 p-4 md:p-6"
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="flex-1 min-w-[160px] group"
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">
-            {value}
-          </p>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1">{label}</p>
+      <div className="relative bg-card/50 backdrop-blur-sm rounded-2xl border border-border/30 p-6 transition-all duration-500 hover:border-primary/30 hover:bg-card/70">
+        {/* Glow effect */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative flex items-start justify-between">
+          <div>
+            <p className="text-3xl md:text-4xl font-bold text-foreground">
+              <CountUp to={value} duration={2.5} suffix={suffix} />
+            </p>
+            <p className="text-sm text-muted-foreground mt-2 font-medium">{label}</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <Icon className="w-5 h-5 text-primary" />
+          </div>
         </div>
-        <Icon className="w-5 h-5 text-primary" />
       </div>
     </motion.div>
   );
@@ -99,116 +100,147 @@ export function ClaimSection() {
   };
 
   const userCount = stats?.users || 0;
+  const viewCount = stats?.views || 0;
 
   return (
-    <section ref={ref} className="py-24 px-6">
+    <section ref={ref} className="py-32 px-6 relative">
+      {/* Decorative elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-full blur-[120px] opacity-50" />
+      
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 40 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
-        className="max-w-5xl mx-auto text-center"
+        transition={{ duration: 0.7 }}
+        className="max-w-5xl mx-auto text-center relative z-10"
       >
-        {/* Headline with user count */}
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground mb-3">
-          Over <span className="text-primary">{formatNumber(userCount)}</span> people use UserVault — What are you waiting for?
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={isInView ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8"
+        >
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-primary">Join the community</span>
+        </motion.div>
+
+        {/* Headline */}
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 leading-tight">
+          Over{' '}
+          <GradientText colors={['#00D9A5', '#00B4D8', '#0077B6', '#00D9A5']}>
+            {userCount.toLocaleString()}+
+          </GradientText>
+          {' '}people use UserVault
         </h2>
-        <p className="text-muted-foreground mb-10 max-w-3xl mx-auto">
-          Create feature-rich, customizable and modern link-in-bio pages, along with fast and secure file hosting, all with UserVault.
+        <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
+          Create feature-rich, customizable and modern link-in-bio pages with UserVault.
         </p>
 
         {/* Stats Cards */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12 max-w-4xl mx-auto">
+        <div className="flex flex-wrap justify-center gap-4 mb-16">
           <StatCard
-            value={formatNumber(stats?.views || 0)}
+            value={viewCount}
             label="Profile Views"
             icon={Eye}
-            delay={0.1}
-            isInView={isInView}
-          />
-          <StatCard
-            value={formatNumber(stats?.users || 0)}
-            label="Users"
-            icon={Users}
             delay={0.2}
             isInView={isInView}
           />
           <StatCard
-            value="99.9%"
-            label="Uptime"
-            icon={Gem}
+            value={userCount}
+            label="Active Users"
+            icon={Users}
             delay={0.3}
             isInView={isInView}
           />
+          <StatCard
+            value={99.9}
+            label="Uptime"
+            icon={Gem}
+            delay={0.4}
+            isInView={isInView}
+            suffix="%"
+          />
         </div>
 
-        {/* Claim Section Title */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-lg md:text-xl font-medium text-foreground mb-6"
-        >
-          Claim your profile and create an account in minutes!
-        </motion.p>
-
-        {/* Input container */}
+        {/* Claim Input */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="relative max-w-md mx-auto"
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="max-w-lg mx-auto"
         >
-          <div className="flex items-center gap-0 rounded-2xl glass p-2">
-            <div className="flex items-center bg-secondary/50 rounded-xl px-4 py-3 flex-1">
-              <span className="text-muted-foreground text-sm mr-1">uservault.cc/</span>
-              <input
-                type="text"
-                value={username}
-                onChange={handleChange}
-                placeholder="username"
-                maxLength={20}
-                className="bg-transparent border-none outline-none text-foreground flex-1 min-w-0"
-              />
-              
-              {/* Status indicator */}
-              <div className="ml-2">
-                {status === 'checking' && (
-                  <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
-                )}
-                {status === 'available' && (
-                  <Check className="w-5 h-5 text-success" />
-                )}
-                {status === 'taken' && (
-                  <X className="w-5 h-5 text-destructive" />
-                )}
+          <p className="text-lg font-medium text-foreground mb-6">
+            Claim your username now
+          </p>
+          
+          <div className="relative">
+            <div className="flex items-center gap-0 rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 p-2 transition-all duration-300 focus-within:border-primary/50 focus-within:shadow-lg focus-within:shadow-primary/10">
+              <div className="flex items-center bg-secondary/50 rounded-xl px-5 py-4 flex-1">
+                <span className="text-muted-foreground text-sm font-medium mr-1">uservault.cc/</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={handleChange}
+                  placeholder="yourname"
+                  maxLength={20}
+                  className="bg-transparent border-none outline-none text-foreground flex-1 min-w-0 font-medium"
+                />
+                
+                {/* Status indicator */}
+                <div className="ml-3">
+                  {status === 'checking' && (
+                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                  )}
+                  {status === 'available' && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center"
+                    >
+                      <Check className="w-4 h-4 text-success" />
+                    </motion.div>
+                  )}
+                  {status === 'taken' && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center"
+                    >
+                      <X className="w-4 h-4 text-destructive" />
+                    </motion.div>
+                  )}
+                </div>
               </div>
+
+              <Magnet magnetStrength={0.1}>
+                <button
+                  onClick={handleClaim}
+                  disabled={username.length < 1}
+                  className="ml-2 px-6 py-4 rounded-xl bg-primary text-primary-foreground font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 disabled:opacity-40 disabled:hover:shadow-none disabled:cursor-not-allowed flex items-center gap-2 group"
+                >
+                  <span>Claim</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </Magnet>
             </div>
 
-            <button
-              onClick={handleClaim}
-              disabled={username.length < 1}
-              className="ml-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center gap-2"
+            {/* Status message */}
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ 
+                opacity: status !== 'idle' ? 1 : 0, 
+                height: status !== 'idle' ? 'auto' : 0 
+              }}
+              className="mt-4 text-sm font-medium"
             >
-              <span>Claim Now</span>
-            </button>
+              {status === 'available' && (
+                <span className="text-success">✓ This username is available!</span>
+              )}
+              {status === 'taken' && (
+                <span className="text-destructive">✗ This username is already taken</span>
+              )}
+            </motion.div>
           </div>
-
-          {/* Status message */}
-          <motion.p
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ 
-              opacity: status !== 'idle' ? 1 : 0, 
-              height: status !== 'idle' ? 'auto' : 0 
-            }}
-            className="mt-3 text-sm"
-          >
-            {status === 'available' && (
-              <span className="text-success">This username is available!</span>
-            )}
-            {status === 'taken' && (
-              <span className="text-destructive">This username is already taken</span>
-            )}
-          </motion.p>
         </motion.div>
       </motion.div>
     </section>

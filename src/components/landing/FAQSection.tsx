@@ -1,7 +1,7 @@
-import { motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
-import { FadeIn } from './FadeIn';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, HelpCircle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { useInView } from 'framer-motion';
 
 interface FAQItem {
   question: string;
@@ -35,65 +35,106 @@ const faqs: FAQItem[] = [
   }
 ];
 
-function FAQItem({ item, index }: { item: FAQItem; index: number }) {
-  const [isOpen, setIsOpen] = useState(false);
-
+function FAQItemComponent({ item, index, isOpen, onToggle }: { 
+  item: FAQItem; 
+  index: number; 
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 * index, duration: 0.4 }}
-      className="border-b border-border/30 last:border-0 mx-4"
+      transition={{ delay: 0.08 * index, duration: 0.5 }}
+      className="group"
     >
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-5 text-left group"
+        onClick={onToggle}
+        className={`w-full flex items-center justify-between p-6 text-left rounded-2xl transition-all duration-300 ${
+          isOpen 
+            ? 'bg-primary/10 border border-primary/20' 
+            : 'bg-card/40 border border-border/30 hover:border-primary/20 hover:bg-card/60'
+        }`}
       >
-        <span className="text-foreground font-medium group-hover:text-primary transition-colors">
+        <span className={`font-semibold pr-4 transition-colors duration-300 ${
+          isOpen ? 'text-primary' : 'text-foreground group-hover:text-primary'
+        }`}>
           {item.question}
         </span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${
+            isOpen ? 'bg-primary text-primary-foreground' : 'bg-secondary/50 text-muted-foreground'
+          }`}
         >
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4" />
         </motion.div>
       </button>
-      <motion.div
-        initial={false}
-        animate={{ 
-          height: isOpen ? 'auto' : 0,
-          opacity: isOpen ? 1 : 0
-        }}
-        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="overflow-hidden"
-      >
-        <p className="text-muted-foreground text-sm pb-5 leading-relaxed">
-          {item.answer}
-        </p>
-      </motion.div>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <p className="text-muted-foreground leading-relaxed px-6 py-5 bg-card/20 rounded-b-2xl border-x border-b border-border/20">
+              {item.answer}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
 export function FAQSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
   return (
-    <section className="py-24 px-6">
+    <section ref={ref} className="py-32 px-6">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-16"
+        >
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+            <HelpCircle className="w-4 h-4" />
+            FAQ
+          </span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-lg text-muted-foreground">
             Everything you need to know about UserVault
           </p>
-        </div>
+        </motion.div>
 
-        <div className="glass-card p-2">
+        {/* FAQ Items */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : {}}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="space-y-4"
+        >
           {faqs.map((faq, index) => (
-            <FAQItem key={index} item={faq} index={index} />
+            <FAQItemComponent 
+              key={index} 
+              item={faq} 
+              index={index}
+              isOpen={openIndex === index}
+              onToggle={() => setOpenIndex(openIndex === index ? null : index)}
+            />
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

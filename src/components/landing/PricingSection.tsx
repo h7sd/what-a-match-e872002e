@@ -1,9 +1,11 @@
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Gem } from 'lucide-react';
+import { Check, Gem, Sparkles, Zap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicStats } from '@/lib/api';
+import { GradientText } from './GradientText';
+import { Magnet } from './Magnet';
 
 function useStats() {
   return useQuery({
@@ -18,31 +20,21 @@ function useStats() {
   });
 }
 
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return num.toLocaleString('en-US') + '+';
-  }
-  if (num >= 1000) {
-    return num.toLocaleString('en-US') + '+';
-  }
-  return num.toLocaleString('en-US') + '+';
-}
-
 const freeFeatures = [
   'Basic Customization',
   'Profile Analytics',
   'Basic Effects',
-  'Add Your Socials',
+  'Unlimited Social Links',
 ];
 
 const premiumFeatures = [
-  'Exclusive Badge',
-  'Profile Layouts',
-  'Custom Fonts',
+  'Exclusive Premium Badge',
+  'Custom Profile Layouts',
+  'Premium Fonts Library',
   'Typewriter Animation',
   'Special Profile Effects',
   'Advanced Customization',
-  'Metadata & SEO Customization',
+  'SEO & Metadata Control',
 ];
 
 export function PricingSection() {
@@ -51,99 +43,129 @@ export function PricingSection() {
   const { data: stats } = useStats();
 
   return (
-    <section ref={ref} className="py-24 px-6">
+    <section ref={ref} className="py-32 px-6 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
+      
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 40 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
-        className="max-w-5xl mx-auto"
+        transition={{ duration: 0.7 }}
+        className="max-w-5xl mx-auto relative z-10"
       >
-        {/* Headline */}
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground text-center mb-12">
-          Explore our exclusive plans and join{' '}
-          <span className="text-primary">{formatNumber(stats?.users || 0)}</span> subscribers
-        </h2>
+        {/* Header */}
+        <div className="text-center mb-16">
+          <motion.span
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6"
+          >
+            Pricing
+          </motion.span>
+          
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+            Simple, transparent pricing
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Join{' '}
+            <GradientText colors={['#00D9A5', '#00B4D8', '#0077B6', '#00D9A5']}>
+              {(stats?.users || 0).toLocaleString()}+
+            </GradientText>
+            {' '}users already using UserVault
+          </p>
+        </div>
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {/* Free Plan */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/50 p-6 md:p-8"
+            initial={{ opacity: 0, x: -30 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="group relative"
           >
-            <h3 className="text-2xl font-bold text-foreground mb-4">Free</h3>
-            
-            <div className="mb-4">
-              <span className="text-4xl font-bold text-primary">0€</span>
-              <span className="text-muted-foreground ml-1">/Lifetime</span>
+            <div className="h-full bg-card/50 backdrop-blur-sm rounded-3xl border border-border/30 p-8 transition-all duration-500 hover:border-border/60">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-secondary/50 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground">Free</h3>
+              </div>
+              
+              <div className="mb-2">
+                <span className="text-5xl font-bold text-foreground">0€</span>
+              </div>
+              <p className="text-muted-foreground mb-8">Forever free, no credit card</p>
+              
+              <ul className="space-y-4 mb-10">
+                {freeFeatures.map((feature) => (
+                  <li key={feature} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-primary" />
+                    </div>
+                    <span className="text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              <Link
+                to="/auth"
+                className="block w-full py-4 rounded-xl bg-secondary/70 text-foreground font-semibold text-center transition-all duration-300 hover:bg-secondary"
+              >
+                Get Started Free
+              </Link>
             </div>
-            
-            <p className="text-muted-foreground mb-6">
-              For beginners, link all your socials in one place.
-            </p>
-            
-            <ul className="space-y-3 mb-8">
-              {freeFeatures.map((feature) => (
-                <li key={feature} className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span className="text-foreground">{feature}</span>
-                </li>
-              ))}
-            </ul>
-            
-            <Link
-              to="/auth"
-              className="block w-full py-3 rounded-xl bg-secondary text-foreground font-medium text-center transition-all hover:bg-secondary/80"
-            >
-              Get Started
-            </Link>
           </motion.div>
 
           {/* Premium Plan */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="relative bg-card/60 backdrop-blur-sm rounded-2xl border border-primary/50 p-6 md:p-8"
+            initial={{ opacity: 0, x: 30 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="group relative"
           >
-            {/* Most Popular Badge */}
-            <div className="absolute -top-3 right-4 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-              Most Popular
+            {/* Glow effect */}
+            <div className="absolute -inset-[1px] rounded-3xl bg-gradient-to-r from-primary via-accent to-primary opacity-20 blur-sm group-hover:opacity-40 transition-opacity duration-500" />
+            
+            <div className="relative h-full bg-card/60 backdrop-blur-sm rounded-3xl border border-primary/30 p-8 transition-all duration-500 hover:border-primary/50">
+              {/* Popular badge */}
+              <div className="absolute -top-3 right-6 px-4 py-1.5 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs font-bold shadow-lg">
+                Most Popular
+              </div>
+              
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <Gem className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground">Premium</h3>
+              </div>
+              
+              <div className="mb-2">
+                <span className="text-5xl font-bold text-primary">3,50€</span>
+              </div>
+              <p className="text-primary font-medium mb-8">Pay once, keep forever</p>
+              
+              <ul className="space-y-4 mb-10">
+                {premiumFeatures.map((feature) => (
+                  <li key={feature} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-primary" />
+                    </div>
+                    <span className="text-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              <Magnet magnetStrength={0.1}>
+                <Link
+                  to="/premium"
+                  className="block w-full py-4 rounded-xl bg-primary text-primary-foreground font-semibold text-center transition-all duration-300 hover:shadow-lg hover:shadow-primary/30"
+                >
+                  Get Premium
+                </Link>
+              </Magnet>
             </div>
-            
-            <div className="flex items-center gap-2 mb-4">
-              <Gem className="w-6 h-6 text-primary" />
-              <h3 className="text-2xl font-bold text-foreground">Premium</h3>
-            </div>
-            
-            <div className="mb-2">
-              <span className="text-4xl font-bold text-primary">3,50€</span>
-              <span className="text-muted-foreground ml-1">/Lifetime</span>
-            </div>
-            
-            <p className="text-primary text-sm mb-4">Pay once. Keep it forever.</p>
-            
-            <p className="text-muted-foreground mb-6">
-              The perfect plan to discover your creativity & unlock more features.
-            </p>
-            
-            <ul className="space-y-3 mb-8">
-              {premiumFeatures.map((feature) => (
-                <li key={feature} className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span className="text-foreground">{feature}</span>
-                </li>
-              ))}
-            </ul>
-            
-            <Link
-              to="/premium"
-              className="block w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-center transition-all hover:bg-primary/90 hover:scale-[1.02]"
-            >
-              Learn More
-            </Link>
           </motion.div>
         </div>
       </motion.div>

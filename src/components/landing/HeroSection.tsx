@@ -1,8 +1,11 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Play } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { BlurText } from './BlurText';
+import { GradientText } from './GradientText';
+import { Magnet } from './Magnet';
 
 export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,110 +16,142 @@ export function HeroSection() {
     offset: ['start start', 'end start'],
   });
 
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const y = useTransform(scrollYProgress, [0, 1], ['0%', '40%']);
+  const opacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
 
   return (
-    <section ref={containerRef} className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-      {/* Animated mesh gradient background */}
-      <div className="absolute inset-0 mesh-gradient opacity-60" />
-      
-      {/* Floating gradient orbs */}
-      <motion.div
-        className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[120px] opacity-30"
+    <section ref={containerRef} className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24">
+      {/* Subtle grid pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.03]"
         style={{
-          background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)',
-          y,
-        }}
-        animate={{
-          x: [0, 30, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: 'easeInOut',
+          backgroundImage: `linear-gradient(hsl(var(--primary) / 0.3) 1px, transparent 1px),
+                           linear-gradient(90deg, hsl(var(--primary) / 0.3) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px',
         }}
       />
+
+      {/* Radial gradient spotlight */}
       <motion.div
-        className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px] opacity-25"
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full opacity-40"
         style={{
-          background: 'radial-gradient(circle, hsl(var(--accent)) 0%, transparent 70%)',
-        }}
-        animate={{
-          x: [0, -20, 0],
-          y: [0, 30, 0],
-          scale: [1, 1.15, 1],
-        }}
-        transition={{
-          duration: 10,
-          repeat: Infinity,
-          ease: 'easeInOut',
+          background: 'radial-gradient(ellipse, hsl(var(--primary) / 0.15) 0%, transparent 60%)',
+          y,
         }}
       />
 
       {/* Content */}
       <motion.div 
         className="relative z-10 text-center px-6 max-w-5xl mx-auto"
-        style={{ opacity }}
+        style={{ opacity, scale }}
       >
-        {/* Badge */}
+        {/* Announcement Badge */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8"
+          initial={{ opacity: 0, y: 30, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 mb-10 backdrop-blur-sm"
         >
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm text-muted-foreground">The future of link-in-bio</span>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+          </span>
+          <span className="text-sm font-medium text-primary">Now with Discord Integration</span>
         </motion.div>
 
-        {/* Main Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+        {/* Main Headline with BlurText */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6"
+          className="mb-8"
         >
-          <span className="text-foreground">Your digital</span>
-          <br />
-          <span className="gradient-text-animated">identity.</span>
-        </motion.h1>
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]">
+            <BlurText
+              text="Your digital"
+              className="justify-center text-foreground"
+              delay={80}
+            />
+            <GradientText 
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight"
+              colors={['#00D9A5', '#00B4D8', '#0077B6', '#00D9A5']}
+              animationSpeed={4}
+            >
+              identity.
+            </GradientText>
+          </h1>
+        </motion.div>
 
         {/* Subtitle */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+          transition={{ duration: 0.7, delay: 0.5 }}
+          className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed"
         >
-          Create stunning bio pages with live integrations, immersive effects, 
+          Create stunning bio pages with live Discord status, immersive effects, 
           and seamless social connections. All in one link.
         </motion.p>
 
         {/* CTA Buttons */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.7, delay: 0.6 }}
           className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
-          <Link
-            to={user ? '/dashboard' : '/auth'}
-            className="group relative inline-flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-medium transition-all duration-300 hover:scale-105 glow-sm hover:glow-md"
-          >
-            <span>{user ? 'Open Dashboard' : 'Get Started Free'}</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+          <Magnet magnetStrength={0.15}>
+            <Link
+              to={user ? '/dashboard' : '/auth'}
+              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg transition-all duration-300 hover:shadow-2xl hover:shadow-primary/30 overflow-hidden"
+            >
+              <span className="relative z-10">{user ? 'Open Dashboard' : 'Start for Free'}</span>
+              <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
+              
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] opacity-0 group-hover:opacity-100 transition-opacity duration-500" 
+                style={{ animation: 'gradient-shift 3s ease infinite' }}
+              />
+            </Link>
+          </Magnet>
           
-          <Link
-            to="/uservault"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full glass text-foreground font-medium transition-all duration-300 hover:bg-white/[0.1] hover:scale-105"
-          >
-            <span>View Demo</span>
-          </Link>
+          <Magnet magnetStrength={0.15}>
+            <Link
+              to="/uservault"
+              className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl border-2 border-border/50 hover:border-primary/50 text-foreground font-semibold text-lg transition-all duration-300 hover:bg-primary/5 backdrop-blur-sm"
+            >
+              <Play className="w-5 h-5 text-primary" />
+              <span>View Demo</span>
+            </Link>
+          </Magnet>
+        </motion.div>
+
+        {/* Social proof */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.9 }}
+          className="mt-16 flex flex-col items-center gap-4"
+        >
+          <div className="flex -space-x-3">
+            {[...Array(5)].map((_, i) => (
+              <div 
+                key={i} 
+                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border-2 border-background flex items-center justify-center text-xs font-bold text-primary"
+              >
+                {String.fromCharCode(65 + i)}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="text-foreground font-semibold">2,500+</span> creators already joined
+          </p>
         </motion.div>
       </motion.div>
+
+      {/* Bottom gradient fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
     </section>
   );
 }
