@@ -68,12 +68,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { username: usernameInput }
       });
       
-      if (userError || !userData?.email) {
+      if (userError || !userData) {
         console.error('Get user email error:', userError);
         return { error: new Error('Invalid username or password') };
       }
       
-      loginEmail = userData.email;
+      // Decode obfuscated email from response
+      // Server returns: { d: obfuscated, t: timestamp, m: masked }
+      if (userData.d && userData.t) {
+        try {
+          const decoded = atob(userData.d);
+          const key = userData.t.toString(36);
+          let email = '';
+          for (let i = 0; i < decoded.length; i++) {
+            email += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+          }
+          loginEmail = email;
+        } catch (e) {
+          console.error('Failed to decode email');
+          return { error: new Error('Invalid username or password') };
+        }
+      } else if (userData.email) {
+        // Fallback for backwards compatibility
+        loginEmail = userData.email;
+      } else {
+        return { error: new Error('Invalid username or password') };
+      }
     }
     
     const { data, error } = await supabase.auth.signInWithPassword({
