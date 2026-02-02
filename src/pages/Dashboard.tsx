@@ -690,129 +690,163 @@ export default function Dashboard() {
   const layoutStyles = ['stacked', 'floating', 'compact'];
 
   const SidebarContent = () => (
-    <>
+    <div className="flex flex-col h-full bg-gradient-to-b from-card via-card to-black/20">
       {/* Logo */}
-      <div className="p-4 sm:p-6 border-b border-border">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">UV</span>
-          </div>
-          <span className="text-xl font-bold gradient-text">UserVault</span>
+      <div className="p-4 sm:p-6 border-b border-white/5">
+        <Link to="/" className="flex items-center gap-3 group">
+          <motion.div 
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20"
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: 'spring', stiffness: 400 }}
+          >
+            <span className="text-white font-bold text-sm">UV</span>
+          </motion.div>
+          <span className="text-xl font-bold bg-gradient-to-r from-primary via-white to-accent bg-clip-text text-transparent">UserVault</span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 sm:p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+      <nav className="flex-1 p-3 sm:p-4 space-y-1 overflow-y-auto">
+        {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = activeTab === item.tab;
           
           return (
-            <button
+            <motion.button
               key={item.tab}
               onClick={() => {
                 handleTabChange(item.tab);
                 setMobileMenuOpen(false);
               }}
               className={cn(
-                'w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm transition-all text-left',
+                'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all text-left relative overflow-hidden group',
                 isActive 
-                  ? 'bg-primary/10 text-primary border-l-2 border-primary' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                  ? 'bg-gradient-to-r from-primary/20 via-primary/10 to-transparent text-white' 
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
               )}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileHover={{ x: 4 }}
             >
-              <Icon className="w-5 h-5" />
-              {item.label}
-            </button>
+              {isActive && (
+                <motion.div 
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-primary to-accent rounded-r-full"
+                  layoutId="activeTab"
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              )}
+              <Icon className={cn(
+                'w-5 h-5 transition-colors',
+                isActive ? 'text-primary' : 'text-white/60 group-hover:text-primary'
+              )} />
+              <span className="font-medium">{item.label}</span>
+              {isActive && (
+                <motion.div 
+                  className="ml-auto w-2 h-2 rounded-full bg-primary shadow-lg shadow-primary/50"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+              )}
+            </motion.button>
           );
         })}
       </nav>
 
       {/* Bottom section */}
-      <div className="p-2 sm:p-4 border-t border-border space-y-2">
+      <div className="p-3 sm:p-4 border-t border-white/5 space-y-2">
         {/* Premium Button */}
         {!(profile as any)?.is_premium && (
-          <Button 
-            variant="outline" 
-            className="w-full justify-start gap-3 border-amber-500/50 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400" 
-            asChild
-          >
-            <Link to="/premium">
-              <Crown className="w-4 h-4" />
-              Upgrade to Premium
-            </Link>
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-3 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-amber-600/5 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50 rounded-xl h-11" 
+              asChild
+            >
+              <Link to="/premium">
+                <Crown className="w-4 h-4" />
+                <span className="font-medium">Upgrade to Premium</span>
+              </Link>
+            </Button>
+          </motion.div>
         )}
         
         {(profile as any)?.is_premium && (
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/30">
-            <Crown className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-medium text-amber-500">Premium</span>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/20">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <Crown className="w-4 h-4 text-amber-400" />
+            </div>
+            <div>
+              <span className="text-sm font-semibold text-amber-400">Premium</span>
+              <p className="text-xs text-amber-400/60">All features unlocked</p>
+            </div>
           </div>
         )}
 
         <Button 
-          variant="outline" 
-          className="w-full justify-start gap-3" 
+          variant="ghost" 
+          className="w-full justify-start gap-3 text-white/60 hover:text-white hover:bg-white/5 rounded-xl h-11" 
           asChild
         >
           <Link to={`/${profile.username}`} target="_blank">
             <Eye className="w-4 h-4" />
-            View Profile
+            <span>View Profile</span>
           </Link>
         </Button>
         
         <Button 
           variant="ghost" 
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+          className="w-full justify-start gap-3 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl h-11"
           onClick={handleSignOut}
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          <span>Sign Out</span>
         </Button>
       </div>
-    </>
+    </div>
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-black/50 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 min-h-screen bg-card border-r border-border flex-col fixed left-0 top-0">
+      <aside className="hidden md:flex w-64 min-h-screen bg-card/50 backdrop-blur-xl border-r border-white/5 flex-col fixed left-0 top-0">
         <SidebarContent />
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-white/5">
         <div className="flex items-center justify-between p-3">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">UV</span>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-white font-bold text-sm">UV</span>
             </div>
-            <span className="text-lg font-bold gradient-text">UserVault</span>
+            <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">UserVault</span>
           </Link>
           
           <div className="flex items-center gap-2">
             <AliasRequestsBell />
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={updateProfile.isPending}
-              className="bg-primary"
-            >
-              {updateProfile.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={updateProfile.isPending}
+                className="bg-gradient-to-r from-primary to-accent hover:opacity-90 rounded-lg shadow-lg shadow-primary/20"
+              >
+                {updateProfile.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+              </Button>
+            </motion.div>
             
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="hover:bg-white/5">
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
+              <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl border-white/5">
                 <div className="flex flex-col h-full">
                   <SidebarContent />
                 </div>
@@ -825,33 +859,43 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 md:ml-64 mt-14 md:mt-0">
         {/* Desktop Header */}
-        <header className="hidden md:block border-b border-border bg-card sticky top-0 z-50">
+        <header className="hidden md:block border-b border-white/5 bg-card/30 backdrop-blur-xl sticky top-0 z-50">
           <div className="px-4 sm:px-8 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
+            <motion.div 
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              key={activeTab}
+            >
               {navItems.find(item => item.tab === activeTab)?.icon && (
-                <span className="text-primary">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center border border-primary/20">
                   {(() => {
                     const Icon = navItems.find(item => item.tab === activeTab)?.icon;
-                    return Icon ? <Icon className="w-5 h-5" /> : null;
+                    return Icon ? <Icon className="w-5 h-5 text-primary" /> : null;
                   })()}
-                </span>
+                </div>
               )}
-              <h1 className="text-xl font-semibold capitalize">{activeTab}</h1>
-            </div>
-            <div className="flex items-center gap-2">
+              <div>
+                <h1 className="text-xl font-bold capitalize bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">{activeTab}</h1>
+                <p className="text-xs text-white/40">Manage your {activeTab}</p>
+              </div>
+            </motion.div>
+            <div className="flex items-center gap-3">
               <AliasRequestsBell />
-              <Button
-                onClick={handleSave}
-                disabled={updateProfile.isPending}
-                className="bg-primary"
-              >
-                {updateProfile.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                Save Changes
-              </Button>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  onClick={handleSave}
+                  disabled={updateProfile.isPending}
+                  className="bg-gradient-to-r from-primary to-accent hover:opacity-90 rounded-xl shadow-lg shadow-primary/20 px-6"
+                >
+                  {updateProfile.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+              </motion.div>
             </div>
           </div>
         </header>

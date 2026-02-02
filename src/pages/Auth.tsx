@@ -618,348 +618,467 @@ export default function Auth() {
       
       {/* Noise texture overlay */}
       <div className="fixed inset-0 noise-overlay pointer-events-none z-[1]" />
+      
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-md relative z-10"
       >
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-white transition-colors mb-8"
+        {/* Back to home link */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to home
-        </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-all duration-300 mb-8 group"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            <span className="text-sm">Back to home</span>
+          </Link>
+        </motion.div>
 
-        <div className="glass-card p-8">
-          <div className="text-center mb-8">
-            {step === 'verify' && (
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-primary" />
-              </div>
+        {/* Auth Card with animated border */}
+        <div className="relative">
+          {/* Animated gradient border */}
+          <motion.div
+            className="absolute -inset-[1px] rounded-2xl opacity-60"
+            style={{
+              background: 'linear-gradient(90deg, #00D9A5, #00B4D8, #0077B6, #00D9A5)',
+              backgroundSize: '300% 100%',
+            }}
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: 'linear',
+            }}
+          />
+          
+          {/* Card content */}
+          <div className="relative bg-black/60 backdrop-blur-2xl rounded-2xl border border-white/5 p-8 overflow-hidden">
+            {/* Subtle spotlight effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+            
+            {/* Header */}
+            <motion.div 
+              className="text-center mb-8 relative z-10"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {(step === 'verify' || step === 'mfa-verify') && (
+                <motion.div 
+                  className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-6 border border-primary/30"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 200, delay: 0.4 }}
+                >
+                  <motion.div
+                    animate={{ 
+                      boxShadow: ['0 0 20px rgba(0, 217, 165, 0.3)', '0 0 40px rgba(0, 217, 165, 0.5)', '0 0 20px rgba(0, 217, 165, 0.3)']
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center"
+                  >
+                    {step === 'mfa-verify' ? (
+                      <Shield className="w-6 h-6 text-primary" />
+                    ) : (
+                      <Mail className="w-6 h-6 text-primary" />
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
+              
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient mb-2">
+                {renderTitle()}
+              </h1>
+              <p className="text-white/50 text-sm">
+                {renderDescription()}
+              </p>
+            </motion.div>
+
+            {/* Login Form */}
+            {step === 'login' && (
+              <motion.form 
+                onSubmit={handleSubmit} 
+                className="space-y-5 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="emailOrUsername" className="text-white/80 text-sm font-medium">
+                    Email or Username
+                  </Label>
+                  <Input
+                    id="emailOrUsername"
+                    type="text"
+                    placeholder="you@example.com or username"
+                    value={emailOrUsername}
+                    onChange={(e) => setEmailOrUsername(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.emailOrUsername && (
+                    <p className="text-sm text-red-400">{errors.emailOrUsername}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-white/80 text-sm font-medium">
+                      Password
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setStep('forgot-password')}
+                      className="text-xs text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Forgot?
+                    </button>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-red-400">{errors.password}</p>
+                  )}
+                </div>
+
+                {/* Turnstile Widget */}
+                <div className="flex justify-center py-2">
+                  <div ref={turnstileRef} />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || !turnstileToken}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Sign in
+                </Button>
+              </motion.form>
             )}
-            <h1 className="text-2xl font-bold gradient-text mb-2">
-              {renderTitle()}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {renderDescription()}
-            </p>
-          </div>
 
-          {/* Login Form */}
-          {step === 'login' && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="emailOrUsername">Email or Username</Label>
-                <Input
-                  id="emailOrUsername"
-                  type="text"
-                  placeholder="you@example.com or username"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.emailOrUsername && (
-                  <p className="text-sm text-destructive">{errors.emailOrUsername}</p>
-                )}
-              </div>
+            {/* Signup Form */}
+            {step === 'signup' && (
+              <motion.form 
+                onSubmit={handleSubmit} 
+                className="space-y-4 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-white/80 text-sm font-medium">
+                    Username
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="cooluser"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.username && (
+                    <p className="text-sm text-red-400">{errors.username}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white/80 text-sm font-medium">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-red-400">{errors.email}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-white/80 text-sm font-medium">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-red-400">{errors.password}</p>
+                  )}
+                </div>
+
+                {/* Turnstile Widget */}
+                <div className="flex justify-center py-2">
+                  <div ref={turnstileRef} />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || !turnstileToken}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Continue
+                </Button>
+              </motion.form>
+            )}
+
+            {/* Verification Form */}
+            {step === 'verify' && (
+              <motion.div 
+                className="space-y-6 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={setVerificationCode}
+                    className="gap-2"
+                  >
+                    <InputOTPGroup className="gap-2">
+                      {[0, 1, 2, 3, 4, 5].map((index) => (
+                        <InputOTPSlot 
+                          key={index}
+                          index={index} 
+                          className="w-12 h-14 bg-white/5 border-white/10 text-white text-lg font-semibold rounded-lg focus:border-primary focus:ring-primary/20"
+                        />
+                      ))}
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                <Button
+                  onClick={handleVerifyCode}
+                  disabled={loading || verificationCode.length !== 6}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Verify
+                </Button>
+
+                <div className="text-center">
                   <button
                     type="button"
-                    onClick={() => setStep('forgot-password')}
-                    className="text-xs text-primary hover:underline"
+                    onClick={handleResendCode}
+                    disabled={loading}
+                    className="text-sm text-white/50 hover:text-white transition-colors"
                   >
-                    Forgot?
+                    Didn't receive a code? <span className="text-primary">Resend</span>
                   </button>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-              </div>
+              </motion.div>
+            )}
 
-              {/* Turnstile Widget */}
-              <div className="flex justify-center">
-                <div ref={turnstileRef} />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading || !turnstileToken}
-                className="w-full bg-primary hover:bg-primary/90"
+            {/* Forgot Password Form */}
+            {step === 'forgot-password' && (
+              <motion.form 
+                onSubmit={handleSubmit} 
+                className="space-y-5 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
               >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Sign in
-              </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white/80 text-sm font-medium">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-red-400">{errors.email}</p>
+                  )}
+                </div>
 
-            </form>
-          )}
-
-          {/* Signup Form */}
-          {step === 'signup' && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="cooluser"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-              </div>
-
-              {/* Turnstile Widget */}
-              <div className="flex justify-center">
-                <div ref={turnstileRef} />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading || !turnstileToken}
-                className="w-full bg-primary hover:bg-primary/90"
-              >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Continue
-              </Button>
-
-            </form>
-          )}
-
-          {/* Verification Form */}
-          {step === 'verify' && (
-            <div className="space-y-6">
-              <div className="flex justify-center">
-                <InputOTP
-                  maxLength={6}
-                  value={verificationCode}
-                  onChange={setVerificationCode}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
                 >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Send reset link
+                </Button>
 
-              <Button
-                onClick={handleVerifyCode}
-                disabled={loading || verificationCode.length !== 6}
-                className="w-full bg-primary hover:bg-primary/90"
-              >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Verify
-              </Button>
-
-              <div className="text-center">
                 <button
                   type="button"
-                  onClick={handleResendCode}
-                  disabled={loading}
-                  className="text-sm text-muted-foreground hover:text-white transition-colors"
+                  onClick={() => setStep('login')}
+                  className="w-full text-sm text-white/50 hover:text-white transition-colors flex items-center justify-center gap-2"
                 >
-                  Didn't receive a code? Resend
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to login
                 </button>
-              </div>
-            </div>
-          )}
+              </motion.form>
+            )}
 
-          {/* Forgot Password Form */}
-          {step === 'forgot-password' && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary hover:bg-primary/90"
+            {/* Reset Password Form */}
+            {step === 'reset-password' && (
+              <motion.form 
+                onSubmit={handleSubmit} 
+                className="space-y-5 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
               >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Send link
-              </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-white/80 text-sm font-medium">
+                    New password
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.newPassword && (
+                    <p className="text-sm text-red-400">{errors.newPassword}</p>
+                  )}
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setStep('login')}
-                className="w-full text-sm text-muted-foreground hover:text-white transition-colors"
-              >
-                Back to login
-              </button>
-            </form>
-          )}
-
-          {/* Reset Password Form */}
-          {step === 'reset-password' && (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New password</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-secondary/50 border-border"
-                />
-                {errors.newPassword && (
-                  <p className="text-sm text-destructive">{errors.newPassword}</p>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary hover:bg-primary/90"
-              >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save password
-              </Button>
-            </form>
-          )}
-
-          {/* MFA Verification Form */}
-          {step === 'mfa-verify' && (
-            <div className="space-y-6">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-primary" />
-              </div>
-              
-              <div className="flex justify-center">
-                <InputOTP
-                  maxLength={6}
-                  value={mfaCode}
-                  onChange={setMfaCode}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
                 >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save password
+                </Button>
+              </motion.form>
+            )}
 
-              <Button
-                onClick={handleMfaVerify}
-                disabled={loading || mfaCode.length !== 6}
-                className="w-full bg-primary hover:bg-primary/90"
+            {/* MFA Verification Form */}
+            {step === 'mfa-verify' && (
+              <motion.div 
+                className="space-y-6 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
               >
-                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Verify
-              </Button>
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={mfaCode}
+                    onChange={setMfaCode}
+                    className="gap-2"
+                  >
+                    <InputOTPGroup className="gap-2">
+                      {[0, 1, 2, 3, 4, 5].map((index) => (
+                        <InputOTPSlot 
+                          key={index}
+                          index={index} 
+                          className="w-12 h-14 bg-white/5 border-white/10 text-white text-lg font-semibold rounded-lg focus:border-primary focus:ring-primary/20"
+                        />
+                      ))}
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
 
-              <div className="text-center">
+                <Button
+                  onClick={handleMfaVerify}
+                  disabled={loading || mfaCode.length !== 6}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Verify
+                </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('login');
+                      setMfaCode('');
+                      setMfaFactorId(null);
+                    }}
+                    className="text-sm text-white/50 hover:text-white transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to login
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Toggle between login and signup */}
+            {(step === 'login' || step === 'signup') && (
+              <motion.div 
+                className="mt-8 text-center relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
                 <button
                   type="button"
                   onClick={() => {
-                    setStep('login');
-                    setMfaCode('');
-                    setMfaFactorId(null);
+                    setStep(step === 'login' ? 'signup' : 'login');
+                    setErrors({});
+                    setTurnstileToken(null);
                   }}
-                  className="text-sm text-muted-foreground hover:text-white transition-colors"
+                  className="text-sm text-white/50 hover:text-white transition-colors"
                 >
-                  ← Back to login
+                  {step === 'login'
+                    ? "Don't have an account? "
+                    : 'Already have an account? '}
+                  <span className="text-primary font-medium">
+                    {step === 'login' ? 'Sign up' : 'Sign in'}
+                  </span>
                 </button>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {/* Toggle between login and signup */}
-          {(step === 'login' || step === 'signup') && (
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setStep(step === 'login' ? 'signup' : 'login');
-                  setErrors({});
-                  setTurnstileToken(null);
-                }}
-                className="text-sm text-muted-foreground hover:text-white transition-colors"
+            {step === 'verify' && (
+              <motion.div 
+                className="mt-6 text-center relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
               >
-                {step === 'login'
-                  ? "Don't have an account? Sign up"
-                  : 'Already have an account? Sign in'}
-              </button>
-            </div>
-          )}
-
-          {step === 'verify' && (
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('signup');
-                  setVerificationCode('');
-                }}
-                className="text-sm text-muted-foreground hover:text-white transition-colors"
-              >
-                ← Back to sign up
-              </button>
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('signup');
+                    setVerificationCode('');
+                  }}
+                  className="text-sm text-white/50 hover:text-white transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to sign up
+                </button>
+              </motion.div>
+            )}
+          </div>
         </div>
       </motion.div>
     </div>
