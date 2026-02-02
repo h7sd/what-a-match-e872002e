@@ -1134,6 +1134,21 @@ export type Database = {
           rarity: string
         }[]
       }
+      get_public_badges: {
+        Args: never
+        Returns: {
+          claims_count: number
+          color: string
+          created_at: string
+          description: string
+          icon_url: string
+          id: string
+          is_limited: boolean
+          max_claims: number
+          name: string
+          rarity: string
+        }[]
+      }
       get_public_profile: {
         Args: { p_username: string }
         Returns: {

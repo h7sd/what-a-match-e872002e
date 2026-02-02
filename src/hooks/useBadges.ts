@@ -50,18 +50,29 @@ export function useIsAdmin() {
   });
 }
 
-// Get all global badges
+// Get all global badges (uses secure RPC to hide created_by from non-admins)
 export function useGlobalBadges() {
+  const { data: isAdmin } = useIsAdmin();
+  
   return useQuery({
-    queryKey: ['globalBadges'],
+    queryKey: ['globalBadges', isAdmin],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('global_badges')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as GlobalBadge[];
+      if (isAdmin) {
+        // Admins can see full data including created_by
+        const { data, error } = await supabase
+          .from('global_badges')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        return data as GlobalBadge[];
+      } else {
+        // Public users use secure RPC that hides created_by
+        const { data, error } = await supabase.rpc('get_public_badges');
+        
+        if (error) throw error;
+        return (data || []) as GlobalBadge[];
+      }
     },
   });
 }
