@@ -3,12 +3,38 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, Loader2, ArrowRight } from 'lucide-react';
-import { checkUsernameExists } from '@/lib/api';
+import { checkUsernameExists, getPublicStats } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+
+function useStats() {
+  return useQuery({
+    queryKey: ['claim-section-stats'],
+    queryFn: async () => {
+      const stats = await getPublicStats();
+      return {
+        views: stats.totalViews,
+        users: stats.totalUsers,
+      };
+    },
+    staleTime: 60000,
+  });
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M+';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
+  }
+  return num.toString() + '+';
+}
 
 export function ClaimSection() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
   const navigate = useNavigate();
+  const { data: stats } = useStats();
   
   const [username, setUsername] = useState('');
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -113,6 +139,33 @@ export function ClaimSection() {
             )}
           </motion.p>
         </div>
+
+        {/* Live Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="flex items-center justify-center gap-8 md:gap-12 mt-12"
+        >
+          <div className="text-center">
+            <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
+              {formatNumber(stats?.users || 0)}
+            </p>
+            <p className="text-xs md:text-sm text-muted-foreground/60">Active Users</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
+              {formatNumber(stats?.views || 0)}
+            </p>
+            <p className="text-xs md:text-sm text-muted-foreground/60">Profile Views</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
+              99.9%
+            </p>
+            <p className="text-xs md:text-sm text-muted-foreground/60">Uptime</p>
+          </div>
+        </motion.div>
       </motion.div>
     </section>
   );
