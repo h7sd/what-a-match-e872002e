@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, Send, User, Bot, Loader2, RefreshCw, Users, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,13 @@ interface AdminProfile {
   avatar_url: string | null;
 }
 
+interface UserProfile {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 export function AdminLiveChat() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -45,8 +52,11 @@ export function AdminLiveChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [adminProfiles, setAdminProfiles] = useState<Record<string, AdminProfile>>({});
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const [currentAdminProfile, setCurrentAdminProfile] = useState<AdminProfile | null>(null);
+  const [userIsTyping, setUserIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadConversations();
@@ -115,7 +125,38 @@ export function AdminLiveChat() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, userIsTyping]);
+
+  // Listen for user typing via broadcast
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    const channel = supabase
+      .channel(`typing-${selectedConversation.id}`)
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (payload.payload?.sender === 'user') {
+          setUserIsTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setUserIsTyping(false), 3000);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [selectedConversation?.id]);
+
+  // Send admin typing indicator
+  const sendTypingIndicator = useCallback(() => {
+    if (!selectedConversation) return;
+    supabase.channel(`typing-${selectedConversation.id}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { sender: 'admin' }
+    });
+  }, [selectedConversation?.id]);
 
   const loadConversations = async () => {
     setIsLoading(true);
@@ -141,6 +182,21 @@ export function AdminLiveChat() {
           const profileMap: Record<string, AdminProfile> = {};
           profiles.forEach(p => { profileMap[p.user_id] = p; });
           setAdminProfiles(prev => ({ ...prev, ...profileMap }));
+        }
+      }
+
+      // Load user profiles for logged-in users
+      const userIds = [...new Set((data || []).filter(c => c.user_id).map(c => c.user_id))];
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .in('user_id', userIds);
+        
+        if (profiles) {
+          const profileMap: Record<string, UserProfile> = {};
+          profiles.forEach(p => { profileMap[p.user_id] = p; });
+          setUserProfiles(prev => ({ ...prev, ...profileMap }));
         }
       }
     } catch (error) {
@@ -170,6 +226,11 @@ export function AdminLiveChat() {
     if (adminProfiles[userId]) return adminProfiles[userId];
     if (user?.id && userId === user.id && currentAdminProfile) return currentAdminProfile;
     return null;
+  };
+
+  const getUserInfo = (userId: string | null) => {
+    if (!userId) return null;
+    return userProfiles[userId] || null;
   };
 
   const claimConversation = async (conv: Conversation) => {
@@ -326,9 +387,23 @@ export function AdminLiveChat() {
                           {new Date(conv.updated_at).toLocaleTimeString()}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {conv.user_id ? 'Registered User' : `Visitor ${conv.visitor_id?.slice(-6)}`}
-                      </p>
+                      {conv.user_id && userProfiles[conv.user_id] ? (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={userProfiles[conv.user_id].avatar_url || undefined} />
+                            <AvatarFallback className="text-[8px] bg-secondary">
+                              {(userProfiles[conv.user_id].display_name || userProfiles[conv.user_id].username)?.[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-foreground truncate">
+                            {userProfiles[conv.user_id].display_name || userProfiles[conv.user_id].username}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground truncate mt-1">
+                          {conv.user_id ? 'Loading...' : `Guest #${conv.visitor_id?.slice(-6)}`}
+                        </p>
+                      )}
                       {assignedAdmin && (
                         <div className="flex items-center gap-1.5 mt-2">
                           <Avatar className="h-4 w-4">
@@ -357,10 +432,36 @@ export function AdminLiveChat() {
               {/* Chat Header */}
               <div className="p-3 border-b border-border bg-secondary/30 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    {selectedConversation.user_id ? 'Registered User' : `Visitor`}
-                  </span>
+                  {selectedConversation.user_id && getUserInfo(selectedConversation.user_id) ? (
+                    <>
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={getUserInfo(selectedConversation.user_id)?.avatar_url || undefined} />
+                        <AvatarFallback className="text-[10px] bg-secondary">
+                          {(getUserInfo(selectedConversation.user_id)?.display_name || 
+                            getUserInfo(selectedConversation.user_id)?.username)?.[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <span className="text-sm font-medium">
+                          {getUserInfo(selectedConversation.user_id)?.display_name || 
+                           getUserInfo(selectedConversation.user_id)?.username}
+                        </span>
+                        <p className="text-[10px] text-muted-foreground">Registered User</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                        <User className="w-3 h-3 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium">Guest</span>
+                        <p className="text-[10px] text-muted-foreground">
+                          #{selectedConversation.visitor_id?.slice(-6) || 'Anonymous'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                   {selectedConversation.assigned_admin_id && (
                     <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-primary/10">
                       <UserCheck className="w-3 h-3 text-primary" />
@@ -453,6 +554,33 @@ export function AdminLiveChat() {
                       </div>
                     );
                   })}
+                  {userIsTyping && (
+                    <div className="flex gap-2 items-center">
+                      <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                        {selectedConversation.user_id && getUserInfo(selectedConversation.user_id)?.avatar_url ? (
+                          <img 
+                            src={getUserInfo(selectedConversation.user_id)?.avatar_url || ''} 
+                            alt="" 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <User className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="bg-secondary px-3 py-2 rounded-xl rounded-tl-sm">
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {selectedConversation.user_id && getUserInfo(selectedConversation.user_id)
+                          ? `${getUserInfo(selectedConversation.user_id)?.display_name || getUserInfo(selectedConversation.user_id)?.username} is typing...`
+                          : 'Guest is typing...'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
 
@@ -464,7 +592,10 @@ export function AdminLiveChat() {
                 >
                   <Input
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
+                    onChange={(e) => {
+                      setInputText(e.target.value);
+                      sendTypingIndicator();
+                    }}
                     placeholder="Type a reply..."
                     className="flex-1"
                     disabled={isSending}
