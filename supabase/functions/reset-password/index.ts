@@ -140,6 +140,15 @@ const handler = async (req: Request): Promise<Response> => {
     if (updateError) {
       console.error("Error updating password:", updateError.message);
       await addTimingJitter();
+      
+      // Check for weak password error and return user-friendly message
+      if (updateError.message.includes("weak") || updateError.message.includes("easy to guess")) {
+        return new Response(
+          JSON.stringify({ error: "Password is too weak. Please choose a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and symbols." }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
       throw new Error("Failed to update password");
     }
 
