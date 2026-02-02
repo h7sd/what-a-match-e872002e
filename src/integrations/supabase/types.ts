@@ -1048,36 +1048,7 @@ export type Database = {
       }
     }
     Views: {
-      alias_requests_safe: {
-        Row: {
-          created_at: string | null
-          id: string | null
-          requested_alias: string | null
-          requester_id: string | null
-          responded_at: string | null
-          status: string | null
-          target_user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string | null
-          requested_alias?: string | null
-          requester_id?: string | null
-          responded_at?: string | null
-          status?: string | null
-          target_user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string | null
-          requested_alias?: string | null
-          requester_id?: string | null
-          responded_at?: string | null
-          status?: string | null
-          target_user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_record_view: {
