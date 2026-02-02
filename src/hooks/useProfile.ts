@@ -131,14 +131,15 @@ export function useProfileByUsername(username: string) {
   return useQuery({
     queryKey: ['profile', username],
     queryFn: async () => {
+      // Use SECURITY DEFINER function for public profile access
+      // This ensures sensitive fields (paypal_order_id, etc.) are never exposed
       const { data, error } = await supabase
-        .from('profiles')
-        .select(PUBLIC_PROFILE_FIELDS)
-        .eq('username', username.toLowerCase())
-        .maybeSingle();
+        .rpc('get_public_profile', { p_username: username.toLowerCase() });
 
       if (error) throw error;
-      return data as Profile | null;
+      // RPC returns an array, get first result
+      const profile = Array.isArray(data) ? data[0] : data;
+      return profile as Profile | null;
     },
     enabled: !!username,
   });
@@ -148,14 +149,14 @@ export function useProfileByAlias(alias: string) {
   return useQuery({
     queryKey: ['profile-alias', alias],
     queryFn: async () => {
+      // Use SECURITY DEFINER function for public profile access
       const { data, error } = await supabase
-        .from('profiles')
-        .select(PUBLIC_PROFILE_FIELDS)
-        .eq('alias_username', alias.toLowerCase())
-        .maybeSingle();
+        .rpc('get_public_profile_by_alias', { p_alias: alias.toLowerCase() });
 
       if (error) throw error;
-      return data as Profile | null;
+      // RPC returns an array, get first result
+      const profile = Array.isArray(data) ? data[0] : data;
+      return profile as Profile | null;
     },
     enabled: !!alias,
   });
