@@ -3,6 +3,7 @@ import { MessageCircle, X, Send, Bot, User, Loader2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 
@@ -11,6 +12,12 @@ interface Message {
   content: string;
   sender_type: 'user' | 'admin' | 'ai';
   created_at: string;
+}
+
+interface AgentInfo {
+  display_name: string | null;
+  username: string;
+  avatar_url: string | null;
 }
 
 export function LiveChatWidget() {
@@ -22,6 +29,7 @@ export function LiveChatWidget() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [mode, setMode] = useState<'ai' | 'agent'>('ai');
   const [agentRequested, setAgentRequested] = useState(false);
+  const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,16 +92,28 @@ export function LiveChatWidget() {
           table: 'live_chat_conversations',
           filter: `id=eq.${conversationId}`,
         },
-        (payload) => {
+        async (payload) => {
           const updated = payload.new as any;
-          if (updated?.assigned_admin_id) {
+          if (updated?.assigned_admin_id && !agentInfo) {
             setAgentRequested(true);
             setMode('agent');
+            
+            // Load agent profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('display_name, username, avatar_url')
+              .eq('user_id', updated.assigned_admin_id)
+              .maybeSingle();
+            
+            if (profile) {
+              setAgentInfo(profile);
+            }
+            
             setMessages(prev => {
               if (prev.some(m => m.id === 'agent_connected')) return prev;
               return [...prev, {
                 id: 'agent_connected',
-                content: "You're now connected with a live support agent.",
+                content: `${profile?.display_name || profile?.username || 'A support agent'} has joined the chat.`,
                 sender_type: 'ai',
                 created_at: new Date().toISOString(),
               }];
@@ -106,7 +126,7 @@ export function LiveChatWidget() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
+  }, [conversationId, agentInfo]);
 
   const initConversation = async () => {
     try {
@@ -164,10 +184,10 @@ export function LiveChatWidget() {
     const wantsAgent = /agent|human|person|real person|support team|live support/i.test(userMessage);
     
     if (wantsAgent || agentRequested) {
-      setAgentRequested(true);
-      setMode('agent');
-      
-      if (wantsAgent && !agentRequested) {
+      if (!agentRequested) {
+        setAgentRequested(true);
+        setMode('agent');
+        
         setMessages(prev => [...prev, {
           id: `system_${Date.now()}`,
           content: "I'm connecting you with a live support agent. Please wait a moment, someone will be with you shortly!",
@@ -303,19 +323,36 @@ export function LiveChatWidget() {
       {/* Header */}
       <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-            {mode === 'ai' ? (
-              <Bot className="w-5 h-5 text-primary" />
-            ) : (
-              <Users className="w-5 h-5 text-primary" />
-            )}
-          </div>
+          {mode === 'agent' && agentInfo ? (
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={agentInfo.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/20">
+                {(agentInfo.display_name || agentInfo.username)?.[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              {mode === 'ai' ? (
+                <Bot className="w-5 h-5 text-primary" />
+              ) : (
+                <Users className="w-5 h-5 text-primary" />
+              )}
+            </div>
+          )}
           <div>
             <h3 className="font-semibold text-sm">
-              {mode === 'ai' ? 'AI Support' : 'Live Support'}
+              {mode === 'agent' && agentInfo
+                ? agentInfo.display_name || agentInfo.username
+                : mode === 'ai' 
+                  ? 'AI Support' 
+                  : 'Live Support'}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {mode === 'ai' ? 'Powered by AI' : agentRequested ? 'Waiting for agent...' : 'Connected'}
+              {mode === 'ai' 
+                ? 'Powered by AI' 
+                : agentInfo 
+                  ? 'Support Agent' 
+                  : 'Waiting for agent...'}
             </p>
           </div>
         </div>
@@ -332,7 +369,7 @@ export function LiveChatWidget() {
               key={msg.id}
               className={`flex gap-2 ${msg.sender_type === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${
                 msg.sender_type === 'user' 
                   ? 'bg-primary' 
                   : msg.sender_type === 'admin'
@@ -342,7 +379,11 @@ export function LiveChatWidget() {
                 {msg.sender_type === 'user' ? (
                   <User className="w-3.5 h-3.5 text-primary-foreground" />
                 ) : msg.sender_type === 'admin' ? (
-                  <Users className="w-3.5 h-3.5 text-green-500" />
+                  agentInfo?.avatar_url ? (
+                    <img src={agentInfo.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Users className="w-3.5 h-3.5 text-green-500" />
+                  )
                 ) : (
                   <Bot className="w-3.5 h-3.5 text-muted-foreground" />
                 )}

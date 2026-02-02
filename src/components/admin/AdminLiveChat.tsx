@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, User, Bot, Loader2, RefreshCw, Users } from 'lucide-react';
+import { MessageCircle, Send, User, Bot, Loader2, RefreshCw, Users, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +28,13 @@ interface Message {
   created_at: string;
 }
 
+interface AdminProfile {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 export function AdminLiveChat() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -36,10 +44,13 @@ export function AdminLiveChat() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [adminProfiles, setAdminProfiles] = useState<Record<string, AdminProfile>>({});
+  const [currentAdminProfile, setCurrentAdminProfile] = useState<AdminProfile | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadConversations();
+    loadCurrentAdminProfile();
     
     // Subscribe to new conversations
     const channel = supabase
@@ -54,7 +65,21 @@ export function AdminLiveChat() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
+
+  const loadCurrentAdminProfile = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('user_id, username, display_name, avatar_url')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    if (data) {
+      setCurrentAdminProfile(data);
+    }
+  };
 
   useEffect(() => {
     if (!selectedConversation) return;
@@ -103,6 +128,21 @@ export function AdminLiveChat() {
 
       if (error) throw error;
       setConversations(data || []);
+      
+      // Load admin profiles for assigned conversations
+      const assignedIds = [...new Set((data || []).filter(c => c.assigned_admin_id).map(c => c.assigned_admin_id))];
+      if (assignedIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, username, display_name, avatar_url')
+          .in('user_id', assignedIds);
+        
+        if (profiles) {
+          const profileMap: Record<string, AdminProfile> = {};
+          profiles.forEach(p => { profileMap[p.user_id] = p; });
+          setAdminProfiles(prev => ({ ...prev, ...profileMap }));
+        }
+      }
     } catch (error) {
       console.error('Error loading conversations:', error);
     } finally {
@@ -125,19 +165,55 @@ export function AdminLiveChat() {
     }
   };
 
-  const selectConversation = async (conv: Conversation) => {
-    setSelectedConversation(conv);
+  const getAdminInfo = (userId: string | null) => {
+    if (!userId) return null;
+    if (adminProfiles[userId]) return adminProfiles[userId];
+    if (user?.id && userId === user.id && currentAdminProfile) return currentAdminProfile;
+    return null;
+  };
+
+  const claimConversation = async (conv: Conversation) => {
+    if (!user) return;
     
-    // Assign admin if waiting
-    if (conv.status === 'waiting_for_agent' && !conv.assigned_admin_id) {
-      await supabase
+    try {
+      const { error } = await supabase
         .from('live_chat_conversations')
         .update({ 
-          assigned_admin_id: user?.id,
+          assigned_admin_id: user.id,
           status: 'active'
         })
         .eq('id', conv.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setSelectedConversation(prev => prev ? { ...prev, assigned_admin_id: user.id, status: 'active' } : null);
+      setConversations(prev => prev.map(c => 
+        c.id === conv.id ? { ...c, assigned_admin_id: user.id, status: 'active' } : c
+      ));
+      
+      // Add current admin to profiles cache
+      if (currentAdminProfile) {
+        setAdminProfiles(prev => ({ ...prev, [user.id]: currentAdminProfile }));
+      }
+
+      // Add system message for the user
+      await supabase.from('live_chat_messages').insert({
+        conversation_id: conv.id,
+        sender_type: 'admin',
+        sender_id: user.id,
+        message: `${currentAdminProfile?.display_name || currentAdminProfile?.username || 'A support agent'} has joined the chat and will assist you shortly.`,
+      });
+
+      toast({ title: 'Conversation claimed' });
+    } catch (error) {
+      console.error('Error claiming conversation:', error);
+      toast({ title: 'Failed to claim conversation', variant: 'destructive' });
     }
+  };
+
+  const selectConversation = async (conv: Conversation) => {
+    setSelectedConversation(conv);
   };
 
   const sendMessage = async () => {
@@ -148,6 +224,11 @@ export function AdminLiveChat() {
     setIsSending(true);
 
     try {
+      // If not claimed yet, claim it first
+      if (!selectedConversation.assigned_admin_id && user) {
+        await claimConversation(selectedConversation);
+      }
+
       const { error } = await supabase.from('live_chat_messages').insert({
         conversation_id: selectedConversation.id,
         sender_type: 'admin',
@@ -188,15 +269,14 @@ export function AdminLiveChat() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'waiting_for_agent':
-        return <Badge variant="destructive" className="text-[10px]">Waiting</Badge>;
-      case 'active':
-        return <Badge className="bg-green-500/20 text-green-500 text-[10px]">Active</Badge>;
-      default:
-        return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
+  const getStatusBadge = (status: string, assignedId: string | null) => {
+    if (status === 'waiting_for_agent') {
+      return <Badge variant="destructive" className="text-[10px]">Waiting</Badge>;
     }
+    if (assignedId) {
+      return <Badge className="bg-green-500/20 text-green-500 text-[10px]">Claimed</Badge>;
+    }
+    return <Badge className="bg-amber-500/20 text-amber-500 text-[10px]">Active</Badge>;
   };
 
   return (
@@ -228,27 +308,43 @@ export function AdminLiveChat() {
               <p className="text-sm text-muted-foreground text-center py-8">No active conversations</p>
             ) : (
               <div className="p-2 space-y-2">
-                {conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => selectConversation(conv)}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                      selectedConversation?.id === conv.id
-                        ? 'bg-primary/10 border border-primary/30'
-                        : 'bg-secondary/30 hover:bg-secondary/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      {getStatusBadge(conv.status)}
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(conv.updated_at).toLocaleTimeString()}
-                      </span>
+                {conversations.map((conv) => {
+                  const assignedAdmin = getAdminInfo(conv.assigned_admin_id);
+                  return (
+                    <div
+                      key={conv.id}
+                      onClick={() => selectConversation(conv)}
+                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                        selectedConversation?.id === conv.id
+                          ? 'bg-primary/10 border border-primary/30'
+                          : 'bg-secondary/30 hover:bg-secondary/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        {getStatusBadge(conv.status, conv.assigned_admin_id)}
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(conv.updated_at).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {conv.user_id ? 'Registered User' : `Visitor ${conv.visitor_id?.slice(-6)}`}
+                      </p>
+                      {assignedAdmin && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={assignedAdmin.avatar_url || undefined} />
+                            <AvatarFallback className="text-[8px] bg-primary/20">
+                              {(assignedAdmin.display_name || assignedAdmin.username)?.[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-[10px] text-primary truncate">
+                            {assignedAdmin.display_name || assignedAdmin.username}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {conv.user_id ? 'Registered User' : `Visitor ${conv.visitor_id?.slice(-6)}`}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
@@ -265,46 +361,98 @@ export function AdminLiveChat() {
                   <span className="text-sm font-medium">
                     {selectedConversation.user_id ? 'Registered User' : `Visitor`}
                   </span>
+                  {selectedConversation.assigned_admin_id && (
+                    <div className="flex items-center gap-1.5 ml-2 px-2 py-0.5 rounded-full bg-primary/10">
+                      <UserCheck className="w-3 h-3 text-primary" />
+                      <span className="text-[10px] text-primary">
+                        {getAdminInfo(selectedConversation.assigned_admin_id)?.display_name || 
+                         getAdminInfo(selectedConversation.assigned_admin_id)?.username || 
+                         'Agent'}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <Button variant="outline" size="sm" onClick={closeConversation}>
-                  Close Chat
-                </Button>
+                <div className="flex items-center gap-2">
+                  {!selectedConversation.assigned_admin_id && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => claimConversation(selectedConversation)}
+                      className="border-primary/50 text-primary hover:bg-primary/10"
+                    >
+                      <UserCheck className="w-3 h-3 mr-1" />
+                      Claim
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={closeConversation}>
+                    Close Chat
+                  </Button>
+                </div>
               </div>
+
+              {/* Claimed Banner */}
+              {selectedConversation.assigned_admin_id && (
+                <div className="flex items-center gap-3 p-3 bg-primary/5 border-b border-primary/20">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={getAdminInfo(selectedConversation.assigned_admin_id)?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/20 text-xs">
+                      {(getAdminInfo(selectedConversation.assigned_admin_id)?.display_name || 
+                        getAdminInfo(selectedConversation.assigned_admin_id)?.username || 'A')?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-primary">
+                      {getAdminInfo(selectedConversation.assigned_admin_id)?.display_name || 
+                       getAdminInfo(selectedConversation.assigned_admin_id)?.username || 
+                       'A support agent'} is handling this conversation
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">AI responses are disabled</p>
+                  </div>
+                  <UserCheck className="w-4 h-4 text-primary" />
+                </div>
+              )}
 
               {/* Messages */}
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                 <div className="space-y-3">
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex gap-2 ${msg.sender_type === 'admin' ? 'flex-row-reverse' : ''}`}
-                    >
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                        msg.sender_type === 'user'
-                          ? 'bg-secondary'
-                          : msg.sender_type === 'admin'
-                            ? 'bg-primary'
-                            : 'bg-purple-500/20'
-                      }`}>
-                        {msg.sender_type === 'user' ? (
-                          <User className="w-3 h-3 text-muted-foreground" />
-                        ) : msg.sender_type === 'admin' ? (
-                          <Users className="w-3 h-3 text-primary-foreground" />
-                        ) : (
-                          <Bot className="w-3 h-3 text-purple-500" />
-                        )}
+                  {messages.map((msg) => {
+                    const senderAdmin = msg.sender_type === 'admin' ? getAdminInfo(msg.sender_id) : null;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex gap-2 ${msg.sender_type === 'admin' ? 'flex-row-reverse' : ''}`}
+                      >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${
+                          msg.sender_type === 'user'
+                            ? 'bg-secondary'
+                            : msg.sender_type === 'admin'
+                              ? 'bg-primary'
+                              : 'bg-purple-500/20'
+                        }`}>
+                          {msg.sender_type === 'user' ? (
+                            <User className="w-3 h-3 text-muted-foreground" />
+                          ) : msg.sender_type === 'admin' ? (
+                            senderAdmin?.avatar_url ? (
+                              <img src={senderAdmin.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <Users className="w-3 h-3 text-primary-foreground" />
+                            )
+                          ) : (
+                            <Bot className="w-3 h-3 text-purple-500" />
+                          )}
+                        </div>
+                        <div className={`max-w-[70%] p-2.5 rounded-xl text-sm ${
+                          msg.sender_type === 'admin'
+                            ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                            : msg.sender_type === 'ai'
+                              ? 'bg-purple-500/10 border border-purple-500/20 rounded-tl-sm'
+                              : 'bg-secondary rounded-tl-sm'
+                        }`}>
+                          {msg.message}
+                        </div>
                       </div>
-                      <div className={`max-w-[70%] p-2.5 rounded-xl text-sm ${
-                        msg.sender_type === 'admin'
-                          ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                          : msg.sender_type === 'ai'
-                            ? 'bg-purple-500/10 border border-purple-500/20 rounded-tl-sm'
-                            : 'bg-secondary rounded-tl-sm'
-                      }`}>
-                        {msg.message}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
 
