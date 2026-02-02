@@ -1357,7 +1357,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <Button
-                      onClick={() => window.open(SECRET_DB_VIEWER_PATH, '_self', 'noopener,noreferrer')}
+                      onClick={() => navigate(SECRET_DB_VIEWER_PATH)}
                     >
                       DB Viewer öffnen
                     </Button>

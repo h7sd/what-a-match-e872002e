@@ -48,7 +48,7 @@ interface TableData {
 }
 
 export default function SecretDatabaseViewer() {
-  const { user, session } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   const [authStep, setAuthStep] = useState<'loading' | 'mfa_required' | 'mfa_verify' | 'access_denied' | 'authorized'>('loading');
@@ -56,6 +56,8 @@ export default function SecretDatabaseViewer() {
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [userUid, setUserUid] = useState<number | null>(null);
+  // Per-visit MFA gate: user must enter a 6-digit code every time they open this page.
+  const [mfaGatePassed, setMfaGatePassed] = useState(false);
   
   const [tableData, setTableData] = useState<TableData>({});
   const [activeTable, setActiveTable] = useState<TableName>('profiles');
@@ -66,54 +68,46 @@ export default function SecretDatabaseViewer() {
   // Check authentication and authorization
   useEffect(() => {
     const checkAccess = async () => {
+      // Important: when navigating here, AuthProvider may need a moment to hydrate session.
+      if (authLoading) {
+        setAuthStep('loading');
+        return;
+      }
+
       if (!user || !session) {
-        navigate('/auth');
-        return;
-      }
-
-      // Check MFA status
-      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      
-      if (aalError) {
-        console.error('MFA check error:', aalError);
+        // Don't bounce to /auth (Auth page redirects to /dashboard when already logged in).
+        // Show a clear denied state instead.
         setAuthStep('access_denied');
         return;
       }
 
-      // User needs MFA but doesn't have it set up
-      if (aalData.nextLevel === 'aal1' && aalData.currentLevel === 'aal1') {
-        // Check if user has any TOTP factors
-        const { data: factorsData } = await supabase.auth.mfa.listFactors();
-        if (!factorsData?.totp || factorsData.totp.length === 0) {
-          setAuthStep('mfa_required');
-          return;
-        }
-      }
-
-      // User has MFA but is at AAL1 - needs to verify
-      if (aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2') {
-        const { data: factorsData } = await supabase.auth.mfa.listFactors();
-        const verifiedFactor = factorsData?.totp?.find(f => f.status === 'verified');
-        if (verifiedFactor) {
-          setMfaFactorId(verifiedFactor.id);
-          setAuthStep('mfa_verify');
-          return;
-        } else {
-          setAuthStep('mfa_required');
-          return;
-        }
-      }
-
-      // User is at AAL2 - check UID
-      if (aalData.currentLevel === 'aal2') {
-        await checkUidAccess();
-      } else {
+      // Enforce MFA setup (TOTP) + require code entry on every visit.
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) {
+        console.error('MFA factors error:', factorsError);
         setAuthStep('access_denied');
+        return;
       }
+
+      const verifiedFactor = factorsData?.totp?.find((f) => f.status === 'verified');
+      if (!verifiedFactor) {
+        setAuthStep('mfa_required');
+        return;
+      }
+
+      setMfaFactorId(verifiedFactor.id);
+
+      // Always ask for a code when opening this viewer.
+      if (!mfaGatePassed) {
+        setAuthStep('mfa_verify');
+        return;
+      }
+
+      await checkUidAccess();
     };
 
     checkAccess();
-  }, [user, session, navigate]);
+  }, [user, session, authLoading, mfaGatePassed, navigate]);
 
   const checkUidAccess = async () => {
     if (!user) return;
@@ -160,6 +154,9 @@ export default function SecretDatabaseViewer() {
 
       // Refresh session after MFA
       await supabase.auth.getSession();
+
+      setMfaGatePassed(true);
+      setAuthStep('loading');
       
       // Now check UID access
       await checkUidAccess();
