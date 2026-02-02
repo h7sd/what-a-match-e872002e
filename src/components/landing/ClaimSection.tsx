@@ -155,12 +155,6 @@ export function ClaimSection() {
           </div>
           <div className="text-center">
             <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
-              {formatNumber(stats?.views || 0)}
-            </p>
-            <p className="text-xs md:text-sm text-muted-foreground/60">Profile Views</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-muted-foreground/80">
               99.9%
             </p>
             <p className="text-xs md:text-sm text-muted-foreground/60">Uptime</p>
