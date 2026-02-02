@@ -143,16 +143,33 @@ export function AdminUserManager() {
     }
   };
 
-  // Add role to user
+  // Add role to user - SECURITY: Protected by RLS policies
+  // Even if UI is somehow shown to non-admins, this will fail at database level
   const addRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      // Pre-flight check - verify we actually have admin rights
+      const { data: isActuallyAdmin } = await supabase.rpc('has_role', { 
+        _user_id: (await supabase.auth.getUser()).data.user?.id ?? '', 
+        _role: 'admin' 
+      });
+      
+      if (!isActuallyAdmin) {
+        throw new Error('Unauthorized: Admin access required');
+      }
+      
       const { data, error } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // RLS policy violation will appear as a generic error
+        if (error.code === '42501' || error.message.includes('policy')) {
+          throw new Error('Permission denied: You do not have admin privileges');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -166,28 +183,52 @@ export function AdminUserManager() {
     onError: (error: any) => {
       if (error.message.includes('duplicate')) {
         toast({ title: 'User already has this role', variant: 'destructive' });
+      } else if (error.message.includes('Unauthorized') || error.message.includes('Permission denied')) {
+        toast({ title: 'Access Denied', description: 'You do not have permission to assign roles.', variant: 'destructive' });
+        // Force re-check admin status
+        queryClient.invalidateQueries({ queryKey: ['isAdmin'] });
       } else {
         toast({ title: error.message, variant: 'destructive' });
       }
     },
   });
 
-  // Remove role from user
+  // Remove role from user - SECURITY: Protected by RLS policies
   const removeRole = useMutation({
     mutationFn: async (roleId: string) => {
+      // Pre-flight check
+      const { data: isActuallyAdmin } = await supabase.rpc('has_role', { 
+        _user_id: (await supabase.auth.getUser()).data.user?.id ?? '', 
+        _role: 'admin' 
+      });
+      
+      if (!isActuallyAdmin) {
+        throw new Error('Unauthorized: Admin access required');
+      }
+      
       const { error } = await supabase
         .from('user_roles')
         .delete()
         .eq('id', roleId);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501' || error.message.includes('policy')) {
+          throw new Error('Permission denied: You do not have admin privileges');
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminUserRoles'] });
       toast({ title: 'Role removed' });
     },
     onError: (error: any) => {
-      toast({ title: error.message, variant: 'destructive' });
+      if (error.message.includes('Unauthorized') || error.message.includes('Permission denied')) {
+        toast({ title: 'Access Denied', description: 'You do not have permission to remove roles.', variant: 'destructive' });
+        queryClient.invalidateQueries({ queryKey: ['isAdmin'] });
+      } else {
+        toast({ title: error.message, variant: 'destructive' });
+      }
     },
   });
 
