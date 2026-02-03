@@ -303,16 +303,33 @@ export function AdminAccountLookup() {
         }
       });
 
-      // Extract error message from response.data first (Edge Function returns {error: "message"})
-      // This handles cases where HTTP status is 400 but error is in data
-      const errorMessage = response.data?.error;
-      if (errorMessage) {
-        throw new Error(errorMessage);
+      // NOTE: On non-2xx responses, the SDK sets response.error and may NOT populate response.data.
+      // The backend still returns JSON like { error: "..." } – we extract it from the underlying Response.
+      if (response.error) {
+        let message: string | undefined = (response as any)?.data?.error;
+
+        const underlyingResponse: Response | undefined =
+          (response as any)?.response ?? (response.error as any)?.context;
+
+        if (!message && underlyingResponse && typeof (underlyingResponse as any).clone === 'function') {
+          try {
+            const body = await underlyingResponse.clone().json();
+            if (body && typeof body === 'object' && 'error' in body) {
+              const bodyError = (body as any).error;
+              if (typeof bodyError === 'string' && bodyError.trim().length > 0) {
+                message = bodyError;
+              }
+            }
+          } catch {
+            // ignore – fallback to generic error message
+          }
+        }
+
+        throw new Error(message || response.error.message || 'Unknown error');
       }
-      
-      // Also check response.error for network/other errors
-      if (response.error && !response.data?.success) {
-        throw new Error(response.error.message || 'Unknown error');
+
+      if ((response as any)?.data?.error) {
+        throw new Error((response as any).data.error);
       }
 
       // Update local state
