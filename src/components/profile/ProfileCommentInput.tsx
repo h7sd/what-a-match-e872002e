@@ -181,6 +181,18 @@ export function ProfileCommentInput({
     }
   };
 
+  // SVG filter for liquid glass distortion effect
+  const liquidGlassFilter = (
+    <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+      <defs>
+        <filter id="glass-distortion" x="-50%" y="-50%" width="200%" height="200%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.01 0.02" numOctaves="3" seed="5" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+  );
+
   // Render bubbles via Portal to escape any parent transform/overflow constraints
   const bubbleOverlay = bubbles.length > 0 
     ? createPortal(
@@ -196,6 +208,7 @@ export function ProfileCommentInput({
             overflow: 'visible',
           }}
         >
+          {liquidGlassFilter}
           {bubbles.map((bubble) => (
             <div
               key={bubble.id}
@@ -209,21 +222,15 @@ export function ProfileCommentInput({
                 transform: 'translate(-50%, -50%)',
               }}
             >
+              {/* Liquid Glass Wrapper */}
               <div
-                className="rounded-full font-bold whitespace-nowrap"
+                className="rounded-full font-semibold whitespace-nowrap"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.15) 100%)',
-                  backdropFilter: 'blur(20px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  color: '#ffffff',
-                  boxShadow: `
-                    0 8px 32px rgba(0,0,0,0.25),
-                    0 2px 8px rgba(0,0,0,0.15),
-                    inset 0 2px 4px rgba(255,255,255,0.25),
-                    inset 0 -1px 2px rgba(255,255,255,0.1),
-                    0 0 0 1px rgba(255,255,255,0.1)
-                  `,
+                  position: 'relative',
+                  display: 'flex',
+                  overflow: 'hidden',
+                  boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2)',
                   fontSize: `${0.6 + bubble.scale * 0.7}rem`,
                   padding: bubble.scale > 1.5 
                     ? '0.85rem 1.75rem' 
@@ -232,11 +239,51 @@ export function ProfileCommentInput({
                       : '0.6rem 1.2rem',
                 }}
               >
+                {/* Glass Effect Layer with distortion filter */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    zIndex: 0,
+                    inset: 0,
+                    backdropFilter: 'blur(3px)',
+                    WebkitBackdropFilter: 'blur(3px)',
+                    filter: 'url(#glass-distortion)',
+                    overflow: 'hidden',
+                    borderRadius: 'inherit',
+                  }}
+                />
+                
+                {/* Tint Layer */}
+                <div
+                  style={{
+                    zIndex: 1,
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(255, 255, 255, 0.50)',
+                    borderRadius: 'inherit',
+                  }}
+                />
+                
+                {/* Shine Layer */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 2,
+                    overflow: 'hidden',
+                    boxShadow: 'inset 2px 2px 1px 0 rgba(255, 255, 255, 0.5), inset -1px -1px 1px 1px rgba(255, 255, 255, 0.5)',
+                    borderRadius: 'inherit',
+                  }}
+                />
+                
+                {/* Text Layer */}
                 <span 
                   className="block whitespace-normal break-words text-center"
                   style={{
+                    zIndex: 3,
+                    position: 'relative',
+                    color: 'rgba(0, 0, 0, 0.85)',
                     maxWidth: bubble.scale > 1.5 ? 'min(90vw, 28rem)' : 'min(70vw, 18rem)',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.15)',
                     fontWeight: 600,
                     letterSpacing: '0.02em',
                   }}
