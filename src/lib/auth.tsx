@@ -151,19 +151,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyMfa = async (factorId: string, code: string) => {
     try {
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId
+      // Validate inputs client-side first
+      if (!factorId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(factorId)) {
+        throw new Error('Invalid verification request');
+      }
+      if (!code || !/^\d{6}$/.test(code)) {
+        throw new Error('Invalid code format');
+      }
+
+      // Use secure edge function for MFA verification (rate-limited, validated)
+      const { data, error } = await supabase.functions.invoke('mfa-verify', {
+        body: { action: 'verify', factorId, code }
       });
 
-      if (challengeError) throw challengeError;
+      if (error) {
+        // Check for rate limit error
+        if (error.message?.includes('429') || data?.lockoutMinutes) {
+          throw new Error(data?.message || 'Too many attempts. Please wait before trying again.');
+        }
+        throw error;
+      }
 
-      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
-        factorId,
-        challengeId: challengeData.id,
-        code
-      });
-
-      if (verifyError) throw verifyError;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Verification failed');
+      }
 
       // After successful MFA verification, refresh the session to get AAL2 token
       const { data: sessionData } = await supabase.auth.getSession();

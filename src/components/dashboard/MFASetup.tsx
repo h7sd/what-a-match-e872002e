@@ -56,8 +56,14 @@ export function MFASetup({ isOpen, onClose, onSuccess }: MFASetupProps) {
   };
 
   const verifyMFA = async () => {
-    if (verifyCode.length !== 6) {
-      toast({ title: 'Please enter a 6-digit code', variant: 'destructive' });
+    // Strict client-side validation
+    if (!/^\d{6}$/.test(verifyCode)) {
+      toast({ title: 'Please enter a valid 6-digit code', variant: 'destructive' });
+      return;
+    }
+
+    if (!factorId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(factorId)) {
+      toast({ title: 'Invalid setup state', variant: 'destructive' });
       return;
     }
 
@@ -78,6 +84,7 @@ export function MFASetup({ isOpen, onClose, onSuccess }: MFASetupProps) {
       if (verifyError) throw verifyError;
 
       setStep('success');
+      setVerifyCode(''); // Clear code immediately
       toast({ title: 'MFA enabled successfully!' });
       
       setTimeout(() => {
@@ -85,7 +92,13 @@ export function MFASetup({ isOpen, onClose, onSuccess }: MFASetupProps) {
         onClose();
       }, 1500);
     } catch (error: any) {
-      toast({ title: 'Invalid code', description: error.message, variant: 'destructive' });
+      // Don't leak specific error details
+      toast({ 
+        title: 'Verification failed', 
+        description: 'Invalid code. Please try again.',
+        variant: 'destructive' 
+      });
+      setVerifyCode(''); // Clear code on failure
     } finally {
       setIsVerifying(false);
     }

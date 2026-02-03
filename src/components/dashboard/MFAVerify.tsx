@@ -25,31 +25,45 @@ export function MFAVerify({ isOpen, onClose, onSuccess, factorId }: MFAVerifyPro
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleVerify = async () => {
-    if (code.length !== 6) {
-      toast({ title: 'Please enter a 6-digit code', variant: 'destructive' });
+    // Client-side validation
+    if (!/^\d{6}$/.test(code)) {
+      toast({ title: 'Please enter a valid 6-digit code', variant: 'destructive' });
       return;
     }
 
     setIsVerifying(true);
     try {
-      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: factorId
+      // Use secure edge function for verification (rate-limited + validated)
+      const { data, error } = await supabase.functions.invoke('mfa-verify', {
+        body: { action: 'verify', factorId, code }
       });
 
-      if (challengeError) throw challengeError;
+      if (error) throw error;
 
-      const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: factorId,
-        challengeId: challengeData.id,
-        code: code
-      });
+      if (data?.lockoutMinutes) {
+        toast({ 
+          title: 'Too many attempts', 
+          description: `Please wait ${data.lockoutMinutes} minutes before trying again.`,
+          variant: 'destructive' 
+        });
+        return;
+      }
 
-      if (verifyError) throw verifyError;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Verification failed');
+      }
 
       toast({ title: 'Verified successfully!' });
+      setCode(''); // Clear code immediately
       onSuccess();
     } catch (error: any) {
-      toast({ title: 'Invalid code', description: error.message, variant: 'destructive' });
+      // Don't leak specific error details
+      toast({ 
+        title: 'Verification failed', 
+        description: error.message?.includes('Too many') ? error.message : 'Invalid code. Please try again.',
+        variant: 'destructive' 
+      });
+      setCode(''); // Clear code on failure
     } finally {
       setIsVerifying(false);
     }

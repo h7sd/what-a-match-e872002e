@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.security-cleanup]
 verify_jwt = false
+
+[functions.mfa-verify]
+verify_jwt = false
