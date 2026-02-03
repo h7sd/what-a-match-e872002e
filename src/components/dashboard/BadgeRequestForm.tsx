@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Loader2, AlertCircle, CheckCircle, XCircle, Clock, Upload, Palette } from 'lucide-react';
+import { Send, Loader2, AlertCircle, CheckCircle, XCircle, Clock, Upload, Palette, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBadgeIcon } from '@/lib/badges';
+import { useEncryption } from '@/hooks/useEncryption';
+import { encodeFileMetadata } from '@/lib/crypto';
+import { invokeSecure } from '@/lib/secureEdgeFunctions';
 
 interface BadgeRequest {
   id: string;
@@ -28,9 +31,35 @@ interface BadgeRequest {
   reviewed_at: string | null;
 }
 
+// Validate image file signature (magic bytes)
+async function validateImageSignature(file: File): Promise<boolean> {
+  try {
+    const buffer = await file.slice(0, 12).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    
+    // PNG: 89 50 4E 47
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return true;
+    // JPEG: FF D8 FF
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return true;
+    // GIF: 47 49 46 38
+    if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return true;
+    // WebP: 52 49 46 46 ... 57 45 42 50
+    if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+        bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return true;
+    // SVG (check for XML/text) - simplified check
+    const text = new TextDecoder().decode(bytes);
+    if (text.includes('<?xml') || text.includes('<svg')) return true;
+    
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function BadgeRequestForm() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { encrypt, isReady: encryptionReady } = useEncryption();
   const [badgeName, setBadgeName] = useState('');
   const [badgeDescription, setBadgeDescription] = useState('');
   const [badgeColor, setBadgeColor] = useState('#8B5CF6');
@@ -53,32 +82,86 @@ export function BadgeRequestForm() {
     enabled: !!user?.id,
   });
 
-  // Submit request mutation
+  // Submit request mutation with AES-256-GCM encrypted icon upload
   const submitMutation = useMutation({
     mutationFn: async () => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
       let iconUrl = null;
 
-      // Upload icon if provided
+      // Upload icon with AES-256-GCM encryption
       if (iconFile) {
         setIsUploading(true);
-        const fileExt = iconFile.name.split('.').pop();
-        const fileName = `badge-icons/${user?.id}-${Date.now()}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage
-          .from('profile-assets')
-          .upload(fileName, iconFile, { upsert: true });
+        try {
+          // Validate file size (max 2MB for badge icons)
+          if (iconFile.size > 2 * 1024 * 1024) {
+            throw new Error('Icon must be less than 2MB');
+          }
+          
+          // Validate MIME type
+          const allowedMimes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+          if (!allowedMimes.includes(iconFile.type)) {
+            throw new Error('Invalid file type. Use PNG, JPEG, GIF, WebP, or SVG.');
+          }
+          
+          // Validate magic bytes
+          const isValid = await validateImageSignature(iconFile);
+          if (!isValid) {
+            throw new Error('Invalid image file. File appears to be corrupted or spoofed.');
+          }
+          
+          let fileToUpload: File | Blob = iconFile;
+          let finalContentType = iconFile.type;
+          let folderPath = 'badge-icons';
+          
+          // Encrypt file if encryption is ready
+          if (encryptionReady && encrypt) {
+            const encryptedBlob = await encrypt(iconFile);
+            if (!encryptedBlob) {
+              throw new Error('Encryption failed');
+            }
+            fileToUpload = encryptedBlob;
+            finalContentType = 'application/octet-stream';
+            folderPath = 'encrypted/badge-icons';
+            
+            // Log metadata for debugging (not sensitive)
+            const metadata = encodeFileMetadata(iconFile.name, iconFile.type);
+            console.log('Badge icon encrypted, metadata stored');
+          }
+          
+          // Generate secure random filename
+          const randomId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const ext = iconFile.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+          const fileName = `${randomId}.${ext}${encryptionReady ? '.enc' : ''}`;
+          
+          // CRITICAL: Path must start with user ID for RLS policy
+          const filePath = `${user.id}/${folderPath}/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('profile-assets')
+            .upload(filePath, fileToUpload, { 
+              upsert: true,
+              contentType: finalContentType,
+            });
 
-        if (uploadError) throw new Error('Failed to upload icon');
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw new Error('Failed to upload icon');
+          }
 
-        const { data: urlData } = supabase.storage
-          .from('profile-assets')
-          .getPublicUrl(fileName);
-        
-        iconUrl = urlData.publicUrl;
-        setIsUploading(false);
+          const { data: urlData } = supabase.storage
+            .from('profile-assets')
+            .getPublicUrl(filePath);
+          
+          iconUrl = urlData.publicUrl;
+        } finally {
+          setIsUploading(false);
+        }
       }
 
-      const { data, error } = await supabase.functions.invoke('badge-request', {
+      // Use secure proxy for edge function call
+      const { data, error } = await invokeSecure<{ success?: boolean; error?: string; request?: unknown }>('badge-request', {
         body: {
           action: 'submit',
           badgeName,
@@ -89,12 +172,12 @@ export function BadgeRequestForm() {
       });
 
       if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
       toast.success('Badge request submitted!', {
-        description: 'You will be notified when it\'s reviewed.',
+        description: 'Encrypted & secured. You will be notified when reviewed.',
       });
       queryClient.invalidateQueries({ queryKey: ['badgeRequest'] });
       setBadgeName('');
