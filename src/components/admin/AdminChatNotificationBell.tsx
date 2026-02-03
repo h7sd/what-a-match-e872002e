@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MessageCircle, Bell, AlertCircle, User, Clock } from 'lucide-react';
+import { MessageCircle, Bell, AlertCircle, User, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,7 +11,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsAdmin } from '@/hooks/useBadges';
+import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatNotification {
   conversation_id: string;
@@ -23,9 +25,12 @@ interface ChatNotification {
 
 export function AdminChatNotificationBell() {
   const { data: isAdmin = false, isLoading: adminLoading } = useIsAdmin();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [notifications, setNotifications] = useState<ChatNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -108,10 +113,61 @@ export function AdminChatNotificationBell() {
     return () => clearInterval(interval);
   }, [isAdmin, loadNotifications]);
 
-  const handleNotificationClick = (conversationId: string) => {
-    setIsOpen(false);
-    // Navigate to admin panel with live chat tab
-    navigate('/dashboard#admin', { state: { openLiveChat: true, conversationId } });
+  const handleNotificationClick = async (notification: ChatNotification) => {
+    if (!user || claimingId) return;
+    
+    setClaimingId(notification.conversation_id);
+    
+    try {
+      // Claim the conversation immediately
+      const { error: claimError } = await supabase
+        .from('live_chat_conversations')
+        .update({ 
+          assigned_admin_id: user.id,
+          status: 'active'
+        })
+        .eq('id', notification.conversation_id);
+      
+      if (claimError) throw claimError;
+
+      // Get admin profile for the join message
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('display_name, username')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Add system message that admin joined
+      await supabase.from('live_chat_messages').insert({
+        conversation_id: notification.conversation_id,
+        sender_type: 'admin',
+        sender_id: user.id,
+        message: `${adminProfile?.display_name || adminProfile?.username || 'A support agent'} has joined the chat and will assist you shortly.`,
+      });
+
+      // Remove from local notifications immediately (optimistic UI)
+      setNotifications(prev => prev.filter(n => n.conversation_id !== notification.conversation_id));
+      
+      // Close popover
+      setIsOpen(false);
+      
+      // Navigate to admin panel with the chat open
+      navigate('/dashboard#admin', { 
+        state: { 
+          openLiveChat: true, 
+          conversationId: notification.conversation_id,
+          autoSelect: true 
+        } 
+      });
+      
+      toast({ title: 'Chat claimed!', description: `You're now chatting with ${notification.visitor_display}` });
+      
+    } catch (error) {
+      console.error('Error claiming chat:', error);
+      toast({ title: 'Failed to claim chat', variant: 'destructive' });
+    } finally {
+      setClaimingId(null);
+    }
   };
 
   const totalUnread = notifications.reduce((sum, n) => sum + n.unread_count, 0);
@@ -190,50 +246,59 @@ export function AdminChatNotificationBell() {
               {notifications.map((notification) => (
                 <button
                   key={notification.conversation_id}
-                  onClick={() => handleNotificationClick(notification.conversation_id)}
+                  onClick={() => handleNotificationClick(notification)}
+                  disabled={claimingId === notification.conversation_id}
                   className={cn(
-                    "w-full p-3 rounded-lg text-left transition-colors",
+                    "w-full p-3 rounded-lg text-left transition-colors disabled:opacity-50",
                     "hover:bg-secondary/50",
-                    notification.status === 'waiting_for_agent' && "bg-destructive/10 border border-destructive/30"
+                    notification.status === 'waiting_for_agent' && "bg-destructive/10 border border-destructive/30",
+                    claimingId === notification.conversation_id && "pointer-events-none"
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                        notification.status === 'waiting_for_agent' 
-                          ? "bg-destructive/20" 
-                          : "bg-secondary"
-                      )}>
-                        {notification.status === 'waiting_for_agent' ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        ) : (
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {notification.visitor_display}
-                        </p>
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(notification.last_message_at)}
+                  {claimingId === notification.conversation_id ? (
+                    <div className="flex items-center justify-center gap-2 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-muted-foreground">Claiming...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                          notification.status === 'waiting_for_agent' 
+                            ? "bg-destructive/20" 
+                            : "bg-secondary"
+                        )}>
+                          {notification.status === 'waiting_for_agent' ? (
+                            <AlertCircle className="h-4 w-4 text-destructive" />
+                          ) : (
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {notification.visitor_display}
+                          </p>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {formatTime(notification.last_message_at)}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {notification.status === 'waiting_for_agent' && (
+                          <Badge variant="destructive" className="text-[9px] px-1.5">
+                            WAITING
+                          </Badge>
+                        )}
+                        {notification.unread_count > 0 && (
+                          <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-medium">
+                            {notification.unread_count}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {notification.status === 'waiting_for_agent' && (
-                        <Badge variant="destructive" className="text-[9px] px-1.5">
-                          WAITING
-                        </Badge>
-                      )}
-                      {notification.unread_count > 0 && (
-                        <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-medium">
-                          {notification.unread_count}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </button>
               ))}
             </div>
