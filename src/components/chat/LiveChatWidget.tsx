@@ -8,69 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { PUBLIC_API_URL } from '@/lib/supabase-proxy-client';
 
-// Encryption utilities for chat
-const ENCRYPTION_SECRET_PREFIX = 'uservault-chat-client';
-
-async function deriveChatKey(identifier: string): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const keyMaterial = encoder.encode(`${ENCRYPTION_SECRET_PREFIX}:${identifier}:chat-encryption`);
-  
-  const baseKey = await crypto.subtle.importKey(
-    'raw',
-    keyMaterial,
-    'PBKDF2',
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-  
-  const salt = encoder.encode('uservault-chat-encryption-v1');
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 50000,
-      hash: 'SHA-256',
-    },
-    baseKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-async function encryptPayload(payload: unknown, key: CryptoKey): Promise<{ encrypted: string; iv: string }> {
-  const encoder = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = encoder.encode(JSON.stringify(payload));
-  
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    data
-  );
-  
-  return {
-    encrypted: btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer))),
-    iv: btoa(String.fromCharCode(...iv)),
-  };
-}
-
-async function decryptChunk(encryptedChunk: string, key: CryptoKey): Promise<string> {
-  const [ivB64, dataB64] = encryptedChunk.split(':');
-  if (!ivB64 || !dataB64) return '';
-  
-  const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
-  const encryptedData = Uint8Array.from(atob(dataB64), c => c.charCodeAt(0));
-  
-  const decryptedBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    encryptedData
-  );
-  
-  return new TextDecoder().decode(decryptedBuffer);
-}
-
 interface Message {
   id: string;
   content: string;
@@ -471,7 +408,7 @@ export function LiveChatWidget() {
       return;
     }
 
-    // Get AI response with encryption
+    // Get AI response via proxy (URL hidden, HTTPS encrypted)
     setIsLoading(true);
     try {
       const chatMessages = messages
@@ -483,28 +420,18 @@ export function LiveChatWidget() {
       
       chatMessages.push({ role: 'user', content: userMessage });
 
-      // Derive encryption key for this session
-      const keyIdentifier = user?.id || sessionToken || 'anonymous';
-      const encryptionKey = await deriveChatKey(keyIdentifier);
-      
-      // Encrypt the payload
-      const payload = { 
-        messages: chatMessages, 
-        conversationId,
-        sessionToken: sessionToken || undefined 
-      };
-      const encryptedPayload = await encryptPayload(payload, encryptionKey);
-
       // Use proxy URL to hide Supabase project ID
-      const response = await fetch(`${PUBLIC_API_URL}/functions/v1/encrypted-chat-ai`, {
+      const response = await fetch(`${PUBLIC_API_URL}/functions/v1/chat-ai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          'x-encrypted': 'true',
-          'x-session-token': sessionToken || '',
         },
-        body: JSON.stringify(encryptedPayload),
+        body: JSON.stringify({ 
+          messages: chatMessages, 
+          conversationId,
+          sessionToken: sessionToken || undefined 
+        }),
       });
 
       if (!response.ok) {
@@ -523,9 +450,6 @@ export function LiveChatWidget() {
         throw new Error('Failed to get AI response');
       }
 
-      // Check if response is encrypted
-      const isEncryptedResponse = response.headers.get('x-encrypted') === 'true';
-      
       // Stream the response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -554,17 +478,10 @@ export function LiveChatWidget() {
             buffer = buffer.slice(newlineIndex + 1);
             
             if (!line.startsWith('data: ') || line.trim() === '') continue;
-            const dataStr = line.slice(6).trim();
-            if (dataStr === '[DONE]') continue;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') continue;
 
             try {
-              let jsonStr = dataStr;
-              
-              // Decrypt if encrypted
-              if (isEncryptedResponse && dataStr.includes(':')) {
-                jsonStr = await decryptChunk(dataStr, encryptionKey);
-              }
-              
               const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
