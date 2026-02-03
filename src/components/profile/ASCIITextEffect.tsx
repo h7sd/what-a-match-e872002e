@@ -1,5 +1,5 @@
 // Component ported and enhanced from https://codepen.io/JuanFuentes/pen/eYEeoyE
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 
 const vertexShader = `
@@ -453,6 +453,8 @@ interface ASCIITextEffectProps {
   textColor?: string;
   planeBaseHeight?: number;
   enableWaves?: boolean;
+  enableTypewriter?: boolean;
+  typewriterSpeed?: number;
 }
 
 export default function ASCIITextEffect({
@@ -461,12 +463,52 @@ export default function ASCIITextEffect({
   textFontSize = 200,
   textColor = '#fdf9f3',
   planeBaseHeight = 8,
-  enableWaves = true
+  enableWaves = true,
+  enableTypewriter = true,
+  typewriterSpeed = 150
 }: ASCIITextEffectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const asciiRef = useRef<CanvAscii | null>(null);
+  const [displayText, setDisplayText] = useState(enableTypewriter ? '' : text);
+  const [isTypingComplete, setIsTypingComplete] = useState(!enableTypewriter);
 
+  // Typewriter effect
   useEffect(() => {
+    if (!enableTypewriter) {
+      setDisplayText(text);
+      setIsTypingComplete(true);
+      return;
+    }
+
+    setDisplayText('');
+    setIsTypingComplete(false);
+    let currentIndex = 0;
+    
+    const typeNextChar = () => {
+      if (currentIndex < text.length) {
+        setDisplayText(text.slice(0, currentIndex + 1));
+        currentIndex++;
+        setTimeout(typeNextChar, typewriterSpeed);
+      } else {
+        setIsTypingComplete(true);
+        // Restart after a pause
+        setTimeout(() => {
+          currentIndex = 0;
+          setDisplayText('');
+          setIsTypingComplete(false);
+          setTimeout(typeNextChar, typewriterSpeed);
+        }, 3000);
+      }
+    };
+
+    const timeout = setTimeout(typeNextChar, 500);
+    return () => clearTimeout(timeout);
+  }, [text, enableTypewriter, typewriterSpeed]);
+
+  // ASCII 3D effect - use displayText for typewriter
+  useEffect(() => {
+    // Don't render empty text
+    if (!displayText && enableTypewriter) return;
     if (!containerRef.current) return;
 
     let cancelled = false;
@@ -474,8 +516,9 @@ export default function ASCIITextEffect({
     let ro: ResizeObserver | null = null;
 
     const createAndInit = async (container: HTMLDivElement, w: number, h: number) => {
+      const textToRender = enableTypewriter ? (displayText || ' ') : text;
       const instance = new CanvAscii(
-        { text, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves },
+        { text: textToRender, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves },
         container,
         w,
         h
@@ -536,7 +579,7 @@ export default function ASCIITextEffect({
         asciiRef.current = null;
       }
     };
-  }, [text, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves]);
+  }, [displayText, text, asciiFontSize, textFontSize, textColor, planeBaseHeight, enableWaves, enableTypewriter]);
 
   return (
     <div
