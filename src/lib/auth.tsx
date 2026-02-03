@@ -213,14 +213,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, username: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    // Check if username is available
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('username', username.toLowerCase())
-      .single();
+    // Check if username is available using RPC function (bypasses RLS)
+    const { data: isAvailable, error: checkError } = await supabase
+      .rpc('check_username_available', { p_username: username.toLowerCase() });
 
-    if (existingProfile) {
+    if (checkError) {
+      console.error('Username check error:', checkError);
+      return { error: new Error('Error checking username availability') };
+    }
+
+    if (!isAvailable) {
       return { error: new Error('Username is already taken') };
     }
 

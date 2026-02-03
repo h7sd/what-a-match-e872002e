@@ -1085,6 +1085,10 @@ export type Database = {
           is_banned: boolean
         }[]
       }
+      check_username_available: {
+        Args: { p_username: string }
+        Returns: boolean
+      }
       cleanup_expired_verification_codes: { Args: never; Returns: number }
       create_visitor_conversation: {
         Args: { p_visitor_id: string }

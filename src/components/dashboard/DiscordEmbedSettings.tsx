@@ -262,6 +262,7 @@ export function DiscordEmbedSettings({
                     <img 
                       src={ogIconUrl} 
                       alt="Tab icon" 
+                      crossOrigin="anonymous"
                       className="w-4 h-4 rounded-sm object-cover flex-shrink-0"
                     />
                   ) : (
@@ -297,6 +298,7 @@ export function DiscordEmbedSettings({
                       <img 
                         src={ogIconUrl} 
                         alt="Site icon" 
+                        crossOrigin="anonymous"
                         className="w-4 h-4 rounded-sm object-cover"
                       />
                     ) : (
@@ -386,6 +388,7 @@ export function DiscordEmbedSettings({
                       <img 
                         src={ogIconUrl} 
                         alt="Icon" 
+                        crossOrigin="anonymous"
                         className="w-16 h-16 rounded-lg object-cover border border-border"
                       />
                       <button
