@@ -98,16 +98,18 @@ serve(async (req) => {
     const body = await req.json();
     const { action, profile_id, username, content } = body;
 
-    console.log('profile-comment request', { action, hasUsername: !!username, hasProfileId: !!profile_id });
-
     // Get user ID if authenticated
     const authHeader = req.headers.get('Authorization');
     let userId: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
       userId = user?.id || null;
+      if (userErr) {
+        console.warn('Failed to get user from token:', userErr.message);
+      }
     }
+    console.log('profile-comment request', { action, hasUsername: !!username, hasProfileId: !!profile_id, hasAuth: !!authHeader, userId });
 
     if (action === 'add_comment') {
       // Validate content
@@ -171,6 +173,9 @@ serve(async (req) => {
           console.warn('Failed to check admin role for rate limit bypass (has_role):', roleErr);
         }
         isAdmin = hasAdminRole === true;
+        console.log('profile-comment admin check', { userId, isAdmin, hasAdminRole, roleErr: roleErr?.message });
+      } else {
+        console.log('profile-comment admin check skipped - no userId');
       }
 
       // Rate limit: max 3 comments per IP per profile per hour (non-admin only)
