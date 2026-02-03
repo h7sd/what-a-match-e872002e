@@ -456,17 +456,27 @@ export default function UserProfile() {
           )}
         </motion.div>
 
-        {/* Bottom Center: Comment input + (optional) Like/Dislike */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,28rem)] pointer-events-none">
-          <div className="flex flex-col items-center gap-3 pointer-events-auto">
+        {/* Bottom engagement area - stacked properly for mobile */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none safe-area-inset-bottom">
+          <div className="flex flex-col items-center gap-2 p-4 pb-6 pointer-events-auto">
+            {/* Volume control at the top of the stack if enabled */}
+            {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
+              <SimpleVolumeBar
+                volume={volume}
+                onVolumeChange={setVolume}
+              />
+            )}
+            
+            {/* Comment input */}
             {((profile as any).show_comments ?? true) && (
               <ProfileCommentInput
                 username={profile.username}
                 accentColor={accentColor}
-                className="w-full"
+                className="w-full max-w-[min(92vw,28rem)]"
               />
             )}
 
+            {/* Like/Dislike buttons */}
             {((profile as any).show_likes ?? true) && (
               <ProfileLikeButtons
                 username={profile.username}
@@ -477,16 +487,7 @@ export default function UserProfile() {
             )}
           </div>
         </div>
-
       </div>
-
-      {/* Controls Bar - Only show if profile has music and volume control is enabled */}
-      {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
-        <SimpleVolumeBar
-          volume={volume}
-          onVolumeChange={setVolume}
-        />
-      )}
     </div>
   );
 }

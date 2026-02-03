@@ -34,17 +34,18 @@ export function SimpleVolumeBar({ volume, onVolumeChange }: SimpleVolumeBarProps
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5 }}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.3 }}
+      className="relative z-40"
       onMouseEnter={() => setShowSlider(true)}
       onMouseLeave={() => setShowSlider(false)}
+      onTouchStart={() => setShowSlider(true)}
     >
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/10">
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
         <button 
           onClick={handleMuteToggle}
-          className="text-white/70 hover:text-white transition-colors"
+          className="text-white/70 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
         >
           {isMuted || volume === 0 ? (
             <VolumeX className="w-5 h-5" />

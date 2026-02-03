@@ -47,6 +47,56 @@ export type Database = {
         }
         Relationships: []
       }
+      badge_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ends_at: string | null
+          event_type: string
+          id: string
+          is_active: boolean | null
+          name: string
+          starts_at: string
+          steal_duration_hours: number | null
+          target_badge_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          starts_at?: string
+          steal_duration_hours?: number | null
+          target_badge_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          starts_at?: string
+          steal_duration_hours?: number | null
+          target_badge_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badge_events_target_badge_id_fkey"
+            columns: ["target_badge_id"]
+            isOneToOne: false
+            referencedRelation: "global_badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badge_requests: {
         Row: {
           admin_edited_color: string | null
@@ -100,6 +150,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      badge_steals: {
+        Row: {
+          badge_id: string
+          event_id: string | null
+          id: string
+          returned: boolean | null
+          returned_at: string | null
+          returns_at: string
+          stolen_at: string
+          thief_user_id: string
+          victim_user_id: string
+        }
+        Insert: {
+          badge_id: string
+          event_id?: string | null
+          id?: string
+          returned?: boolean | null
+          returned_at?: string | null
+          returns_at: string
+          stolen_at?: string
+          thief_user_id: string
+          victim_user_id: string
+        }
+        Update: {
+          badge_id?: string
+          event_id?: string | null
+          id?: string
+          returned?: boolean | null
+          returned_at?: string | null
+          returns_at?: string
+          stolen_at?: string
+          thief_user_id?: string
+          victim_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "badge_steals_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "global_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "badge_steals_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "badge_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       badges: {
         Row: {
@@ -266,6 +367,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      friend_badges: {
+        Row: {
+          color: string | null
+          created_at: string
+          creator_id: string
+          description: string | null
+          display_order: number | null
+          icon_url: string | null
+          id: string
+          is_enabled: boolean | null
+          name: string
+          recipient_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          display_order?: number | null
+          icon_url?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name: string
+          recipient_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          display_order?: number | null
+          icon_url?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name?: string
+          recipient_id?: string
+        }
+        Relationships: []
       }
       global_badges: {
         Row: {
@@ -1064,6 +1204,8 @@ export type Database = {
         Row: {
           badge_id: string
           claimed_at: string
+          custom_color: string | null
+          display_order: number | null
           id: string
           is_enabled: boolean | null
           is_locked: boolean | null
@@ -1072,6 +1214,8 @@ export type Database = {
         Insert: {
           badge_id: string
           claimed_at?: string
+          custom_color?: string | null
+          display_order?: number | null
           id?: string
           is_enabled?: boolean | null
           is_locked?: boolean | null
@@ -1080,6 +1224,8 @@ export type Database = {
         Update: {
           badge_id?: string
           claimed_at?: string
+          custom_color?: string | null
+          display_order?: number | null
           id?: string
           is_enabled?: boolean | null
           is_locked?: boolean | null
@@ -1238,6 +1384,20 @@ export type Database = {
         Returns: {
           color: string
           description: string
+          icon_url: string
+          id: string
+          name: string
+          rarity: string
+        }[]
+      }
+      get_profile_badges_with_friends: {
+        Args: { p_profile_id: string }
+        Returns: {
+          badge_type: string
+          color: string
+          custom_color: string
+          description: string
+          display_order: number
           icon_url: string
           id: string
           name: string
@@ -1483,10 +1643,23 @@ export type Database = {
       }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
       is_protected_uid: { Args: { uid: number }; Returns: boolean }
+      return_stolen_badges: { Args: never; Returns: number }
       scheduled_security_cleanup: { Args: never; Returns: undefined }
       send_visitor_message: {
         Args: { p_message: string; p_session_token: string }
         Returns: string
+      }
+      steal_badge: {
+        Args: {
+          p_badge_name: string
+          p_event_id?: string
+          p_victim_username: string
+        }
+        Returns: {
+          message: string
+          stolen_badge_name: string
+          success: boolean
+        }[]
       }
     }
     Enums: {

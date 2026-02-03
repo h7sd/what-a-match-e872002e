@@ -84,6 +84,8 @@ import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSectio
 import { AliasRequestsBell } from '@/components/dashboard/AliasRequestsBell';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { ProfileCommentsViewer } from '@/components/dashboard/ProfileCommentsViewer';
+import { FriendBadgesManager } from '@/components/dashboard/FriendBadgesManager';
+import { AdminEventController } from '@/components/admin/AdminEventController';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
@@ -1341,6 +1343,11 @@ export default function Dashboard() {
                     />
                   </div>
                 )}
+
+                {/* Friend Badges */}
+                <div className="glass-card p-6">
+                  <FriendBadgesManager />
+                </div>
               </div>
             )}
 
@@ -1366,6 +1373,11 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 )}
+
+                {/* Badge Events Controller */}
+                <div className="glass-card p-6">
+                  <AdminEventController />
+                </div>
 
                 {/* EARLY Badge Counter */}
                 <div className="glass-card p-6">
