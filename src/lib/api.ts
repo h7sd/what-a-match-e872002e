@@ -161,14 +161,15 @@ export async function getProfileLinks(username: string): Promise<PublicLink[]> {
 
 // Profile badges
 export interface PublicBadge {
+  id: string;
   name: string;
   description: string | null;
   icon_url: string | null;
   color: string | null;
   rarity: string | null;
-  is_limited: boolean | null;
-  max_claims: number | null;
-  claims_count: number | null;
+  badge_type?: string | null; // 'global', 'friend', 'stolen'
+  display_order?: number | null;
+  custom_color?: string | null;
 }
 
 export async function getProfileBadges(username: string): Promise<PublicBadge[]> {
