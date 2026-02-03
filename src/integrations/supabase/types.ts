@@ -1093,6 +1093,16 @@ export type Database = {
           session_token: string
         }[]
       }
+      get_admin_chat_notifications: {
+        Args: never
+        Returns: {
+          conversation_id: string
+          last_message_at: string
+          status: string
+          unread_count: number
+          visitor_display: string
+        }[]
+      }
       get_alias_requests_for_me: {
         Args: never
         Returns: {

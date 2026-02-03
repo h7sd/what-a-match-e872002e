@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, ReactNode, lazy, Suspense } from 'react';
 import { AliasRequestsBell } from './AliasRequestsBell';
+import { AdminChatNotificationBell } from '@/components/admin/AdminChatNotificationBell';
 
 // Lazy load heavy components
 const FaultyTerminal = lazy(() => import('@/components/ui/FaultyTerminal'));
@@ -300,6 +301,7 @@ export function DashboardLayout({
           </Link>
           
           <div className="flex items-center gap-2">
+            <AdminChatNotificationBell />
             <AliasRequestsBell />
             
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -361,6 +363,7 @@ export function DashboardLayout({
             </motion.div>
             
             <div className="flex items-center gap-3">
+              <AdminChatNotificationBell />
               <AliasRequestsBell />
               
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
