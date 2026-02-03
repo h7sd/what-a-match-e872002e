@@ -67,13 +67,17 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       const errorCodes = verifyResult["error-codes"] || [];
       console.error("Turnstile verification failed:", errorCodes);
+      
+      // Return 200 with success:false so the client can handle it gracefully
+      // This prevents the "non-2xx status code" error message
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: "Verification failed",
-          codes: errorCodes 
+          codes: errorCodes,
+          'error-codes': errorCodes  // Include both for compatibility
         }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
   } catch (error: any) {
