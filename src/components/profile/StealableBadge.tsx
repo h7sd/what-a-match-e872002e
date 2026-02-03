@@ -89,8 +89,8 @@ export function StealableBadge({
       const result = data?.[0];
       if (result?.success) {
         toast({
-          title: '🏴‍☠️ Badge Stolen!',
-          description: `You stole "${result.stolen_badge_name}" for 1 week!`,
+          title: '🎯 Badge Hunted!',
+          description: `You hunted "${result.stolen_badge_name}"!`,
         });
         setShowStealDialog(false);
         onStealSuccess?.();
@@ -153,10 +153,10 @@ export function StealableBadge({
               />
             )}
 
-            {/* Steal indicator when event is active */}
+            {/* Hunt indicator when event is active */}
             {canSteal && (
               <motion.div
-                className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center"
+                className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full flex items-center justify-center"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 1, repeat: Infinity }}
               >
@@ -173,7 +173,7 @@ export function StealableBadge({
           <div className="flex flex-col items-center gap-1">
             <span>{badge.name}</span>
             {canSteal && (
-              <span className="text-red-400 text-[10px]">🏴‍☠️ Click to steal</span>
+              <span className="text-red-400 text-[10px]">🎯 Click to hunt</span>
             )}
           </div>
         </TooltipContent>
@@ -185,17 +185,17 @@ export function StealableBadge({
           <Dialog open={showStealDialog} onOpenChange={setShowStealDialog}>
             <DialogContent className="max-w-sm bg-black/95 border border-red-500/30">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-red-400">
+                <DialogTitle className="flex items-center gap-2 text-emerald-400">
                   <Target className="w-5 h-5" />
-                  Steal Badge?
+                  Hunt Badge?
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground">
-                  Do you really want to steal <strong className="text-white">{badge.name}</strong> from <strong className="text-white">@{victimUsername}</strong>?
+                  Do you really want to hunt <strong className="text-white">{badge.name}</strong> from <strong className="text-white">@{victimUsername}</strong>?
                 </DialogDescription>
               </DialogHeader>
 
               <div className="flex flex-col gap-4 mt-4">
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center">
                       {badge.icon_url ? (
@@ -224,8 +224,7 @@ export function StealableBadge({
                     Cancel
                   </Button>
                   <Button
-                    variant="destructive"
-                    className="flex-1"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={handleSteal}
                     disabled={isStealing}
                   >
@@ -234,7 +233,7 @@ export function StealableBadge({
                     ) : (
                       <Check className="w-4 h-4 mr-2" />
                     )}
-                    Steal!
+                    Hunt!
                   </Button>
                 </div>
               </div>
