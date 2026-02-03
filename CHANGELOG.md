@@ -21,7 +21,19 @@ All notable changes to UserVault will be documented in this file.
 - Automatic authentication header injection for logged-in users
 - Fallback to anon key for public endpoints
 
+#### Encrypted Badge Icon Uploads
+- Badge request icon uploads now use AES-256-GCM client-side encryption
+- Fixed storage path to comply with RLS policies (`${userId}/badge-icons/`)
+- Added magic-byte validation to prevent MIME-type spoofing attacks
+- All badge request API calls now routed through secure proxy
+- Secure random filename generation prevents enumeration attacks
+
 ### 🐛 Bug Fixes
+
+#### Badge Request Icon Upload Fixed
+- Fixed "Failed to upload icon" error caused by incorrect storage path
+- Path now correctly starts with user ID as required by RLS policies
+- Added comprehensive file validation before upload
 
 #### MFA Email Verification Fixed
 - Fixed double-parsing error in `mfa-email-otp` Edge Function that prevented email code verification
