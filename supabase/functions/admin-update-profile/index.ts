@@ -95,11 +95,16 @@ function validateAndSanitizeProfileData(data: Record<string, unknown>): Record<s
       }
     } else if (key === 'username' || key === 'alias_username') {
       // Special validation for username/alias - must match format
-      const strVal = sanitizeString(value, 20);
-      if (strVal && USERNAME_REGEX.test(strVal.toLowerCase())) {
-        sanitized[key] = strVal.toLowerCase();
+      // Allow null for alias_username (to remove it)
+      if (key === 'alias_username' && (value === null || value === '')) {
+        sanitized[key] = null;
       } else {
-        console.warn(`Invalid ${key} format blocked:`, strVal);
+        const strVal = sanitizeString(value, 20);
+        if (strVal && USERNAME_REGEX.test(strVal.toLowerCase())) {
+          sanitized[key] = strVal.toLowerCase();
+        } else {
+          console.warn(`Invalid ${key} format blocked:`, strVal);
+        }
       }
     } else {
       // String fields
