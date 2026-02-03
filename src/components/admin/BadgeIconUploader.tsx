@@ -202,7 +202,7 @@ export function BadgeIconUploader({ currentUrl, onUpload, onRemove, color = '#8B
               {currentUrl ? 'Click to change icon' : 'Upload badge icon'}
             </p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, GIF or SVG (max 2MB)
+              PNG, JPG, WebP, GIF or SVG (max 100MB)
             </p>
           </div>
 
