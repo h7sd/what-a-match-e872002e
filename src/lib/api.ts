@@ -193,10 +193,15 @@ export async function getGlobalBadges(): Promise<PublicBadge[]> {
 // Username/alias availability
 export async function checkUsernameExists(username: string): Promise<boolean> {
   const result = await callApi<{ exists: boolean }>('check_username', { username });
-  return result?.exists ?? false;
+  // Fail-closed for security: if the backend check fails, treat as taken
+  // to avoid leaking availability via errors or mis-reporting.
+  if (!result) return true;
+  return !!result.exists;
 }
 
 export async function checkAliasExists(alias: string): Promise<boolean> {
   const result = await callApi<{ exists: boolean }>('check_alias', { alias });
-  return result?.exists ?? false;
+  // Fail-closed for security: if the backend check fails, treat as taken
+  if (!result) return true;
+  return !!result.exists;
 }

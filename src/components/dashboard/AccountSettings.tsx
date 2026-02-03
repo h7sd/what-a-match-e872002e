@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
+import { checkAliasExists, checkUsernameExists } from '@/lib/api';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import {
@@ -158,10 +159,19 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
 
     const currentAlias = (profile?.alias_username || '').toLowerCase();
     const next = (aliasUsername || '').toLowerCase();
+    const ownUsername = (profile?.username || '').toLowerCase();
 
     // No change / empty
     if (!next || next === currentAlias) {
       setAliasAvailability('idle');
+      return;
+    }
+
+    // Allow setting alias to your own username (previous behavior excluded self-row)
+    if (next === ownUsername) {
+      setAliasAvailability('available');
+      setFlashAliasAvailable(true);
+      window.setTimeout(() => setFlashAliasAvailable(false), 900);
       return;
     }
 
@@ -175,24 +185,11 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
     setAliasAvailability('checking');
     aliasCheckTimerRef.current = window.setTimeout(async () => {
       try {
-        if (!user?.id) return;
+        // Important: client-side DB reads are restricted by RLS and will return
+        // empty for other users; use the backend proxy to accurately check.
+        const exists = await checkAliasExists(next);
 
-        // Check if taken as username OR as someone else's alias_username
-        // Only select non-sensitive fields for the check
-        const { data: existingProfile, error } = await supabase
-          .from('profiles')
-          .select('id, username, alias_username')
-          .or(`username.eq.${next},alias_username.eq.${next}`)
-          .neq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Alias availability check failed:', error);
-          setAliasAvailability('idle');
-          return;
-        }
-
-        if (!existingProfile) {
+        if (!exists) {
           setAliasAvailability('available');
           setFlashAliasAvailable(true);
           window.setTimeout(() => setFlashAliasAvailable(false), 900);
@@ -245,28 +242,11 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
     setUsernameRequestAvailability('checking');
     usernameRequestCheckTimerRef.current = window.setTimeout(async () => {
       try {
-        if (!user?.id) return;
-
-        // Check if someone has this as their username
-        const { data: existingProfile, error } = await supabase
-          .from('profiles')
-          .select('user_id, username')
-          .eq('username', next)
-          .neq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Username request availability check failed:', error);
-          setUsernameRequestAvailability('idle');
-          return;
-        }
-
-        if (!existingProfile) {
-          setUsernameRequestAvailability('available');
-        } else {
-          setUsernameRequestOwner(existingProfile.username);
-          setUsernameRequestAvailability('taken');
-        }
+        // Same reason: don't rely on client-side DB reads for availability.
+        // Also don't leak ownership details (prevents enumeration).
+        const exists = await checkUsernameExists(next);
+        setUsernameRequestOwner(null);
+        setUsernameRequestAvailability(exists ? 'taken' : 'available');
       } catch (e) {
         console.error('Username request availability check crashed:', e);
         setUsernameRequestAvailability('idle');
