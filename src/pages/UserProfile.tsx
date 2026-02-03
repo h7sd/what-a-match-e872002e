@@ -190,9 +190,21 @@ export default function UserProfile() {
   // Use secure API proxy for all profile data
   const { data: profileData, isLoading: profileLoading, error } = useSecureProfile(username || '');
   const profile = profileData?.profile;
-  
-  // Check if this is the user's own profile
-  const isOwnProfile = !!user && profile?.username?.toLowerCase() === username?.toLowerCase();
+
+  // IMPORTANT: route param == profile.username for *any* visited profile, so comparing against
+  // the URL makes isOwnProfile incorrectly true for logged-in users.
+  // We must ask the backend (without exposing user_id) if the current user owns this profile.
+  const { data: isOwnProfile = false } = useQuery({
+    queryKey: ['is-own-profile', user?.id, profile?.id],
+    queryFn: async () => {
+      if (!user || !profile?.id) return false;
+      const { data, error } = await supabase.rpc('is_profile_owner', { profile_id: profile.id });
+      if (error) return false;
+      return data === true;
+    },
+    enabled: !!user && !!profile?.id,
+    staleTime: 30_000,
+  });
   
   // Redirect if accessing via alias
   useEffect(() => {
