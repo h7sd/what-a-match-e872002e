@@ -64,6 +64,7 @@ const ALLOWED_ACTIONS = [
   'get_global_badges',
   'check_username',
   'check_alias',
+  'get_hero_avatars',
 ] as const;
 
 type AllowedAction = typeof ALLOWED_ACTIONS[number];
@@ -324,6 +325,31 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         result = { exists: !!(asUsername || asAlias) };
+        break;
+      }
+
+      case 'get_hero_avatars': {
+        // Fetch avatar URLs for uid 1-5, returns only URLs (no IDs/metadata)
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .in('uid_number', [1, 2, 3, 4, 5])
+          .order('uid_number');
+
+        if (error) throw error;
+
+        // Return only non-null avatar URLs shuffled
+        const avatars = (data || [])
+          .map(p => p.avatar_url)
+          .filter(Boolean);
+
+        // Shuffle for randomness
+        for (let i = avatars.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [avatars[i], avatars[j]] = [avatars[j], avatars[i]];
+        }
+
+        result = avatars;
         break;
       }
 
