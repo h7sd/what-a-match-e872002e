@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Loader2, MessageCircle } from 'lucide-react';
 import { gsap } from 'gsap';
@@ -12,6 +12,16 @@ interface ProfileCommentInputProps {
   className?: string;
 }
 
+interface PlopBubble {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  delay: number;
+}
+
 export function ProfileCommentInput({
   username,
   accentColor = '#8b5cf6',
@@ -19,57 +29,85 @@ export function ProfileCommentInput({
 }: ProfileCommentInputProps) {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [lastSent, setLastSent] = useState('');
-  const successRef = useRef<HTMLDivElement>(null);
-  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const [bubbles, setBubbles] = useState<PlopBubble[]>([]);
+  const bubbleRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const nextBubbleId = useRef(0);
   const { toast } = useToast();
 
-  // GSAP plop animation exactly like BubbleMenu - back.out(1.5) with overshoot
+  // Generate random bubbles across the viewport
+  const spawnBubbles = useCallback((text: string) => {
+    const count = 5 + Math.floor(Math.random() * 4); // 5-8 bubbles
+    const newBubbles: PlopBubble[] = [];
+
+    for (let i = 0; i < count; i++) {
+      newBubbles.push({
+        id: nextBubbleId.current++,
+        text,
+        x: 10 + Math.random() * 80, // 10-90% from left
+        y: 10 + Math.random() * 70, // 10-80% from top
+        scale: 0.6 + Math.random() * 0.8, // 0.6-1.4 scale
+        rotation: -15 + Math.random() * 30, // -15 to +15 degrees
+        delay: i * 0.08, // staggered delay
+      });
+    }
+
+    setBubbles(newBubbles);
+  }, []);
+
+  // Animate bubbles with GSAP
   useEffect(() => {
-    if (showSuccess && successRef.current) {
-      const el = successRef.current;
-      
-      // Kill any existing animations
+    if (bubbles.length === 0) return;
+
+    bubbles.forEach((bubble) => {
+      const el = bubbleRefs.current.get(bubble.id);
+      if (!el) return;
+
       gsap.killTweensOf(el);
-      
-      // Initial state - completely hidden and scaled down
+
+      // Initial state
       gsap.set(el, {
         scale: 0,
         opacity: 0,
+        rotation: bubble.rotation,
         transformOrigin: '50% 50%',
-        display: 'block'
       });
 
-      // Create timeline for the plop sequence
-      const tl = gsap.timeline();
-      
-      // PLOP IN: Scale from 0 to 1 with back.out(1.5) overshoot
-      // This creates the bouncy "plop" effect - goes past 1 then settles back
+      // Plop in with back.out overshoot
+      const tl = gsap.timeline({ delay: bubble.delay });
+
       tl.to(el, {
-        scale: 1,
+        scale: bubble.scale,
         opacity: 1,
         duration: 0.5,
-        ease: 'back.out(1.5)'
+        ease: 'back.out(1.7)',
       });
 
-      // Hold visible for 1.5 seconds, then plop out
+      // Subtle float
+      tl.to(el, {
+        y: -10 + Math.random() * 20,
+        rotation: bubble.rotation + (-5 + Math.random() * 10),
+        duration: 0.8,
+        ease: 'power1.inOut',
+      });
+
+      // Plop out
       tl.to(el, {
         scale: 0,
         opacity: 0,
         duration: 0.3,
         ease: 'back.in(1.5)',
-        delay: 1.5
+        delay: 1.2,
       });
-
-      tl.set(el, { display: 'none' });
 
       tl.eventCallback('onComplete', () => {
-        setShowSuccess(false);
+        // Clear bubbles after last one finishes
+        if (bubble.id === bubbles[bubbles.length - 1].id) {
+          setBubbles([]);
+          bubbleRefs.current.clear();
+        }
       });
-    }
-  }, [showSuccess]);
-
+    });
+  }, [bubbles]);
 
   const handleSubmit = async () => {
     const message = comment.trim();
@@ -83,12 +121,12 @@ export function ProfileCommentInput({
       });
       return;
     }
-    
+
     if (comment.length > 280) {
-      toast({ 
-        title: 'Comment too long', 
+      toast({
+        title: 'Comment too long',
         description: 'Maximum 280 characters allowed.',
-        variant: 'destructive' 
+        variant: 'destructive',
       });
       return;
     }
@@ -96,12 +134,13 @@ export function ProfileCommentInput({
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await invokeSecure<{ success?: boolean; message?: string; error?: string }>(
-        'profile-comment',
-        {
-          body: { action: 'add_comment', username, content: message },
-        }
-      );
+      const { data, error } = await invokeSecure<{
+        success?: boolean;
+        message?: string;
+        error?: string;
+      }>('profile-comment', {
+        body: { action: 'add_comment', username, content: message },
+      });
 
       if (error) {
         console.error('profile-comment add_comment failed:', error);
@@ -115,15 +154,17 @@ export function ProfileCommentInput({
 
       if (data?.error) {
         console.error('profile-comment add_comment error payload:', data);
-        toast({ title: 'Failed to send comment', description: data.error, variant: 'destructive' });
+        toast({
+          title: 'Failed to send comment',
+          description: data.error,
+          variant: 'destructive',
+        });
         return;
       }
 
-      // Trigger GSAP plop animation
-      setLastSent(message);
-      setShowSuccess(true);
+      // Trigger multi-bubble plop animation
+      spawnBubbles(message);
       setComment('');
-
     } catch (e) {
       console.error('Failed to submit comment:', e);
       toast({
@@ -137,98 +178,122 @@ export function ProfileCommentInput({
   };
 
   return (
-    <div className={cn("w-full relative", className)}>
-      {/* Success Plop Animation - GSAP based exactly like BubbleMenu */}
-      <div
-        ref={successRef}
-        className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 pointer-events-none z-50"
-        style={{ display: 'none' }}
-      >
-        <div
-          className="px-6 py-3 rounded-full backdrop-blur-md text-base font-semibold whitespace-nowrap"
-          style={{
-            background: accentColor,
-            color: '#ffffff',
-            boxShadow: `0 8px 32px ${accentColor}60, 0 4px 16px rgba(0,0,0,0.3)`
-          }}
-        >
-          <span className="block max-w-[min(92vw,26rem)] whitespace-normal break-words text-center">
-            ✓ {lastSent || 'Comment sent!'}
-          </span>
+    <>
+      {/* Multi-bubble plop overlay - fixed to viewport */}
+      {bubbles.length > 0 && (
+        <div className="fixed inset-0 pointer-events-none z-[9999]">
+          {bubbles.map((bubble) => (
+            <div
+              key={bubble.id}
+              ref={(el) => {
+                if (el) bubbleRefs.current.set(bubble.id, el);
+              }}
+              className="absolute"
+              style={{
+                left: `${bubble.x}%`,
+                top: `${bubble.y}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div
+                className="px-4 py-2 rounded-full backdrop-blur-md font-semibold whitespace-nowrap"
+                style={{
+                  background: accentColor,
+                  color: '#ffffff',
+                  boxShadow: `0 8px 32px ${accentColor}60, 0 4px 16px rgba(0,0,0,0.3)`,
+                  fontSize: `${0.75 + bubble.scale * 0.5}rem`,
+                }}
+              >
+                <span className="block max-w-[min(80vw,20rem)] whitespace-normal break-words text-center">
+                  ✓ {bubble.text}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
-      <motion.div
-        ref={inputContainerRef}
-        className={cn(
-          "relative flex items-center gap-2 p-2 rounded-full",
-          "bg-black/30 backdrop-blur-md border",
-          "transition-colors duration-300"
-        )}
-        style={{
-          borderColor: comment.length > 0 ? `${accentColor}50` : 'rgba(255,255,255,0.1)',
-        }}
-      >
-        <MessageCircle 
-          className="w-4 h-4 ml-2 flex-shrink-0 transition-colors duration-200" 
-          style={{ color: comment.length > 0 ? accentColor : 'rgba(255,255,255,0.5)' }}
-        />
-        
-        <input
-          type="text"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Leave a comment..."
-          maxLength={280}
-          disabled={isSubmitting}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
+      <div className={cn('w-full relative', className)}>
+        <motion.div
           className={cn(
-            "flex-1 bg-transparent border-none outline-none",
-            "text-sm text-white placeholder:text-white/40",
-            "disabled:opacity-50"
-          )}
-        />
-        
-        <motion.button
-          onClick={handleSubmit}
-          disabled={!comment.trim() || isSubmitting}
-          className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center",
-            "transition-all duration-200"
+            'relative flex items-center gap-2 p-2 rounded-full',
+            'bg-black/30 backdrop-blur-md border',
+            'transition-colors duration-300'
           )}
           style={{
-            background: comment.trim() && !isSubmitting ? `${accentColor}30` : 'rgba(255,255,255,0.05)',
-            color: comment.trim() && !isSubmitting ? accentColor : 'rgba(255,255,255,0.3)',
+            borderColor:
+              comment.length > 0 ? `${accentColor}50` : 'rgba(255,255,255,0.1)',
           }}
-          whileHover={comment.trim() && !isSubmitting ? { scale: 1.1 } : {}}
-          whileTap={comment.trim() && !isSubmitting ? { scale: 0.9 } : {}}
         >
-          {isSubmitting ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </motion.button>
-      </motion.div>
+          <MessageCircle
+            className="w-4 h-4 ml-2 flex-shrink-0 transition-colors duration-200"
+            style={{
+              color: comment.length > 0 ? accentColor : 'rgba(255,255,255,0.5)',
+            }}
+          />
 
-      {/* Character count */}
-      {comment.length > 200 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className={cn(
-            "text-xs mt-1 text-right px-2",
-            comment.length > 260 ? "text-red-400" : "text-white/40"
-          )}
-        >
-          {comment.length}/280
+          <input
+            type="text"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Leave a comment..."
+            maxLength={280}
+            disabled={isSubmitting}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            className={cn(
+              'flex-1 bg-transparent border-none outline-none',
+              'text-sm text-white placeholder:text-white/40',
+              'disabled:opacity-50'
+            )}
+          />
+
+          <motion.button
+            onClick={handleSubmit}
+            disabled={!comment.trim() || isSubmitting}
+            className={cn(
+              'w-8 h-8 rounded-full flex items-center justify-center',
+              'transition-all duration-200'
+            )}
+            style={{
+              background:
+                comment.trim() && !isSubmitting
+                  ? `${accentColor}30`
+                  : 'rgba(255,255,255,0.05)',
+              color:
+                comment.trim() && !isSubmitting
+                  ? accentColor
+                  : 'rgba(255,255,255,0.3)',
+            }}
+            whileHover={comment.trim() && !isSubmitting ? { scale: 1.1 } : {}}
+            whileTap={comment.trim() && !isSubmitting ? { scale: 0.9 } : {}}
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </motion.button>
         </motion.div>
-      )}
-    </div>
+
+        {/* Character count */}
+        {comment.length > 200 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={cn(
+              'text-xs mt-1 text-right px-2',
+              comment.length > 260 ? 'text-destructive' : 'text-muted-foreground'
+            )}
+          >
+            {comment.length}/280
+          </motion.div>
+        )}
+      </div>
+    </>
   );
 }
