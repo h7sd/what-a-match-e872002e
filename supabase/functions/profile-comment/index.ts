@@ -159,19 +159,18 @@ serve(async (req) => {
       }
 
       // Admins should not be rate limited
+      // Use the same canonical server-side role check as the app UI (has_role RPC).
       let isAdmin = false;
       if (userId) {
-        const { data: adminRole, error: adminRoleError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .eq('role', 'admin')
-          .maybeSingle();
+        const { data: hasAdminRole, error: roleErr } = await supabase.rpc('has_role', {
+          _user_id: userId,
+          _role: 'admin',
+        });
 
-        if (adminRoleError) {
-          console.warn('Failed to check admin role for rate limit bypass:', adminRoleError);
+        if (roleErr) {
+          console.warn('Failed to check admin role for rate limit bypass (has_role):', roleErr);
         }
-        isAdmin = !!adminRole;
+        isAdmin = hasAdminRole === true;
       }
 
       // Rate limit: max 3 comments per IP per profile per hour (non-admin only)
