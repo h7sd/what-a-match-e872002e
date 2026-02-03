@@ -83,6 +83,7 @@ import { LiveProfilePreview } from '@/components/dashboard/LiveProfilePreview';
 import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSection';
 import { AliasRequestsBell } from '@/components/dashboard/AliasRequestsBell';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { ProfileCommentsViewer } from '@/components/dashboard/ProfileCommentsViewer';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
@@ -877,6 +878,20 @@ export default function Dashboard() {
                   url: link.url,
                 }))}
             />
+          </div>
+
+          {/* Comments Section */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/40 backdrop-blur-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center border border-amber-500/20">
+                <MessageSquare className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">Profile Comments</h3>
+                <p className="text-xs text-white/40">Comments from visitors on your profile</p>
+              </div>
+            </div>
+            <ProfileCommentsViewer />
           </div>
         </div>
       )}
