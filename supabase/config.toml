@@ -146,3 +146,6 @@ verify_jwt = false
 
 [functions.publish-notification]
 verify_jwt = false
+
+[functions.encrypted-chat-ai]
+verify_jwt = false
