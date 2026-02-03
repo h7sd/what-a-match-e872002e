@@ -61,6 +61,10 @@ export default function Auth() {
   const [verificationCode, setVerificationCode] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaMethod, setMfaMethod] = useState<'totp' | 'email'>('totp');
+  const [emailOtpSending, setEmailOtpSending] = useState(false);
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Google/Apple OAuth disabled
@@ -73,11 +77,25 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Track if MFA was just completed to prevent loop
+  const [mfaJustCompleted, setMfaJustCompleted] = useState(false);
+
   // Redirect if already logged in AND not in MFA challenge (e.g., after OAuth callback)
   useEffect(() => {
     const checkAuthAndMfa = async () => {
       // Don't redirect if we're in the middle of MFA verification
       if (user && !mfaChallenge && step !== 'mfa-verify') {
+        // Skip AAL check if MFA was just completed - prevent loop
+        if (mfaJustCompleted) {
+          const redirect = searchParams.get('redirect');
+          if (redirect === 'premium') {
+            navigate('/?showPremium=true');
+          } else {
+            navigate('/dashboard');
+          }
+          return;
+        }
+
         // Check if user has MFA enabled and needs to verify
         const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         
@@ -108,7 +126,7 @@ export default function Auth() {
     };
     
     checkAuthAndMfa();
-  }, [user, mfaChallenge, step, navigate, toast, searchParams]);
+  }, [user, mfaChallenge, step, mfaJustCompleted, navigate, toast, searchParams]);
 
   // Load Turnstile script
   useEffect(() => {
@@ -541,17 +559,23 @@ export default function Auth() {
       if (error) {
         toast({
           title: 'Invalid code',
-          description: 'Please check your authenticator code.',
+          description: error.message?.includes('Too many') ? error.message : 'Please check your authenticator code.',
           variant: 'destructive',
         });
+        setMfaCode(''); // Clear code on error
       } else {
+        // Mark MFA as completed to prevent AAL check loop
+        setMfaJustCompleted(true);
         toast({ title: 'Successfully logged in!' });
-        // Redirect; welcome animation is handled globally after auth is fully satisfied
+        
+        // Small delay to let state update, then redirect
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const redirect = searchParams.get('redirect');
         if (redirect === 'premium') {
-          navigate('/?showPremium=true');
+          navigate('/?showPremium=true', { replace: true });
         } else {
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         }
       }
     } catch (err: any) {
@@ -560,6 +584,7 @@ export default function Auth() {
         description: err.message || 'Please try again.',
         variant: 'destructive',
       });
+      setMfaCode(''); // Clear code on error
     } finally {
       setLoading(false);
     }
@@ -991,33 +1016,204 @@ export default function Auth() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={6}
-                    value={mfaCode}
-                    onChange={setMfaCode}
-                    className="gap-2"
+                {/* Method Toggle */}
+                <div className="flex rounded-lg bg-white/5 p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMfaMethod('totp');
+                      setMfaCode('');
+                    }}
+                    className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                      mfaMethod === 'totp' 
+                        ? 'bg-primary text-black' 
+                        : 'text-white/60 hover:text-white'
+                    }`}
                   >
-                    <InputOTPGroup className="gap-2">
-                      {[0, 1, 2, 3, 4, 5].map((index) => (
-                        <InputOTPSlot 
-                          key={index}
-                          index={index} 
-                          className="w-12 h-14 bg-white/5 border-white/10 text-white text-lg font-semibold rounded-lg focus:border-primary focus:ring-primary/20"
-                        />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
+                    <Shield className="w-4 h-4 inline mr-2" />
+                    Authenticator
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMfaMethod('email');
+                      setMfaCode('');
+                    }}
+                    className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                      mfaMethod === 'email' 
+                        ? 'bg-primary text-black' 
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Mail className="w-4 h-4 inline mr-2" />
+                    Email Code
+                  </button>
                 </div>
 
-                <Button
-                  onClick={handleMfaVerify}
-                  disabled={loading || mfaCode.length !== 6}
-                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
-                >
-                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Verify
-                </Button>
+                {/* Email OTP: Send Button */}
+                {mfaMethod === 'email' && !emailOtpSent && (
+                  <div className="text-center space-y-4">
+                    <p className="text-white/60 text-sm">
+                      We'll send a 6-digit code to your registered email address.
+                    </p>
+                    <Button
+                      onClick={async () => {
+                        setEmailOtpSending(true);
+                        try {
+                          const { data, error } = await supabase.functions.invoke('mfa-email-otp', {
+                            body: { action: 'send' }
+                          });
+                          
+                          if (error) throw error;
+                          
+                          if (data?.success) {
+                            setEmailOtpSent(true);
+                            setMaskedEmail(data.maskedEmail || null);
+                            toast({ title: 'Code sent!', description: `Check your email (${data.maskedEmail || 'your email'})` });
+                          } else {
+                            throw new Error(data?.error || 'Failed to send code');
+                          }
+                        } catch (err: any) {
+                          toast({ 
+                            title: 'Failed to send code', 
+                            description: err.message || 'Please try again.',
+                            variant: 'destructive' 
+                          });
+                        } finally {
+                          setEmailOtpSending(false);
+                        }
+                      }}
+                      disabled={emailOtpSending}
+                      className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300"
+                    >
+                      {emailOtpSending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Send Code to Email
+                    </Button>
+                  </div>
+                )}
+
+                {/* Code Input (shown for TOTP always, for email after sent) */}
+                {(mfaMethod === 'totp' || (mfaMethod === 'email' && emailOtpSent)) && (
+                  <>
+                    <p className="text-center text-white/60 text-sm">
+                      {mfaMethod === 'totp' 
+                        ? 'Enter the 6-digit code from your authenticator app'
+                        : `Enter the code sent to ${maskedEmail || 'your email'}`
+                      }
+                    </p>
+                    
+                    <div className="flex justify-center">
+                      <InputOTP
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={setMfaCode}
+                        className="gap-2"
+                      >
+                        <InputOTPGroup className="gap-2">
+                          {[0, 1, 2, 3, 4, 5].map((index) => (
+                            <InputOTPSlot 
+                              key={index}
+                              index={index} 
+                              className="w-12 h-14 bg-white/5 border-white/10 text-white text-lg font-semibold rounded-lg focus:border-primary focus:ring-primary/20"
+                            />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+
+                    <Button
+                      onClick={async () => {
+                        if (mfaCode.length !== 6) {
+                          toast({ title: 'Please enter the 6-digit code', variant: 'destructive' });
+                          return;
+                        }
+
+                        setLoading(true);
+                        try {
+                          if (mfaMethod === 'email') {
+                            // Verify email OTP
+                            const { data, error } = await supabase.functions.invoke('mfa-email-otp', {
+                              body: { action: 'verify', code: mfaCode }
+                            });
+
+                            if (error) throw error;
+                            
+                            if (!data?.success) {
+                              throw new Error(data?.error || 'Invalid code');
+                            }
+
+                            // Success
+                            setMfaJustCompleted(true);
+                            toast({ title: 'Successfully logged in!' });
+                            
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
+                            const redirect = searchParams.get('redirect');
+                            if (redirect === 'premium') {
+                              navigate('/?showPremium=true', { replace: true });
+                            } else {
+                              navigate('/dashboard', { replace: true });
+                            }
+                          } else {
+                            // Verify TOTP
+                            await handleMfaVerify();
+                          }
+                        } catch (err: any) {
+                          toast({
+                            title: 'Invalid code',
+                            description: err.message?.includes('Too many') ? err.message : 'Please check your code and try again.',
+                            variant: 'destructive',
+                          });
+                          setMfaCode('');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading || mfaCode.length !== 6}
+                      className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
+                    >
+                      {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Verify
+                    </Button>
+
+                    {/* Resend for email */}
+                    {mfaMethod === 'email' && emailOtpSent && (
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setEmailOtpSending(true);
+                            try {
+                              const { data, error } = await supabase.functions.invoke('mfa-email-otp', {
+                                body: { action: 'send' }
+                              });
+                              
+                              if (error) throw error;
+                              
+                              if (data?.success) {
+                                toast({ title: 'New code sent!' });
+                              } else {
+                                throw new Error(data?.error || 'Failed to resend');
+                              }
+                            } catch (err: any) {
+                              toast({ 
+                                title: 'Failed to resend', 
+                                description: err.message,
+                                variant: 'destructive' 
+                              });
+                            } finally {
+                              setEmailOtpSending(false);
+                            }
+                          }}
+                          disabled={emailOtpSending}
+                          className="text-sm text-white/50 hover:text-white transition-colors"
+                        >
+                          Didn't receive a code? <span className="text-primary">Resend</span>
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <div className="text-center">
                   <button
@@ -1026,6 +1222,9 @@ export default function Auth() {
                       setStep('login');
                       setMfaCode('');
                       setMfaFactorId(null);
+                      setMfaMethod('totp');
+                      setEmailOtpSent(false);
+                      setMaskedEmail(null);
                     }}
                     className="text-sm text-white/50 hover:text-white transition-colors flex items-center justify-center gap-2"
                   >

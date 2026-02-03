@@ -176,14 +176,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data?.error || 'Verification failed');
       }
 
+      // CRITICAL: Clear MFA challenge FIRST to prevent re-triggering
+      setMfaChallenge(null);
+
       // After successful MFA verification, refresh the session to get AAL2 token
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session) {
-        setSession(sessionData.session);
-        setUser(sessionData.session.user);
+      // Use refreshSession to actually get a new AAL2 token from Supabase
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error('Session refresh error:', refreshError);
+        // Fallback to getSession
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          setSession(sessionData.session);
+          setUser(sessionData.session.user);
+        }
+      } else if (refreshData.session) {
+        setSession(refreshData.session);
+        setUser(refreshData.session.user);
       }
 
-      setMfaChallenge(null);
       return { error: null };
     } catch (error: any) {
       return { error };
