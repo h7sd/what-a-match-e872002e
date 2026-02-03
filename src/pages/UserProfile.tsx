@@ -406,7 +406,7 @@ export default function UserProfile() {
           <ProfileCard 
             profile={{...profile, accent_color: accentColor} as any} 
             badges={badges.map((b: PublicBadge) => ({
-              id: b.name, // Use name as ID since we don't expose real IDs
+              id: b.id || b.name, // Use real ID from API
               name: b.name,
               color: b.color,
               icon_url: b.icon_url,

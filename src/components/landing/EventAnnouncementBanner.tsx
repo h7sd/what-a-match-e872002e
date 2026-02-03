@@ -69,21 +69,21 @@ export function EventAnnouncementBanner() {
                 <strong>{event.name}</strong>
                 {' - '}
                 {event.event_type === 'steal' 
-                  ? 'Stehle Badges von anderen Usern!' 
-                  : 'Finde das versteckte Badge!'}
+                  ? 'Steal badges from other users!' 
+                  : 'Find the hidden badge!'}
               </span>
 
               <Link 
-                to="/dashboard#badges" 
+                to="/" 
                 className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs font-bold transition-colors"
               >
-                Teilnehmen
+                {event.event_type === 'steal' ? '🏴‍☠️ Steal' : '🎯 Hunt'}
               </Link>
 
               <button
                 onClick={() => setDismissed(prev => [...prev, event.id])}
                 className="ml-2 p-1 hover:bg-white/20 rounded-full transition-colors"
-                aria-label="Schließen"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>

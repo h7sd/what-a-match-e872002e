@@ -78,23 +78,23 @@ Deno.serve(async (req) => {
       embed = {
         title: `${eventTypeEmoji} ${event_name}`,
         description: description || (event_type === 'steal' 
-          ? '**Ein Badge-Diebstahl Event hat begonnen!** Besuche Profile anderer User und stehle ihre Badges für eine begrenzte Zeit!'
-          : '**Ein Badge-Jagd Event hat begonnen!** Finde das versteckte Badge bevor es jemand anderes tut!'),
+          ? '**A Badge Stealing Event has started!** Visit other users\' profiles and steal their badges for a limited time!'
+          : '**A Badge Hunt Event has started!** Find the hidden badge before someone else does!'),
         color: event_type === 'steal' ? 0xef4444 : 0x22c55e,
         fields: [
           {
-            name: '⏰ Dauer',
-            value: `${duration_hours} Stunden`,
+            name: '⏰ Duration',
+            value: `${duration_hours} hours`,
             inline: true
           },
           {
-            name: '🎯 Event-Typ',
+            name: '🎯 Event Type',
             value: eventTypeText,
             inline: true
           },
           {
-            name: '🔗 Teilnehmen',
-            value: '[Jetzt auf UserVault](https://what-a-match.lovable.app)',
+            name: '🔗 Participate',
+            value: '[Join on UserVault](https://what-a-match.lovable.app)',
             inline: false
           }
         ],
@@ -104,11 +104,11 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString()
       }
       
-      content = '@everyone 🎉 **NEUES EVENT GESTARTET!**'
+      content = '@everyone 🎉 **NEW EVENT STARTED!**'
     } else if (action === 'end') {
       embed = {
-        title: `🏁 ${event_name} beendet`,
-        description: 'Das Event ist nun vorbei. Alle gestohlenen Badges werden zurückgegeben.',
+        title: `🏁 ${event_name} ended`,
+        description: 'The event is now over. All stolen badges will be returned.',
         color: 0x6b7280,
         footer: {
           text: 'UserVault Badge Events'
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString()
       }
       
-      content = '📢 **Event beendet**'
+      content = '📢 **Event ended**'
     } else {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),

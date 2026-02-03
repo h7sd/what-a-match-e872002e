@@ -66,7 +66,7 @@ export function StealableBadge({
 
   const handleSteal = async () => {
     if (!user) {
-      toast({ title: 'Du musst eingeloggt sein', variant: 'destructive' });
+      toast({ title: 'You must be logged in', variant: 'destructive' });
       return;
     }
 
@@ -82,22 +82,22 @@ export function StealableBadge({
       const result = data?.[0];
       if (result?.success) {
         toast({
-          title: '🏴‍☠️ Badge gestohlen!',
-          description: `Du hast "${result.stolen_badge_name}" für 1 Woche gestohlen!`,
+          title: '🏴‍☠️ Badge Stolen!',
+          description: `You stole "${result.stolen_badge_name}" for 1 week!`,
         });
         setShowStealDialog(false);
         onStealSuccess?.();
       } else {
         toast({
-          title: 'Fehler',
-          description: result?.message || 'Konnte Badge nicht stehlen',
+          title: 'Error',
+          description: result?.message || 'Could not steal badge',
           variant: 'destructive',
         });
       }
     } catch (err: any) {
       toast({
-        title: 'Fehler',
-        description: err.message || 'Konnte Badge nicht stehlen',
+        title: 'Error',
+        description: err.message || 'Could not steal badge',
         variant: 'destructive',
       });
     } finally {
@@ -111,7 +111,7 @@ export function StealableBadge({
         <TooltipTrigger asChild>
           <motion.button
             type="button"
-            aria-label={`Badge: ${badge.name}${canSteal ? ' (Klicken zum Stehlen)' : ''}`}
+            aria-label={`Badge: ${badge.name}${canSteal ? ' (Click to steal)' : ''}`}
             className={`w-8 h-8 flex items-center justify-center cursor-pointer rounded-full touch-manipulation relative ${transparentBadges ? 'opacity-70' : ''}`}
             whileHover={{ 
               scale: 1.15,
@@ -166,7 +166,7 @@ export function StealableBadge({
           <div className="flex flex-col items-center gap-1">
             <span>{badge.name}</span>
             {canSteal && (
-              <span className="text-red-400 text-[10px]">🏴‍☠️ Klicken zum Stehlen</span>
+              <span className="text-red-400 text-[10px]">🏴‍☠️ Click to steal</span>
             )}
           </div>
         </TooltipContent>
@@ -180,10 +180,10 @@ export function StealableBadge({
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-red-400">
                   <Target className="w-5 h-5" />
-                  Badge stehlen?
+                  Steal Badge?
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground">
-                  Willst du wirklich <strong className="text-white">{badge.name}</strong> von <strong className="text-white">@{victimUsername}</strong> stehlen?
+                  Do you really want to steal <strong className="text-white">{badge.name}</strong> from <strong className="text-white">@{victimUsername}</strong>?
                 </DialogDescription>
               </DialogHeader>
 
@@ -201,7 +201,7 @@ export function StealableBadge({
                     </div>
                     <div>
                       <p className="font-semibold text-white">{badge.name}</p>
-                      <p className="text-xs text-muted-foreground">Wird nach 1 Woche zurückgegeben</p>
+                      <p className="text-xs text-muted-foreground">Returns after 1 week</p>
                     </div>
                   </div>
                 </div>
@@ -214,7 +214,7 @@ export function StealableBadge({
                     disabled={isStealing}
                   >
                     <X className="w-4 h-4 mr-2" />
-                    Abbrechen
+                    Cancel
                   </Button>
                   <Button
                     variant="destructive"
@@ -227,7 +227,7 @@ export function StealableBadge({
                     ) : (
                       <Check className="w-4 h-4 mr-2" />
                     )}
-                    Stehlen!
+                    Steal!
                   </Button>
                 </div>
               </div>
