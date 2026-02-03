@@ -35,6 +35,7 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
   const [show, setShow] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
+  const [laserVisible, setLaserVisible] = useState(false);
 
   const handleExit = useCallback(() => {
     if (isExiting) return;
@@ -45,11 +46,14 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
   }, [isExiting]);
 
   useEffect(() => {
-    // Delay content appearance slightly for smoother entrance
-    const showContent = setTimeout(() => setContentVisible(true), 100);
+    // Fade in laser smoothly first
+    const showLaser = setTimeout(() => setLaserVisible(true), 50);
+    // Then show content
+    const showContent = setTimeout(() => setContentVisible(true), 200);
     // Auto-dismiss after 2.5 seconds
     const timer = setTimeout(handleExit, 2500);
     return () => {
+      clearTimeout(showLaser);
       clearTimeout(showContent);
       clearTimeout(timer);
     };
@@ -75,8 +79,15 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
         background: '#0a0a0b',
       }}
     >
-      {/* LaserFlow WebGL Background */}
-      <div className="absolute inset-0">
+      {/* LaserFlow WebGL Background with smooth fade */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          opacity: laserVisible && !isExiting ? 1 : 0,
+          transition: 'opacity 0.8s ease-out',
+          willChange: 'opacity',
+        }}
+      >
         <MemoizedLaserFlow />
       </div>
       
