@@ -63,6 +63,9 @@ interface LiveProfilePreviewProps {
   enableRainbow?: boolean;
   glowUsername?: boolean;
   customCursorUrl?: string;
+  displayNameAnimation?: string;
+  asciiSize?: number;
+  asciiWaves?: boolean;
 }
 
 export function LiveProfilePreview({
@@ -105,6 +108,9 @@ export function LiveProfilePreview({
   enableRainbow = false,
   glowUsername = false,
   customCursorUrl,
+  displayNameAnimation = 'none',
+  asciiSize = 8,
+  asciiWaves = true,
 }: LiveProfilePreviewProps) {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(true);
@@ -185,6 +191,9 @@ export function LiveProfilePreview({
     location,
     enable_profile_gradient: enableRainbow,
     glow_username: glowUsername,
+    display_name_animation: displayNameAnimation,
+    ascii_size: asciiSize,
+    ascii_waves: asciiWaves,
   } as Profile;
 
   // Mobile: Phone frame design

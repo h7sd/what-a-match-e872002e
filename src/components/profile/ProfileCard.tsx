@@ -4,6 +4,7 @@ import { Eye, MapPin, Briefcase, AtSign } from 'lucide-react';
 import type { Profile } from '@/hooks/useProfile';
 import { SparkleEffect } from './SparkleEffect';
 import { AnimatedUsername } from './AnimatedUsername';
+import { AnimatedDisplayName, type TextAnimationType } from './TextAnimations';
 import { OrbitingAvatar } from './OrbitingAvatar';
 import { getBadgeIcon, getBadgeImage } from '@/lib/badges';
 import {
@@ -126,16 +127,26 @@ export function ProfileCard({
                         fontFamily: (profile as any).name_font || 'Inter',
                       }}
                     >
-                      <AnimatedUsername
-                        text={profile.display_name || profile.username}
-                        fontFamily={(profile as any).name_font || 'Inter'}
-                        accentColor={accentColor}
-                        enableRainbow={(profile as any).enable_profile_gradient}
-                        enableGlow={(profile as any).glow_username}
-                        enableTypewriter={profile.effects_config?.typewriter}
-                        enableGlitch={profile.effects_config?.glow}
-                        enableSparkles={profile.effects_config?.sparkles}
-                      />
+                      {(profile as any).display_name_animation && (profile as any).display_name_animation !== 'none' ? (
+                        <AnimatedDisplayName
+                          text={profile.display_name || profile.username}
+                          animation={(profile as any).display_name_animation as TextAnimationType}
+                          style={{ fontFamily: (profile as any).name_font || 'Inter' }}
+                          asciiSize={(profile as any).ascii_size ?? 8}
+                          asciiWaves={(profile as any).ascii_waves ?? true}
+                        />
+                      ) : (
+                        <AnimatedUsername
+                          text={profile.display_name || profile.username}
+                          fontFamily={(profile as any).name_font || 'Inter'}
+                          accentColor={accentColor}
+                          enableRainbow={(profile as any).enable_profile_gradient}
+                          enableGlow={(profile as any).glow_username}
+                          enableTypewriter={profile.effects_config?.typewriter}
+                          enableGlitch={profile.effects_config?.glow}
+                          enableSparkles={profile.effects_config?.sparkles}
+                        />
+                      )}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent 
@@ -359,16 +370,26 @@ export function ProfileCard({
                       fontFamily: (profile as any).name_font || 'Inter',
                     }}
                   >
-                    <AnimatedUsername
-                      text={profile.display_name || profile.username}
-                      fontFamily={(profile as any).name_font || 'Inter'}
-                      accentColor={accentColor}
-                      enableRainbow={(profile as any).enable_profile_gradient}
-                      enableGlow={(profile as any).glow_username}
-                      enableTypewriter={profile.effects_config?.typewriter}
-                      enableGlitch={profile.effects_config?.glow}
-                      enableSparkles={profile.effects_config?.sparkles}
-                    />
+                    {(profile as any).display_name_animation && (profile as any).display_name_animation !== 'none' ? (
+                      <AnimatedDisplayName
+                        text={profile.display_name || profile.username}
+                        animation={(profile as any).display_name_animation as TextAnimationType}
+                        style={{ fontFamily: (profile as any).name_font || 'Inter' }}
+                        asciiSize={(profile as any).ascii_size ?? 8}
+                        asciiWaves={(profile as any).ascii_waves ?? true}
+                      />
+                    ) : (
+                      <AnimatedUsername
+                        text={profile.display_name || profile.username}
+                        fontFamily={(profile as any).name_font || 'Inter'}
+                        accentColor={accentColor}
+                        enableRainbow={(profile as any).enable_profile_gradient}
+                        enableGlow={(profile as any).glow_username}
+                        enableTypewriter={profile.effects_config?.typewriter}
+                        enableGlitch={profile.effects_config?.glow}
+                        enableSparkles={profile.effects_config?.sparkles}
+                      />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent 

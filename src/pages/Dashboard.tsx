@@ -1018,6 +1018,9 @@ export default function Dashboard() {
               enableRainbow={enableProfileGradient}
               glowUsername={glowUsername}
               customCursorUrl={customCursorUrl}
+              displayNameAnimation={displayNameAnimation}
+              asciiSize={asciiSize}
+              asciiWaves={asciiWaves}
             />
           </div>
 
