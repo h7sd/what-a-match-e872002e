@@ -25,6 +25,7 @@ import { AliasRequestsBell } from './AliasRequestsBell';
 
 // Lazy load heavy components
 const FaultyTerminal = lazy(() => import('@/components/ui/FaultyTerminal'));
+const Aurora = lazy(() => import('@/components/ui/Aurora'));
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
 
@@ -236,6 +237,20 @@ export function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] flex">
+      {/* Global Aurora Background for all tabs except admin */}
+      {activeTab !== 'admin' && (
+        <Suspense fallback={null}>
+          <div className="fixed inset-0 z-0 opacity-40">
+            <Aurora
+              colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
+              amplitude={1.0}
+              blend={0.5}
+              speed={0.5}
+            />
+          </div>
+        </Suspense>
+      )}
+
       {/* Admin Terminal Background */}
       {activeTab === 'admin' && (
         <Suspense fallback={null}>
@@ -263,10 +278,10 @@ export function DashboardLayout({
         </Suspense>
       )}
       
-      {/* Subtle background gradient */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#00B4D8]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#00D9A5]/5 rounded-full blur-[100px]" />
+      {/* Subtle background gradient overlay */}
+      <div className="fixed inset-0 pointer-events-none z-[1]">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#00B4D8]/3 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#00D9A5]/3 rounded-full blur-[100px]" />
       </div>
 
       {/* Desktop Sidebar */}
