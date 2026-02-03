@@ -587,6 +587,7 @@ export type Database = {
           profile_opacity: number | null
           show_avatar: boolean | null
           show_badges: boolean | null
+          show_comments: boolean | null
           show_description: boolean | null
           show_display_name: boolean | null
           show_likes: boolean | null
@@ -671,6 +672,7 @@ export type Database = {
           profile_opacity?: number | null
           show_avatar?: boolean | null
           show_badges?: boolean | null
+          show_comments?: boolean | null
           show_description?: boolean | null
           show_display_name?: boolean | null
           show_likes?: boolean | null
@@ -755,6 +757,7 @@ export type Database = {
           profile_opacity?: number | null
           show_avatar?: boolean | null
           show_badges?: boolean | null
+          show_comments?: boolean | null
           show_description?: boolean | null
           show_display_name?: boolean | null
           show_likes?: boolean | null
@@ -1338,6 +1341,7 @@ export type Database = {
           profile_opacity: number
           show_avatar: boolean
           show_badges: boolean
+          show_comments: boolean
           show_description: boolean
           show_display_name: boolean
           show_likes: boolean
@@ -1419,6 +1423,7 @@ export type Database = {
           profile_opacity: number
           show_avatar: boolean
           show_badges: boolean
+          show_comments: boolean
           show_description: boolean
           show_display_name: boolean
           show_likes: boolean

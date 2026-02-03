@@ -459,11 +459,13 @@ export default function UserProfile() {
         {/* Bottom Center: Comment input + (optional) Like/Dislike */}
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,28rem)] pointer-events-none">
           <div className="flex flex-col items-center gap-3 pointer-events-auto">
-            <ProfileCommentInput
-              username={profile.username}
-              accentColor={accentColor}
-              className="w-full"
-            />
+            {((profile as any).show_comments ?? true) && (
+              <ProfileCommentInput
+                username={profile.username}
+                accentColor={accentColor}
+                className="w-full"
+              />
+            )}
 
             {((profile as any).show_likes ?? true) && (
               <ProfileLikeButtons
