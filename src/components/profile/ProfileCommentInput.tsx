@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { Send, Loader2, MessageCircle } from 'lucide-react';
 import { gsap } from 'gsap';
@@ -180,31 +181,41 @@ export function ProfileCommentInput({
     }
   };
 
-  return (
-    <>
-      {/* Multi-bubble plop overlay - fixed to viewport */}
-      {bubbles.length > 0 && (
-        <div className="fixed inset-0 pointer-events-none z-[9999]">
+  // Render bubbles via Portal to escape any parent transform/overflow constraints
+  const bubbleOverlay = bubbles.length > 0 
+    ? createPortal(
+        <div 
+          className="pointer-events-none"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 99999,
+            overflow: 'visible',
+          }}
+        >
           {bubbles.map((bubble) => (
             <div
               key={bubble.id}
               ref={(el) => {
                 if (el) bubbleRefs.current.set(bubble.id, el);
               }}
-              className="absolute"
               style={{
+                position: 'absolute',
                 left: `${bubble.x}%`,
                 top: `${bubble.y}%`,
                 transform: 'translate(-50%, -50%)',
               }}
             >
               <div
-                className="px-3 py-1.5 rounded-full backdrop-blur-md font-bold whitespace-nowrap"
+                className="rounded-full backdrop-blur-md font-bold whitespace-nowrap"
                 style={{
                   background: accentColor,
                   color: '#ffffff',
-                  boxShadow: `0 8px 32px ${accentColor}60, 0 4px 16px rgba(0,0,0,0.4)`,
-                  fontSize: `${0.6 + bubble.scale * 0.7}rem`, // Dynamic font size based on scale
+                  boxShadow: `0 12px 40px ${accentColor}70, 0 6px 20px rgba(0,0,0,0.5)`,
+                  fontSize: `${0.6 + bubble.scale * 0.7}rem`,
                   padding: bubble.scale > 1.5 
                     ? '0.75rem 1.5rem' 
                     : bubble.scale < 0.6 
@@ -223,8 +234,14 @@ export function ProfileCommentInput({
               </div>
             </div>
           ))}
-        </div>
-      )}
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      {bubbleOverlay}
 
       <div className={cn('w-full relative', className)}>
         <motion.div
