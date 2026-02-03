@@ -137,3 +137,9 @@ verify_jwt = false
 
 [functions.mfa-email-otp]
 verify_jwt = false
+
+[functions.signed-url]
+verify_jwt = false
+
+[functions.encrypted-api]
+verify_jwt = false
