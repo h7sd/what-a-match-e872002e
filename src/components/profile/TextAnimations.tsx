@@ -334,6 +334,7 @@ function ASCII3DWrapper({ text, className, style, asciiFontSize = 8, enableWaves
           textFontSize={Math.min(180, Math.max(100, 1200 / textLength))}
           planeBaseHeight={8}
           enableWaves={enableWaves}
+          enableTypewriter={true}
         />
       </div>
     </Suspense>
