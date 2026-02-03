@@ -68,12 +68,15 @@ export function useIsAdmin() {
 
 // Get all global badges (uses secure RPC to hide created_by from non-admins)
 export function useGlobalBadges() {
-  const { data: isAdmin } = useIsAdmin();
+  const { user } = useAuth();
+  const { data: isAdmin, isLoading: isAdminLoading } = useIsAdmin();
   
   return useQuery({
-    queryKey: ['globalBadges', isAdmin],
+    queryKey: ['globalBadges', user?.id, isAdmin],
     queryFn: async () => {
-      if (isAdmin) {
+      // SECURITY: Always use RPC for public access to hide created_by
+      // Only admins get full data, and we wait for admin check to complete
+      if (isAdmin === true) {
         // Admins can see full data including created_by
         const { data, error } = await supabase
           .from('global_badges')
@@ -90,26 +93,50 @@ export function useGlobalBadges() {
         return (data || []) as GlobalBadge[];
       }
     },
+    // Wait until admin check is complete before fetching
+    enabled: !isAdminLoading,
   });
 }
 
-// Get user's claimed badges
+// Get user's claimed badges (for own dashboard - protected by RLS)
 export function useUserBadges(userId: string) {
+  const { user } = useAuth();
+  
   return useQuery({
     queryKey: ['userBadges', userId],
     queryFn: async () => {
+      // SECURITY: Only allow fetching own badges
+      if (!user || user.id !== userId) {
+        return [];
+      }
+      
       const { data, error } = await supabase
         .from('user_badges')
         .select(`
-          *,
-          badge:global_badges(*)
+          id,
+          badge_id,
+          claimed_at,
+          is_enabled,
+          is_locked,
+          badge:global_badges(
+            id,
+            name,
+            description,
+            icon_url,
+            color,
+            rarity,
+            is_limited,
+            max_claims,
+            claims_count,
+            created_at
+          )
         `)
         .eq('user_id', userId);
       
       if (error) throw error;
       return data as (UserBadge & { badge: GlobalBadge })[];
     },
-    enabled: !!userId,
+    enabled: !!userId && !!user && user.id === userId,
   });
 }
 
