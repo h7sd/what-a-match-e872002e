@@ -1229,6 +1229,7 @@ export type Database = {
           target_user_id: string
         }[]
       }
+      get_next_available_uid: { Args: never; Returns: number }
       get_profile_badges: {
         Args: { p_profile_id: string }
         Returns: {
@@ -1476,6 +1477,7 @@ export type Database = {
         Returns: undefined
       }
       is_profile_owner: { Args: { profile_id: string }; Returns: boolean }
+      is_protected_uid: { Args: { uid: number }; Returns: boolean }
       scheduled_security_cleanup: { Args: never; Returns: undefined }
       send_visitor_message: {
         Args: { p_message: string; p_session_token: string }
