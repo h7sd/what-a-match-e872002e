@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { LiquidEther } from '@/components/landing/LiquidEther';
+import { WelcomeBackOverlay } from '@/components/auth/WelcomeBackOverlay';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
@@ -68,6 +69,10 @@ export default function Auth() {
   const [turnstileLoaded, setTurnstileLoaded] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  
+  // Welcome back overlay state
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomeUsername, setWelcomeUsername] = useState('');
 
   const { signIn, signUp, signOut, verifyMfa, user, mfaChallenge, banStatus, clearBanStatus } = useAuth();
   const navigate = useNavigate();
@@ -363,14 +368,16 @@ export default function Auth() {
           setStep('mfa-verify');
           toast({ title: '2FA Required', description: 'Please enter your authenticator code.' });
         } else {
-          toast({ title: 'Welcome back!' });
-          // Check for premium redirect
-          const redirect = searchParams.get('redirect');
-          if (redirect === 'premium') {
-            navigate('/?showPremium=true');
-          } else {
-            navigate('/dashboard');
-          }
+          // Fetch username for welcome message
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username, display_name')
+            .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+            .single();
+          
+          const displayUsername = profileData?.display_name || profileData?.username || emailOrUsername.split('@')[0];
+          setWelcomeUsername(displayUsername);
+          setShowWelcome(true);
         }
       } else if (step === 'signup') {
         const result = signupSchema.safeParse({ email, password, username });
@@ -601,8 +608,26 @@ export default function Auth() {
     );
   }
 
+  // Handle welcome overlay completion
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false);
+    const redirect = searchParams.get('redirect');
+    if (redirect === 'premium') {
+      navigate('/?showPremium=true');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+      {/* Welcome Back Overlay */}
+      {showWelcome && (
+        <WelcomeBackOverlay
+          username={welcomeUsername}
+          onComplete={handleWelcomeComplete}
+        />
+      )}
       {/* Liquid Ether Background */}
       <div className="fixed inset-0 z-0">
         <LiquidEther 
