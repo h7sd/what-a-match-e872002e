@@ -187,7 +187,8 @@ Deno.serve(async (req) => {
           audio_volume, profile_opacity, profile_blur, monochrome_icons,
           animated_title, swap_bio_colors, glow_username, glow_socials,
           glow_badges, enable_profile_gradient, icon_only_links,
-          icon_links_opacity, transparent_badges, ascii_size, ascii_waves, is_premium
+          icon_links_opacity, transparent_badges, ascii_size, ascii_waves, is_premium,
+          display_name_animation, show_likes, show_comments, likes_count, dislikes_count
         `);
 
         if (alias) {
