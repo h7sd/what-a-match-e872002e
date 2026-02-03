@@ -74,19 +74,15 @@ export function DashboardLayout({
       {/* Logo Section */}
       <div className="p-5 border-b border-white/5">
         <Link to="/" className="flex items-center gap-3 group">
-          <motion.div 
-            className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center overflow-hidden"
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: 'spring', stiffness: 400 }}
+          <div 
+            className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center overflow-hidden transition-transform duration-200 hover:scale-105"
           >
-            {/* Animated shine effect */}
-            <motion.div 
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-              animate={{ x: ['-100%', '100%'] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            {/* Subtle shine effect - CSS only */}
+            <div 
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"
             />
             <span className="relative text-white font-bold text-sm">UV</span>
-          </motion.div>
+          </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold text-white">UserVault</span>
             <span className="text-[10px] text-white/40 -mt-1">Dashboard</span>
@@ -96,54 +92,52 @@ export function DashboardLayout({
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-        {navItems.map((item, index) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.tab;
           
           return (
-            <motion.button
+            <button
               key={item.tab}
               onClick={() => {
                 onTabChange(item.tab);
                 setMobileMenuOpen(false);
               }}
               className={cn(
-                'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm transition-all text-left relative overflow-hidden group',
+                'w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm text-left relative overflow-hidden group',
+                'transition-all duration-200 ease-out',
                 isActive 
                   ? 'text-white' 
-                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.03]'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.03] hover:translate-x-1'
               )}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.04 }}
-              whileHover={{ x: isActive ? 0 : 4 }}
             >
-              {/* Active background with glow */}
-              {isActive && (
-                <motion.div 
-                  className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl"
-                  layoutId="activeNavBg"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
+              {/* Active background with glow - CSS transition */}
+              <div 
+                className={cn(
+                  'absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-xl',
+                  'transition-opacity duration-200',
+                  isActive ? 'opacity-100' : 'opacity-0'
+                )}
+              />
               
-              {/* Active indicator line */}
-              {isActive && (
-                <motion.div 
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-7 bg-gradient-to-b from-primary via-primary to-accent rounded-r-full"
-                  layoutId="activeNavLine"
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
+              {/* Active indicator line - CSS transition */}
+              <div 
+                className={cn(
+                  'absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-7 bg-gradient-to-b from-primary via-primary to-accent rounded-r-full',
+                  'transition-all duration-200',
+                  isActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0'
+                )}
+              />
 
               <div className={cn(
-                'relative z-10 w-9 h-9 rounded-lg flex items-center justify-center transition-all',
+                'relative z-10 w-9 h-9 rounded-lg flex items-center justify-center',
+                'transition-all duration-200',
                 isActive 
                   ? 'bg-primary/20' 
                   : 'bg-white/5 group-hover:bg-white/10'
               )}>
                 <Icon className={cn(
-                  'w-4 h-4 transition-colors',
+                  'w-4 h-4 transition-colors duration-200',
                   isActive ? 'text-primary' : 'text-white/60 group-hover:text-white/80'
                 )} />
               </div>
@@ -151,22 +145,11 @@ export function DashboardLayout({
               <span className="relative z-10 font-medium">{item.label}</span>
               
               {isActive && (
-                <motion.div 
-                  className="relative z-10 ml-auto flex items-center gap-1.5"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                >
-                  <motion.div 
-                    className="w-1.5 h-1.5 rounded-full bg-primary"
-                    animate={{ 
-                      scale: [1, 1.3, 1],
-                      opacity: [1, 0.7, 1]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                </motion.div>
+                <div className="relative z-10 ml-auto flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                </div>
               )}
-            </motion.button>
+            </button>
           );
         })}
       </nav>
@@ -175,10 +158,7 @@ export function DashboardLayout({
       <div className="p-3 border-t border-white/5 space-y-2">
         {/* Premium Status */}
         {!isPremium ? (
-          <motion.div 
-            whileHover={{ scale: 1.02 }} 
-            whileTap={{ scale: 0.98 }}
-          >
+          <div className="transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]">
             <Button 
               variant="outline" 
               className="w-full justify-start gap-3 h-12 border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent text-amber-400 hover:bg-amber-500/15 hover:border-amber-500/30 hover:text-amber-300 rounded-xl transition-all" 
@@ -194,7 +174,7 @@ export function DashboardLayout({
                 </div>
               </Link>
             </Button>
-          </motion.div>
+          </div>
         ) : (
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/20">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/30 to-amber-600/20 flex items-center justify-center">
@@ -304,7 +284,7 @@ export function DashboardLayout({
             <AdminChatNotificationBell />
             <AliasRequestsBell />
             
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <div className="transition-transform duration-150 hover:scale-105 active:scale-95">
               <Button
                 size="sm"
                 onClick={onSave}
@@ -317,7 +297,7 @@ export function DashboardLayout({
                   <Save className="w-4 h-4" />
                 )}
               </Button>
-            </motion.div>
+            </div>
             
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -338,12 +318,7 @@ export function DashboardLayout({
         {/* Desktop Header */}
         <header className="hidden md:block border-b border-white/[0.04] bg-[#0d0d0e]/50 backdrop-blur-xl sticky top-0 z-40">
           <div className="px-6 py-4 flex justify-between items-center">
-            <motion.div 
-              className="flex items-center gap-4"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              key={activeTab}
-            >
+            <div className="flex items-center gap-4">
               {navItems.find(item => item.tab === activeTab)?.icon && (
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center border border-primary/10">
                   {(() => {
@@ -360,13 +335,13 @@ export function DashboardLayout({
                   Manage your {activeTab === 'overview' ? 'dashboard' : activeTab}
                 </p>
               </div>
-            </motion.div>
+            </div>
             
             <div className="flex items-center gap-3">
               <AdminChatNotificationBell />
               <AliasRequestsBell />
               
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <div className="transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]">
                 <Button
                   onClick={onSave}
                   disabled={isSaving}
@@ -381,7 +356,7 @@ export function DashboardLayout({
                     </>
                   )}
                 </Button>
-              </motion.div>
+              </div>
             </div>
           </div>
         </header>
