@@ -152,3 +152,9 @@ verify_jwt = false
 
 [functions.encrypted-chat-ai]
 verify_jwt = false
+
+[functions.profile-comment]
+verify_jwt = false
+
+[functions.profile-like]
+verify_jwt = false

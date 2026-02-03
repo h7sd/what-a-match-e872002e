@@ -20,6 +20,7 @@ export function ProfileCommentInput({
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [lastSent, setLastSent] = useState('');
   const successRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -61,6 +62,8 @@ export function ProfileCommentInput({
         delay: 1.5
       });
 
+      tl.set(el, { display: 'none' });
+
       tl.eventCallback('onComplete', () => {
         setShowSuccess(false);
       });
@@ -69,7 +72,8 @@ export function ProfileCommentInput({
 
 
   const handleSubmit = async () => {
-    if (!comment.trim() || isSubmitting) return;
+    const message = comment.trim();
+    if (!message || isSubmitting) return;
     
     if (comment.length > 280) {
       toast({ 
@@ -84,10 +88,17 @@ export function ProfileCommentInput({
 
     try {
       const { data, error } = await supabase.functions.invoke('profile-comment', {
-        body: { action: 'add_comment', username, content: comment.trim() }
+        body: { action: 'add_comment', username, content: message }
       });
 
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: 'Failed to send comment',
+          description: (error as any)?.message || 'Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       if (data?.error) {
         toast({ title: data.error, variant: 'destructive' });
@@ -95,12 +106,17 @@ export function ProfileCommentInput({
       }
 
       // Trigger GSAP plop animation
+      setLastSent(message);
       setShowSuccess(true);
       setComment('');
 
     } catch (e) {
       console.error('Failed to submit comment:', e);
-      toast({ title: 'Failed to send comment', variant: 'destructive' });
+      toast({
+        title: 'Failed to send comment',
+        description: (e as any)?.message || 'Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -122,7 +138,9 @@ export function ProfileCommentInput({
             boxShadow: `0 8px 32px ${accentColor}60, 0 4px 16px rgba(0,0,0,0.3)`
           }}
         >
-          ✓ Comment sent!
+          <span className="block max-w-[min(92vw,26rem)] whitespace-normal break-words text-center">
+            ✓ {lastSent || 'Comment sent!'}
+          </span>
         </div>
       </div>
 

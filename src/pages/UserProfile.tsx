@@ -418,15 +418,6 @@ export default function UserProfile() {
             transparentBadges={profile.transparent_badges ?? false}
           />
 
-          {/* Comment Input */}
-          <div className="relative flex justify-center">
-            <ProfileCommentInput
-              username={profile.username}
-              accentColor={accentColor}
-              className="max-w-sm w-full"
-            />
-          </div>
-
           {/* Discord Presence Widget - Only show when border/card is enabled */}
           {profile.discord_user_id && profile.card_border_enabled !== false && (
             <div className="flex justify-center">
@@ -465,17 +456,25 @@ export default function UserProfile() {
           )}
         </motion.div>
 
-        {/* Like/Dislike Buttons - FIXED BOTTOM CENTER */}
-        {((profile as any).show_likes ?? true) && (
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-            <ProfileLikeButtons
+        {/* Bottom Center: Comment input + (optional) Like/Dislike */}
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,28rem)] pointer-events-none">
+          <div className="flex flex-col items-center gap-3 pointer-events-auto">
+            <ProfileCommentInput
               username={profile.username}
-              initialLikes={(profile as any).likes_count ?? 0}
-              initialDislikes={(profile as any).dislikes_count ?? 0}
               accentColor={accentColor}
+              className="w-full"
             />
+
+            {((profile as any).show_likes ?? true) && (
+              <ProfileLikeButtons
+                username={profile.username}
+                initialLikes={(profile as any).likes_count ?? 0}
+                initialDislikes={(profile as any).dislikes_count ?? 0}
+                accentColor={accentColor}
+              />
+            )}
           </div>
-        )}
+        </div>
 
       </div>
 

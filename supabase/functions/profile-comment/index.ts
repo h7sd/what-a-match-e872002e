@@ -98,6 +98,8 @@ serve(async (req) => {
     const body = await req.json();
     const { action, profile_id, username, content } = body;
 
+    console.log('profile-comment request', { action, hasUsername: !!username, hasProfileId: !!profile_id });
+
     // Get user ID if authenticated
     const authHeader = req.headers.get('Authorization');
     let userId: string | null = null;
@@ -116,12 +118,32 @@ serve(async (req) => {
         );
       }
 
-      // Get profile by username or ID
-      let profileQuery = supabase.from('profiles').select('id, username');
+      // Get profile by username/alias or ID
+      let profile: { id: string; username: string } | null = null;
       if (username) {
-        profileQuery = profileQuery.eq('username', username.toLowerCase());
+        const uname = String(username).toLowerCase();
+        const { data: byUsername } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('username', uname)
+          .maybeSingle();
+        profile = byUsername || null;
+
+        if (!profile) {
+          const { data: byAlias } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .eq('alias_username', uname)
+            .maybeSingle();
+          profile = byAlias || null;
+        }
       } else if (profile_id) {
-        profileQuery = profileQuery.eq('id', profile_id);
+        const { data: byId } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('id', profile_id)
+          .maybeSingle();
+        profile = byId || null;
       } else {
         return new Response(
           JSON.stringify({ error: 'Profile identifier required' }),
@@ -129,8 +151,7 @@ serve(async (req) => {
         );
       }
 
-      const { data: profile, error: profileError } = await profileQuery.single();
-      if (profileError || !profile) {
+      if (!profile) {
         return new Response(
           JSON.stringify({ error: 'Profile not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
