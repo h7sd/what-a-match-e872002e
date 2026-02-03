@@ -208,7 +208,6 @@ export function StealableBadge({
                     </div>
                     <div>
                       <p className="font-semibold text-white">{badge.name}</p>
-                      <p className="text-xs text-muted-foreground">Returns after 1 week</p>
                     </div>
                   </div>
                 </div>
