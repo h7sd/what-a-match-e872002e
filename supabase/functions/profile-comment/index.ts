@@ -158,20 +158,38 @@ serve(async (req) => {
         );
       }
 
-      // Rate limit: max 3 comments per IP per profile per hour
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { count: recentCount } = await supabase
-        .from('profile_comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', profile.id)
-        .eq('commenter_ip_hash', ipHash)
-        .gte('created_at', oneHourAgo);
+      // Admins should not be rate limited
+      let isAdmin = false;
+      if (userId) {
+        const { data: adminRole, error: adminRoleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
 
-      if ((recentCount || 0) >= 3) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        if (adminRoleError) {
+          console.warn('Failed to check admin role for rate limit bypass:', adminRoleError);
+        }
+        isAdmin = !!adminRole;
+      }
+
+      // Rate limit: max 3 comments per IP per profile per hour (non-admin only)
+      if (!isAdmin) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const { count: recentCount } = await supabase
+          .from('profile_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('profile_id', profile.id)
+          .eq('commenter_ip_hash', ipHash)
+          .gte('created_at', oneHourAgo);
+
+        if ((recentCount || 0) >= 3) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Encrypt the comment content
