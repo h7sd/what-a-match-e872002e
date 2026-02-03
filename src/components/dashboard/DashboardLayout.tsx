@@ -20,8 +20,11 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, lazy, Suspense } from 'react';
 import { AliasRequestsBell } from './AliasRequestsBell';
+
+// Lazy load heavy components
+const FaultyTerminal = lazy(() => import('@/components/ui/FaultyTerminal'));
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
 
@@ -233,10 +236,37 @@ export function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] flex">
+      {/* Admin Terminal Background */}
+      {activeTab === 'admin' && (
+        <Suspense fallback={null}>
+          <div className="fixed inset-0 z-0">
+            <FaultyTerminal
+              scale={1.5}
+              gridMul={[2, 1]}
+              digitSize={1.2}
+              timeScale={0.3}
+              pause={false}
+              scanlineIntensity={0.3}
+              glitchAmount={0.8}
+              flickerAmount={0.5}
+              noiseAmp={0.8}
+              chromaticAberration={0}
+              dither={0}
+              curvature={0.05}
+              tint="#00D9A5"
+              mouseReact
+              mouseStrength={0.3}
+              pageLoadAnimation
+              brightness={0.4}
+            />
+          </div>
+        </Suspense>
+      )}
+      
       {/* Subtle background gradient */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[100px]" />
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#00B4D8]/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#00D9A5]/5 rounded-full blur-[100px]" />
       </div>
 
       {/* Desktop Sidebar */}

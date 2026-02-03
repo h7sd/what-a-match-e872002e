@@ -1,6 +1,7 @@
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ReactNode, useRef, useEffect, useState } from 'react';
+import Aurora from '@/components/ui/Aurora';
 
 interface StatCardProps {
   icon: React.ElementType;
@@ -13,6 +14,7 @@ interface StatCardProps {
   };
   color?: 'primary' | 'blue' | 'amber' | 'rose' | 'emerald';
   animateNumber?: boolean;
+  showAurora?: boolean;
 }
 
 function AnimatedNumber({ value, duration = 1000 }: { value: number; duration?: number }) {
@@ -50,52 +52,34 @@ export function StatCard({
   suffix,
   trend,
   color = 'primary',
-  animateNumber = true
+  animateNumber = true,
+  showAurora = true
 }: StatCardProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const spotlightX = useSpring(mouseX, { stiffness: 400, damping: 80 });
-  const spotlightY = useSpring(mouseY, { stiffness: 400, damping: 80 });
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  };
-
   const colorStyles = {
     primary: {
-      gradient: 'from-primary/20 to-primary/5',
-      border: 'border-primary/10',
-      text: 'text-primary',
-      glow: 'rgba(0, 217, 165, 0.1)'
+      gradient: 'from-[#00B4D8]/20 via-[#00D9A5]/15 to-[#0077B6]/20',
+      border: 'border-[#00D9A5]/20',
+      text: 'text-[#00D9A5]',
     },
     blue: {
       gradient: 'from-blue-500/20 to-blue-500/5',
       border: 'border-blue-500/10',
       text: 'text-blue-400',
-      glow: 'rgba(59, 130, 246, 0.1)'
     },
     amber: {
       gradient: 'from-amber-500/20 to-amber-500/5',
       border: 'border-amber-500/10',
       text: 'text-amber-400',
-      glow: 'rgba(245, 158, 11, 0.1)'
     },
     rose: {
       gradient: 'from-rose-500/20 to-rose-500/5',
       border: 'border-rose-500/10',
       text: 'text-rose-400',
-      glow: 'rgba(244, 63, 94, 0.1)'
     },
     emerald: {
       gradient: 'from-emerald-500/20 to-emerald-500/5',
       border: 'border-emerald-500/10',
       text: 'text-emerald-400',
-      glow: 'rgba(16, 185, 129, 0.1)'
     }
   };
 
@@ -103,19 +87,21 @@ export function StatCard({
 
   return (
     <motion.div
-      ref={ref}
-      className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-5 group"
-      onMouseMove={handleMouseMove}
-      whileHover={{ borderColor: 'rgba(255,255,255,0.1)', y: -2 }}
+      className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/40 backdrop-blur-xl p-5 group"
+      whileHover={{ borderColor: 'rgba(255,255,255,0.12)', y: -2 }}
       transition={{ duration: 0.2 }}
     >
-      {/* Spotlight effect */}
-      <motion.div
-        className="pointer-events-none absolute inset-0 z-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{
-          background: `radial-gradient(400px circle at ${spotlightX}px ${spotlightY}px, ${styles.glow}, transparent 40%)`,
-        }}
-      />
+      {/* Aurora background effect */}
+      {showAurora && (
+        <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+          <Aurora
+            colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
+            amplitude={0.6}
+            blend={0.7}
+            speed={0.4}
+          />
+        </div>
+      )}
 
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">

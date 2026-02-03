@@ -5,7 +5,6 @@ import { ArrowRight, Sparkles, Play } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { BlurText } from './BlurText';
 import { GradientText } from './GradientText';
-import { Magnet } from './Magnet';
 
 export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,28 +100,24 @@ export function HeroSection() {
           transition={{ duration: 0.7, delay: 0.6 }}
           className="flex flex-col sm:flex-row gap-4 justify-center items-center"
         >
-          <Magnet magnetStrength={0.15}>
-            <Link
-              to={user ? '/dashboard' : '/auth'}
-              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#00B4D8] via-[#00D9A5] to-[#0077B6] text-white font-semibold text-lg transition-all duration-300 hover:shadow-2xl hover:shadow-[#00D9A5]/40 overflow-hidden border border-white/20"
-            >
-              <span className="relative z-10">{user ? 'Open Dashboard' : 'Start for Free'}</span>
-              <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
-              
-              {/* Shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-            </Link>
-          </Magnet>
+          <Link
+            to={user ? '/dashboard' : '/auth'}
+            className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#00B4D8] via-[#00D9A5] to-[#0077B6] text-white font-semibold text-lg transition-all hover:shadow-2xl hover:shadow-[#00D9A5]/30 overflow-hidden border border-white/20 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <span className="relative z-10">{user ? 'Open Dashboard' : 'Start for Free'}</span>
+            <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
+            
+            {/* Shimmer effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500" />
+          </Link>
           
-          <Magnet magnetStrength={0.15}>
-            <Link
-              to="/uservault"
-              className="group inline-flex items-center gap-3 px-8 py-4 rounded-xl border border-[#00D9A5]/30 hover:border-[#00D9A5]/60 text-foreground font-semibold text-lg transition-all duration-300 hover:bg-[#00D9A5]/5 backdrop-blur-sm bg-white/[0.02]"
-            >
-              <Play className="w-5 h-5 text-[#00D9A5]" />
-              <span>View Demo</span>
-            </Link>
-          </Magnet>
+          <Link
+            to="/uservault"
+            className="group inline-flex items-center gap-3 px-8 py-4 rounded-xl border border-[#00D9A5]/30 hover:border-[#00D9A5]/60 text-foreground font-semibold text-lg transition-all hover:bg-[#00D9A5]/5 backdrop-blur-sm bg-white/[0.02] hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Play className="w-5 h-5 text-[#00D9A5]" />
+            <span>View Demo</span>
+          </Link>
         </motion.div>
 
         {/* Social proof */}
