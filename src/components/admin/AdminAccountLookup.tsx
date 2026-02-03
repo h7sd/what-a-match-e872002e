@@ -131,12 +131,16 @@ export function AdminAccountLookup() {
         .select('id, user_id, username, alias_username, display_name, avatar_url, uid_number, bio, background_url, background_video_url, music_url, discord_user_id, effects_config, show_username, show_display_name, show_badges, show_views, show_avatar, show_links, show_description, start_screen_enabled, email_verified, views_count, created_at')
         .limit(10);
 
-      // Check if it's a UID number search
+      // Check if it's a pure UID number search (only digits)
       const uidNumber = parseInt(searchQuery, 10);
-      if (!isNaN(uidNumber)) {
-        query = query.eq('uid_number', uidNumber);
+      const isPureNumber = /^\d+$/.test(searchQuery.trim());
+      
+      if (isPureNumber && !isNaN(uidNumber)) {
+        // Search by UID AND usernames/aliases containing the number
+        query = query.or(`uid_number.eq.${uidNumber},username.ilike.%${searchQuery}%,alias_username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`);
       } else {
-        query = query.or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`);
+        // Text search - search username, alias, and display name
+        query = query.or(`username.ilike.%${searchQuery}%,alias_username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`);
       }
 
       const { data, error } = await query;
