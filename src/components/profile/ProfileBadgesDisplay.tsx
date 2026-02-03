@@ -46,10 +46,11 @@ export function ProfileBadgesDisplay({
   const canShowStealUI = !!activeEventId && !hasStolenInEvent;
 
   const handleStealSuccess = () => {
-    // Invalidate badges query to refresh
+    // Invalidate all relevant queries so UI updates
     queryClient.invalidateQueries({ queryKey: ['secure-badges', profileUsername] });
-    // Also invalidate the stolen check so UI updates immediately
     queryClient.invalidateQueries({ queryKey: ['has-stolen-in-event'] });
+    queryClient.invalidateQueries({ queryKey: ['hunt-badge-holder'] });
+    queryClient.invalidateQueries({ queryKey: ['activeHuntEvent'] });
   };
 
   if (badges.length === 0) return null;
