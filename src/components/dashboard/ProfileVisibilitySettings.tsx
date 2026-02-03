@@ -12,6 +12,7 @@ interface ProfileVisibilitySettingsProps {
   showLinks: boolean;
   showDescription: boolean;
   showLikes?: boolean;
+  showComments?: boolean;
   onShowUsernameChange: (value: boolean) => void;
   onShowDisplayNameChange: (value: boolean) => void;
   onShowBadgesChange: (value: boolean) => void;
@@ -20,6 +21,7 @@ interface ProfileVisibilitySettingsProps {
   onShowLinksChange: (value: boolean) => void;
   onShowDescriptionChange: (value: boolean) => void;
   onShowLikesChange?: (value: boolean) => void;
+  onShowCommentsChange?: (value: boolean) => void;
 }
 
 function VisibilityToggle({ 
@@ -52,6 +54,7 @@ export const ProfileVisibilitySettings = forwardRef<HTMLDivElement, ProfileVisib
   showLinks,
   showDescription,
   showLikes = true,
+  showComments = true,
   onShowUsernameChange,
   onShowDisplayNameChange,
   onShowBadgesChange,
@@ -60,6 +63,7 @@ export const ProfileVisibilitySettings = forwardRef<HTMLDivElement, ProfileVisib
   onShowLinksChange,
   onShowDescriptionChange,
   onShowLikesChange,
+  onShowCommentsChange,
 }, ref) {
   return (
     <div ref={ref} className="space-y-3">
@@ -109,6 +113,13 @@ export const ProfileVisibilitySettings = forwardRef<HTMLDivElement, ProfileVisib
             label="Like Buttons"
             checked={showLikes}
             onChange={onShowLikesChange}
+          />
+        )}
+        {onShowCommentsChange && (
+          <VisibilityToggle
+            label="Comments"
+            checked={showComments}
+            onChange={onShowCommentsChange}
           />
         )}
       </div>

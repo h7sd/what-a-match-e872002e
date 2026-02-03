@@ -215,6 +215,7 @@ export default function Dashboard() {
   const [showLinks, setShowLinks] = useState(true);
   const [showDescription, setShowDescription] = useState(true);
   const [showLikes, setShowLikes] = useState(true);
+  const [showComments, setShowComments] = useState(true);
   const [transparentBadges, setTransparentBadges] = useState(false);
 
   // Card border settings
@@ -385,6 +386,7 @@ export default function Dashboard() {
       setShowLinks((profile as any).show_links ?? true);
       setShowDescription((profile as any).show_description ?? true);
       setShowLikes((profile as any).show_likes ?? true);
+      setShowComments((profile as any).show_comments ?? true);
       setTransparentBadges((profile as any).transparent_badges ?? false);
       setCardBorderEnabled((profile as any).card_border_enabled ?? true);
       setCardBorderColor((profile as any).card_border_color || '');
@@ -574,6 +576,7 @@ export default function Dashboard() {
         show_links: showLinks,
         show_description: showDescription,
         show_likes: showLikes,
+        show_comments: showComments,
         transparent_badges: transparentBadges,
         card_border_enabled: cardBorderEnabled,
         card_border_color: cardBorderColor || null,
@@ -1192,6 +1195,7 @@ export default function Dashboard() {
                         showLinks={showLinks}
                         showDescription={showDescription}
                         showLikes={showLikes}
+                        showComments={showComments}
                         onShowUsernameChange={setShowUsername}
                         onShowDisplayNameChange={setShowDisplayName}
                         onShowBadgesChange={setShowBadges}
@@ -1200,6 +1204,7 @@ export default function Dashboard() {
                         onShowLinksChange={setShowLinks}
                         onShowDescriptionChange={setShowDescription}
                         onShowLikesChange={setShowLikes}
+                        onShowCommentsChange={setShowComments}
                       />
                     </div>
 
