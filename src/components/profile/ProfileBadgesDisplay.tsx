@@ -38,10 +38,11 @@ export function ProfileBadgesDisplay({
       : null;
 
   const huntTargetBadgeId = activeHuntEvent?.target_badge_id ?? null;
-  const { data: hasStolenInEvent = false } = useHasStolenInEvent(activeEventId);
+  const { data: hasStolenInEvent = false } = useHasStolenInEvent(activeEventId, activeEventType);
   const queryClient = useQueryClient();
 
-  // If user already stole in this event, don't show the steal UI
+  // For steal events: hide UI after stealing once
+  // For hunt events: always show UI (no limit)
   const canShowStealUI = !!activeEventId && !hasStolenInEvent;
 
   const handleStealSuccess = () => {
