@@ -10,8 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBadgeIcon } from '@/lib/badges';
-import { useEncryption } from '@/hooks/useEncryption';
-import { encodeFileMetadata } from '@/lib/crypto';
 import { invokeSecure } from '@/lib/secureEdgeFunctions';
 
 interface BadgeRequest {
@@ -59,7 +57,6 @@ async function validateImageSignature(file: File): Promise<boolean> {
 export function BadgeRequestForm() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { encrypt, isReady: encryptionReady } = useEncryption();
   const [badgeName, setBadgeName] = useState('');
   const [badgeDescription, setBadgeDescription] = useState('');
   const [badgeColor, setBadgeColor] = useState('#8B5CF6');
@@ -82,14 +79,14 @@ export function BadgeRequestForm() {
     enabled: !!user?.id,
   });
 
-  // Submit request mutation with AES-256-GCM encrypted icon upload
+  // Submit request mutation - Badge icons are NOT encrypted since they need to be publicly visible
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
       
       let iconUrl = null;
 
-      // Upload icon with AES-256-GCM encryption
+      // Upload icon (unencrypted - badge icons must be publicly visible)
       if (iconFile) {
         setIsUploading(true);
         
@@ -105,44 +102,25 @@ export function BadgeRequestForm() {
             throw new Error('Invalid file type. Use PNG, JPEG, GIF, WebP, or SVG.');
           }
           
-          // Validate magic bytes
+          // Validate magic bytes to prevent MIME spoofing
           const isValid = await validateImageSignature(iconFile);
           if (!isValid) {
             throw new Error('Invalid image file. File appears to be corrupted or spoofed.');
           }
           
-          let fileToUpload: File | Blob = iconFile;
-          let finalContentType = iconFile.type;
-          let folderPath = 'badge-icons';
-          
-          // Encrypt file if encryption is ready
-          if (encryptionReady && encrypt) {
-            const encryptedBlob = await encrypt(iconFile);
-            if (!encryptedBlob) {
-              throw new Error('Encryption failed');
-            }
-            fileToUpload = encryptedBlob;
-            finalContentType = 'application/octet-stream';
-            folderPath = 'encrypted/badge-icons';
-            
-            // Log metadata for debugging (not sensitive)
-            const metadata = encodeFileMetadata(iconFile.name, iconFile.type);
-            console.log('Badge icon encrypted, metadata stored');
-          }
-          
           // Generate secure random filename
           const randomId = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
           const ext = iconFile.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-          const fileName = `${randomId}.${ext}${encryptionReady ? '.enc' : ''}`;
+          const fileName = `${randomId}.${ext}`;
           
           // CRITICAL: Path must start with user ID for RLS policy
-          const filePath = `${user.id}/${folderPath}/${fileName}`;
+          const filePath = `${user.id}/badge-icons/${fileName}`;
           
           const { error: uploadError } = await supabase.storage
             .from('profile-assets')
-            .upload(filePath, fileToUpload, { 
+            .upload(filePath, iconFile, { 
               upsert: true,
-              contentType: finalContentType,
+              contentType: iconFile.type,
             });
 
           if (uploadError) {
@@ -177,7 +155,7 @@ export function BadgeRequestForm() {
     },
     onSuccess: () => {
       toast.success('Badge request submitted!', {
-        description: 'Encrypted & secured. You will be notified when reviewed.',
+        description: 'You will be notified when reviewed.',
       });
       queryClient.invalidateQueries({ queryKey: ['badgeRequest'] });
       setBadgeName('');
