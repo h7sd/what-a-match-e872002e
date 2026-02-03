@@ -63,6 +63,44 @@ export function LiveChatWidget() {
     if (!sessionToken && !user) return;
     
     try {
+      // First check if conversation is closed or assigned to an agent
+      if (sessionToken) {
+        const { data: convData } = await supabase.rpc('get_visitor_conversation', {
+          p_session_token: sessionToken
+        });
+        
+        if (convData && convData.length > 0) {
+          const conv = convData[0];
+          
+          // If conversation is closed, start fresh
+          if (conv.status === 'closed') {
+            sessionStorage.removeItem(SESSION_TOKEN_KEY);
+            sessionStorage.removeItem(CONVERSATION_ID_KEY);
+            setConversationId(null);
+            setSessionToken(null);
+            setIsClosed(true);
+            return;
+          }
+          
+          // If an agent is assigned, switch to agent mode
+          if (conv.assigned_admin_id) {
+            setMode('agent');
+            setAgentRequested(true);
+            
+            // Load agent profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('display_name, username, avatar_url')
+              .eq('user_id', conv.assigned_admin_id)
+              .maybeSingle();
+            
+            if (profile) {
+              setAgentInfo(profile);
+            }
+          }
+        }
+      }
+      
       let data;
       if (user) {
         // Authenticated users use direct query
