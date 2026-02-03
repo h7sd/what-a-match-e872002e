@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.encrypted-api]
 verify_jwt = false
+
+[functions.publish-notification]
+verify_jwt = false
