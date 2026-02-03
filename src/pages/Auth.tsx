@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Mail, Shield } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecure } from '@/lib/secureEdgeFunctions';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { LiquidEther } from '@/components/landing/LiquidEther';
@@ -1067,7 +1068,7 @@ export default function Auth() {
                       onClick={async () => {
                         setEmailOtpSending(true);
                         try {
-                          const { data, error } = await supabase.functions.invoke('mfa-email-otp', {
+                          const { data, error } = await invokeSecure<{ success?: boolean; maskedEmail?: string; error?: string }>('mfa-email-otp', {
                             body: { action: 'send' }
                           });
                           
@@ -1139,7 +1140,7 @@ export default function Auth() {
                         try {
                           if (mfaMethod === 'email') {
                             // Verify email OTP
-                            const { data, error } = await supabase.functions.invoke('mfa-email-otp', {
+                            const { data, error } = await invokeSecure<{ success?: boolean; error?: string }>('mfa-email-otp', {
                               body: { action: 'verify', code: mfaCode }
                             });
 
@@ -1191,7 +1192,7 @@ export default function Auth() {
                           onClick={async () => {
                             setEmailOtpSending(true);
                             try {
-                              const { data, error } = await supabase.functions.invoke('mfa-email-otp', {
+                              const { data, error } = await invokeSecure<{ success?: boolean; error?: string }>('mfa-email-otp', {
                                 body: { action: 'send' }
                               });
                               

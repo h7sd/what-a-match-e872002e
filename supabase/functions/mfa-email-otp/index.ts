@@ -96,7 +96,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { action } = await req.json();
+    // Parse body ONCE and extract all fields
+    const body = await req.json();
+    const { action, code } = body;
 
     if (action === 'send') {
       // Check rate limit
@@ -110,10 +112,10 @@ Deno.serve(async (req) => {
       }
 
       // Generate OTP
-      const code = generateSecureCode();
+      const otpCode = generateSecureCode();
       const expiresAt = Date.now() + CODE_EXPIRY_MS;
       
-      otpStore.set(userId, { code, expiresAt, attempts: 0 });
+      otpStore.set(userId, { code: otpCode, expiresAt, attempts: 0 });
 
       // Send email via Resend
       const resend = new Resend(resendApiKey);
@@ -159,7 +161,7 @@ Deno.serve(async (req) => {
                         
                         <!-- Code Box -->
                         <div style="background-color: #1a1a1a; border: 1px solid #333333; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
-                          <span style="color: #00D9A5; font-size: 36px; font-weight: bold; letter-spacing: 8px; font-family: monospace;">${code}</span>
+                          <span style="color: #00D9A5; font-size: 36px; font-weight: bold; letter-spacing: 8px; font-family: monospace;">${otpCode}</span>
                         </div>
                         
                         <p style="color: #666666; font-size: 13px; line-height: 1.5; margin: 0; text-align: center;">
@@ -206,8 +208,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'verify') {
-      const { code } = await req.json();
-
       // Validate code format
       if (!code || !/^\d{6}$/.test(code)) {
         await randomDelay();

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecure } from '@/lib/secureEdgeFunctions';
 
 interface MfaChallenge {
   factorId: string;
@@ -161,7 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Use secure edge function for MFA verification (rate-limited, validated)
-      const { data, error } = await supabase.functions.invoke('mfa-verify', {
+      // Route through proxy to hide Supabase URL
+      const { data, error } = await invokeSecure<{ success?: boolean; lockoutMinutes?: number; message?: string; error?: string }>('mfa-verify', {
         body: { action: 'verify', factorId, code }
       });
 

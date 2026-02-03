@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecure } from '@/lib/secureEdgeFunctions';
 
 interface MFAVerifyProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export function MFAVerify({ isOpen, onClose, onSuccess, factorId }: MFAVerifyPro
     setIsVerifying(true);
     try {
       // Use secure edge function for verification (rate-limited + validated)
-      const { data, error } = await supabase.functions.invoke('mfa-verify', {
+      const { data, error } = await invokeSecure<{ success?: boolean; lockoutMinutes?: number; error?: string }>('mfa-verify', {
         body: { action: 'verify', factorId, code }
       });
 
