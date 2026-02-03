@@ -1048,7 +1048,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      spotify_integrations_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          show_on_profile: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          show_on_profile?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          show_on_profile?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_record_view: {
@@ -1103,6 +1126,20 @@ export type Database = {
           id: string
           name: string
           rarity: string
+        }[]
+      }
+      get_profile_discord_presence: {
+        Args: { p_profile_id: string }
+        Returns: {
+          activity_details: string
+          activity_large_image: string
+          activity_name: string
+          activity_state: string
+          activity_type: string
+          avatar: string
+          discord_user_id: string
+          status: string
+          username: string
         }[]
       }
       get_public_badges: {
