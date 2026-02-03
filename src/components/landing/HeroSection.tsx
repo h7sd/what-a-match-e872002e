@@ -11,13 +11,25 @@ export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [heroAvatars, setHeroAvatars] = useState<string[]>([]);
 
   useEffect(() => {
+    // Fetch stats
     supabase.functions
       .invoke('api-proxy', { body: { action: 'get_stats' } })
       .then(({ data }) => {
         if (data?.data?.totalUsers) {
           setUserCount(data.data.totalUsers);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch hero avatars (uid 1-5, shuffled server-side)
+    supabase.functions
+      .invoke('api-proxy', { body: { action: 'get_hero_avatars' } })
+      .then(({ data }) => {
+        if (Array.isArray(data?.data)) {
+          setHeroAvatars(data.data);
         }
       })
       .catch(() => {});
@@ -141,13 +153,24 @@ export function HeroSection() {
           className="mt-16 flex flex-col items-center gap-4"
         >
           <div className="flex -space-x-3">
-            {[...Array(5)].map((_, i) => (
-              <div 
-                key={i} 
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border-2 border-background flex items-center justify-center text-xs font-bold text-primary"
-              >
-                {String.fromCharCode(65 + i)}
-              </div>
+            {(heroAvatars.length > 0 ? heroAvatars.slice(0, 5) : [...Array(5)]).map((avatar, i) => (
+              typeof avatar === 'string' ? (
+                <img
+                  key={i}
+                  src={avatar}
+                  alt=""
+                  className="w-10 h-10 rounded-full border-2 border-background object-cover bg-muted"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div 
+                  key={i} 
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border-2 border-background flex items-center justify-center text-xs font-bold text-primary"
+                >
+                  {String.fromCharCode(65 + i)}
+                </div>
+              )
             ))}
           </div>
           <p className="text-sm text-muted-foreground">
