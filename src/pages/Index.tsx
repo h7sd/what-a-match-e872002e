@@ -12,7 +12,6 @@ import { ModernFooter } from "@/components/landing/ModernFooter";
 import { PremiumDialog } from "@/components/landing/PremiumDialog";
 import { LiveChatWidget } from "@/components/chat/LiveChatWidget";
 import { LiquidEther } from "@/components/landing/LiquidEther";
-import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -49,9 +48,6 @@ export default function Index() {
       
       {/* Dot pattern */}
       <div className="fixed inset-0 dot-pattern opacity-20 pointer-events-none z-[1]" />
-
-      {/* Event Announcement Banner */}
-      <EventAnnouncementBanner />
 
       {/* Content */}
       <div className="relative z-10">

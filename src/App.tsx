@@ -20,6 +20,7 @@ import PublishBookmarklet from "./pages/PublishBookmarklet";
 import SecretDatabaseViewer from "./pages/SecretDatabaseViewer";
 import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
 import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
+import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,8 @@ const App = () => {
             <Sonner />
             <WelcomeBackGate />
             <GlobalPopups />
+            {/* Global Event Banner (also visible on profile pages) */}
+            <EventAnnouncementBanner />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />

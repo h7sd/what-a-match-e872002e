@@ -48,7 +48,6 @@ import {
 } from '@/components/ui/select';
 import { OverviewStats } from '@/components/dashboard/OverviewStats';
 import { BadgesCarousel } from '@/components/dashboard/BadgesCarousel';
-import { EventAnnouncementBanner } from '@/components/landing/EventAnnouncementBanner';
 import { DiscordCard } from '@/components/dashboard/DiscordCard';
 import { RegisteredUsersList } from '@/components/dashboard/RegisteredUsersList';
 import { EarlyBadgeCountdown } from '@/components/dashboard/EarlyBadgeCountdown';
@@ -826,9 +825,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Global Event Banner */}
-      <EventAnnouncementBanner />
-      
       <DashboardLayout
         activeTab={activeTab}
         onTabChange={handleTabChange}
