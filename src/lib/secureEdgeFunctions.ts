@@ -3,8 +3,7 @@
  * to hide the Supabase project URL from network inspection.
  */
 
-import { PUBLIC_API_URL } from '@/lib/supabase-proxy-client';
-import { supabase } from '@/integrations/supabase/client';
+import { PUBLIC_API_URL, supabase } from '@/lib/supabase-proxy-client';
 
 interface InvokeOptions {
   body?: Record<string, unknown>;
