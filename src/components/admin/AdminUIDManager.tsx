@@ -95,12 +95,20 @@ export function AdminUIDManager() {
     }
   };
 
+  // Protected UIDs that cannot be assigned
+  const PROTECTED_UIDS = [911];
+
   const handleUpdateUID = async () => {
     if (!foundUser) return;
     
     const uidNumber = parseInt(newUID);
     if (isNaN(uidNumber) || uidNumber < 1) {
       toast.error('Enter a valid UID number (positive integer)');
+      return;
+    }
+
+    if (PROTECTED_UIDS.includes(uidNumber)) {
+      toast.error(`UID #${uidNumber} is protected and cannot be assigned`);
       return;
     }
 

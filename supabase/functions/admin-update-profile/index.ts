@@ -268,6 +268,15 @@ Deno.serve(async (req) => {
         })
       }
 
+      // Check for protected UIDs that cannot be assigned
+      const PROTECTED_UIDS = [911];
+      if (sanitizedData.uid_number && PROTECTED_UIDS.includes(sanitizedData.uid_number as number)) {
+        return new Response(JSON.stringify({ error: 'This UID is protected and cannot be assigned' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       // If username is being changed, check for uniqueness
       if (sanitizedData.username) {
         const newUsername = sanitizedData.username as string;
