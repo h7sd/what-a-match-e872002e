@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
   // Discord can de-dupe/cache based on og:url. When users paste cache-busters like ?v=123
   // we need og:url to reflect the original request URL. The Cloudflare Worker should pass
   // the original URL as `src`.
+  // Use original request URL (incl. cache-busters like ?v=123) to avoid Discord caching old cards.
   const resolvedOgUrl = resolveOgUrl(src) || profileUrl;
   const updatedTime = new Date().toISOString();
 
@@ -105,7 +106,7 @@ Deno.serve(async (req) => {
   
   <!-- Open Graph / Discord -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${escapeHtml(profileUrl)}">
+   <meta property="og:url" content="${escapeHtml(resolvedOgUrl)}">
   <meta property="og:site_name" content="UserVault">
   <meta property="og:title" content="${escapeHtml(ogTitle)}">
   <meta property="og:description" content="${escapeHtml(ogDescription)}">
@@ -116,10 +117,12 @@ Deno.serve(async (req) => {
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="${escapeHtml(profileUrl)}">
+   <meta name="twitter:url" content="${escapeHtml(resolvedOgUrl)}">
   <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
   <meta name="twitter:description" content="${escapeHtml(ogDescription)}">
   <meta name="twitter:image" content="${ogImage}">
+
+   <link rel="canonical" href="${escapeHtml(resolvedOgUrl)}">
   
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="${ogIcon}">
