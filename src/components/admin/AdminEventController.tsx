@@ -82,6 +82,26 @@ export function AdminEventController() {
     },
   });
 
+  // Send Discord notification
+  const sendEventNotification = async (eventName: string, eventType: string, description: string, durationHours: number, action: 'start' | 'end') => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      await supabase.functions.invoke('event-notification', {
+        body: {
+          event_name: eventName,
+          event_type: eventType,
+          description: description,
+          duration_hours: durationHours,
+          action,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to send event notification:', err);
+    }
+  };
+
   // Create event
   const createEvent = useMutation({
     mutationFn: async () => {
@@ -94,12 +114,22 @@ export function AdminEventController() {
           target_badge_id: newEvent.target_badge_id || null,
           steal_duration_hours: newEvent.steal_duration_hours,
           created_by: user?.id,
+          is_active: true, // Start active by default
         });
       if (error) throw error;
+
+      // Send Discord notification
+      await sendEventNotification(
+        newEvent.name,
+        newEvent.event_type,
+        newEvent.description,
+        newEvent.steal_duration_hours,
+        'start'
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['badgeEvents'] });
-      toast({ title: 'Event created!' });
+      toast({ title: 'Event created & announced!' });
       setIsCreateOpen(false);
       setNewEvent({
         event_type: 'steal',
@@ -116,16 +146,25 @@ export function AdminEventController() {
 
   // Toggle event active
   const toggleActive = useMutation({
-    mutationFn: async ({ eventId, isActive }: { eventId: string; isActive: boolean }) => {
+    mutationFn: async ({ eventId, isActive, event }: { eventId: string; isActive: boolean; event: BadgeEvent }) => {
       const { error } = await supabase
         .from('badge_events')
         .update({ is_active: isActive })
         .eq('id', eventId);
       if (error) throw error;
+
+      // Send notification on status change
+      await sendEventNotification(
+        event.name,
+        event.event_type,
+        event.description || '',
+        event.steal_duration_hours,
+        isActive ? 'start' : 'end'
+      );
     },
-    onSuccess: () => {
+    onSuccess: (_, { isActive }) => {
       queryClient.invalidateQueries({ queryKey: ['badgeEvents'] });
-      toast({ title: 'Event status updated' });
+      toast({ title: isActive ? 'Event started & announced!' : 'Event ended & announced!' });
     },
   });
 
@@ -341,7 +380,7 @@ export function AdminEventController() {
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={event.is_active}
-                      onCheckedChange={(checked) => toggleActive.mutate({ eventId: event.id, isActive: checked })}
+                      onCheckedChange={(checked) => toggleActive.mutate({ eventId: event.id, isActive: checked, event })}
                     />
                     <Button
                       variant="ghost"

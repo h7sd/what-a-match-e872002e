@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.profile-like]
 verify_jwt = false
+
+[functions.event-notification]
+verify_jwt = false

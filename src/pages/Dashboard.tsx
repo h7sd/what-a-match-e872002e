@@ -48,6 +48,7 @@ import {
 } from '@/components/ui/select';
 import { OverviewStats } from '@/components/dashboard/OverviewStats';
 import { BadgesCarousel } from '@/components/dashboard/BadgesCarousel';
+import { EventAnnouncementBanner } from '@/components/landing/EventAnnouncementBanner';
 import { DiscordCard } from '@/components/dashboard/DiscordCard';
 import { RegisteredUsersList } from '@/components/dashboard/RegisteredUsersList';
 import { EarlyBadgeCountdown } from '@/components/dashboard/EarlyBadgeCountdown';
@@ -824,21 +825,25 @@ export default function Dashboard() {
   );
 
   return (
-    <DashboardLayout
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      isAdmin={isAdmin}
-      isPremium={(profile as any)?.is_premium ?? false}
-      username={profile.username}
-      onSignOut={handleSignOut}
-      onSave={handleSave}
-      isSaving={updateProfile.isPending}
-    >
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* Alias Requests Section - shows only if there are pending requests */}
-          <AliasRequestsSection />
+    <>
+      {/* Global Event Banner */}
+      <EventAnnouncementBanner />
+      
+      <DashboardLayout
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isAdmin={isAdmin}
+        isPremium={(profile as any)?.is_premium ?? false}
+        username={profile.username}
+        onSignOut={handleSignOut}
+        onSave={handleSave}
+        isSaving={updateProfile.isPending}
+      >
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Alias Requests Section - shows only if there are pending requests */}
+            <AliasRequestsSection />
 
           <OverviewStats
             profileViews={profile.views_count || 0}
@@ -1461,6 +1466,7 @@ export default function Dashboard() {
           onUpdateAlias={handleAliasChange}
         />
       )}
-    </DashboardLayout>
+      </DashboardLayout>
+    </>
   );
 }
