@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Loader2, MessageCircle } from 'lucide-react';
 import { gsap } from 'gsap';
-import { supabase } from '@/lib/supabase-proxy-client';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { invokeSecure } from '@/lib/secureEdgeFunctions';
 
 interface ProfileCommentInputProps {
   username: string;
@@ -74,6 +74,15 @@ export function ProfileCommentInput({
   const handleSubmit = async () => {
     const message = comment.trim();
     if (!message || isSubmitting) return;
+
+    if (!username) {
+      toast({
+        title: 'Failed to send comment',
+        description: 'Profile not loaded yet. Please try again in a second.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     if (comment.length > 280) {
       toast({ 
@@ -87,21 +96,26 @@ export function ProfileCommentInput({
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('profile-comment', {
-        body: { action: 'add_comment', username, content: message }
-      });
+      const { data, error } = await invokeSecure<{ success?: boolean; message?: string; error?: string }>(
+        'profile-comment',
+        {
+          body: { action: 'add_comment', username, content: message },
+        }
+      );
 
       if (error) {
+        console.error('profile-comment add_comment failed:', error);
         toast({
           title: 'Failed to send comment',
-          description: (error as any)?.message || 'Please try again.',
+          description: error.message || 'Please try again.',
           variant: 'destructive',
         });
         return;
       }
 
       if (data?.error) {
-        toast({ title: data.error, variant: 'destructive' });
+        console.error('profile-comment add_comment error payload:', data);
+        toast({ title: 'Failed to send comment', description: data.error, variant: 'destructive' });
         return;
       }
 

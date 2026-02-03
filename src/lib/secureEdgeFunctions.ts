@@ -31,6 +31,8 @@ export async function invokeSecure<T = unknown>(
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      // Always include apikey so the backend can authorize anon/public calls
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       ...options.headers,
     };
 
@@ -48,12 +50,22 @@ export async function invokeSecure<T = unknown>(
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
-    const data = await response.json();
+    // Be tolerant if an upstream returns non-JSON for errors.
+    const raw = await response.text();
+    const data = raw
+      ? (() => {
+          try {
+            return JSON.parse(raw);
+          } catch {
+            return { error: raw };
+          }
+        })()
+      : null;
 
     if (!response.ok) {
       return {
         data: null,
-        error: new Error(data?.error || `HTTP ${response.status}`),
+        error: new Error((data as any)?.error || `HTTP ${response.status}`),
       };
     }
 
