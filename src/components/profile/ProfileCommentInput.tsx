@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Send, Loader2, MessageCircle } from 'lucide-react';
 import { gsap } from 'gsap';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,14 +21,15 @@ export function ProfileCommentInput({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const successRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // GSAP plop animation like BubbleMenu
+  // GSAP plop animation like BubbleMenu - back.out(1.5) easing
   useEffect(() => {
     if (showSuccess && successRef.current) {
       gsap.killTweensOf(successRef.current);
       
-      // Initial state
+      // Initial state - hidden and scaled down
       gsap.set(successRef.current, {
         scale: 0,
         opacity: 0,
@@ -36,24 +37,26 @@ export function ProfileCommentInput({
         transformOrigin: '50% 50%'
       });
 
-      // Plop in with back.out easing (like BubbleMenu)
+      // Plop in with back.out easing (exactly like BubbleMenu)
       const tl = gsap.timeline();
+      
+      // First: plop in with back.out(1.5) - the signature bouncy effect
       tl.to(successRef.current, {
         scale: 1,
         opacity: 1,
-        y: -30,
+        y: -40,
         duration: 0.5,
         ease: 'back.out(1.5)'
       });
 
-      // Hold for a moment then fade away
+      // Hold visible for a moment, then fade away smoothly
       tl.to(successRef.current, {
         opacity: 0,
-        y: -50,
-        scale: 0.8,
-        duration: 0.4,
-        ease: 'power3.in',
-        delay: 1.2
+        y: -60,
+        scale: 0.9,
+        duration: 0.35,
+        ease: 'power2.in',
+        delay: 1.5
       });
 
       tl.eventCallback('onComplete', () => {
@@ -61,6 +64,23 @@ export function ProfileCommentInput({
       });
     }
   }, [showSuccess]);
+
+  // Input container pulse animation on success
+  useEffect(() => {
+    if (showSuccess && inputContainerRef.current) {
+      gsap.to(inputContainerRef.current, {
+        boxShadow: `0 0 30px ${accentColor}60`,
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+      gsap.to(inputContainerRef.current, {
+        boxShadow: `0 0 0px ${accentColor}00`,
+        duration: 0.5,
+        ease: 'power2.in',
+        delay: 0.3
+      });
+    }
+  }, [showSuccess, accentColor]);
 
   const handleSubmit = async () => {
     if (!comment.trim() || isSubmitting) return;
@@ -102,17 +122,40 @@ export function ProfileCommentInput({
 
   return (
     <div className={cn("w-full relative", className)}>
+      {/* Success Plop Animation - GSAP based with back.out(1.5) like BubbleMenu */}
+      <div
+        ref={successRef}
+        className="absolute left-1/2 -translate-x-1/2 -top-2 pointer-events-none z-50"
+        style={{ opacity: 0 }}
+      >
+        <div
+          className="px-5 py-2.5 rounded-full border backdrop-blur-md text-sm font-semibold whitespace-nowrap shadow-xl"
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}30, ${accentColor}15)`,
+            borderColor: accentColor,
+            color: accentColor,
+            boxShadow: `0 8px 32px ${accentColor}40, 0 0 0 1px ${accentColor}20`
+          }}
+        >
+          ✓ Comment sent!
+        </div>
+      </div>
+
       <motion.div
+        ref={inputContainerRef}
         className={cn(
           "relative flex items-center gap-2 p-2 rounded-full",
-          "bg-black/30 backdrop-blur-md border border-white/10",
-          "transition-all duration-300"
+          "bg-black/30 backdrop-blur-md border",
+          "transition-colors duration-300"
         )}
         style={{
-          boxShadow: comment.length > 0 ? `0 0 20px ${accentColor}30` : 'none',
+          borderColor: comment.length > 0 ? `${accentColor}50` : 'rgba(255,255,255,0.1)',
         }}
       >
-        <MessageCircle className="w-4 h-4 text-white/50 ml-2 flex-shrink-0" />
+        <MessageCircle 
+          className="w-4 h-4 ml-2 flex-shrink-0 transition-colors duration-200" 
+          style={{ color: comment.length > 0 ? accentColor : 'rgba(255,255,255,0.5)' }}
+        />
         
         <input
           type="text"
@@ -139,11 +182,12 @@ export function ProfileCommentInput({
           disabled={!comment.trim() || isSubmitting}
           className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center",
-            "transition-all duration-200",
-            comment.trim() && !isSubmitting
-              ? "bg-white/20 hover:bg-white/30 text-white"
-              : "bg-white/5 text-white/30 cursor-not-allowed"
+            "transition-all duration-200"
           )}
+          style={{
+            background: comment.trim() && !isSubmitting ? `${accentColor}30` : 'rgba(255,255,255,0.05)',
+            color: comment.trim() && !isSubmitting ? accentColor : 'rgba(255,255,255,0.3)',
+          }}
           whileHover={comment.trim() && !isSubmitting ? { scale: 1.1 } : {}}
           whileTap={comment.trim() && !isSubmitting ? { scale: 0.9 } : {}}
         >
@@ -154,27 +198,6 @@ export function ProfileCommentInput({
           )}
         </motion.button>
       </motion.div>
-
-      {/* Success Plop Animation - GSAP based like BubbleMenu */}
-      {showSuccess && (
-        <div
-          ref={successRef}
-          className="absolute left-1/2 -translate-x-1/2 -top-4 pointer-events-none z-50"
-          style={{ opacity: 0 }}
-        >
-          <div
-            className="px-4 py-2 rounded-full border backdrop-blur-sm text-sm font-medium whitespace-nowrap"
-            style={{
-              background: `${accentColor}20`,
-              borderColor: `${accentColor}50`,
-              color: accentColor,
-              boxShadow: `0 4px 16px ${accentColor}30`
-            }}
-          >
-            ✓ Comment sent!
-          </div>
-        </div>
-      )}
 
       {/* Character count */}
       {comment.length > 200 && (

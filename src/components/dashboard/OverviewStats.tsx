@@ -1,6 +1,7 @@
-import { Eye, Hash, User, TrendingUp } from 'lucide-react';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { Eye, Hash, ThumbsUp, ThumbsDown, MessageCircle, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useRef, useEffect, useState, lazy, Suspense } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Lazy load Aurora for performance
 const Aurora = lazy(() => import('@/components/ui/Aurora'));
@@ -9,6 +10,7 @@ interface OverviewStatsProps {
   profileViews: number;
   uidNumber: number;
   username: string;
+  profileId?: string;
 }
 
 function AnimatedNumber({ value, duration = 1.5 }: { value: number; duration?: number }) {
@@ -44,7 +46,7 @@ interface StatCardProps {
   label: string;
   index: number;
   isNumber?: boolean;
-  color?: 'primary' | 'blue' | 'amber' | 'emerald';
+  color?: 'primary' | 'blue' | 'amber' | 'emerald' | 'rose';
 }
 
 function StatCard({ 
@@ -77,6 +79,11 @@ function StatCard({
       iconBg: 'from-[#00D9A5]/20 to-[#00D9A5]/5',
       iconBorder: 'border-[#00D9A5]/20 group-hover:border-[#00D9A5]/40',
       iconColor: 'text-[#00D9A5]',
+    },
+    rose: {
+      iconBg: 'from-rose-500/20 to-rose-500/5',
+      iconBorder: 'border-rose-500/20 group-hover:border-rose-500/40',
+      iconColor: 'text-rose-400',
     }
   };
 
@@ -123,39 +130,103 @@ function StatCard({
   );
 }
 
-export function OverviewStats({ profileViews, uidNumber, username }: OverviewStatsProps) {
+export function OverviewStats({ profileViews, uidNumber, username, profileId }: OverviewStatsProps) {
+  const [likesCount, setLikesCount] = useState(0);
+  const [dislikesCount, setDislikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [linkClicks, setLinkClicks] = useState(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!profileId) return;
+
+      try {
+        // Fetch likes/dislikes from profiles table
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('likes_count, dislikes_count')
+          .eq('id', profileId)
+          .single();
+
+        if (profileData) {
+          setLikesCount(profileData.likes_count || 0);
+          setDislikesCount(profileData.dislikes_count || 0);
+        }
+
+        // Fetch comments count
+        const { data: commentsData } = await supabase.functions.invoke('profile-comment', {
+          body: { action: 'get_count' }
+        });
+        if (commentsData?.count !== undefined) {
+          setCommentsCount(commentsData.count);
+        }
+
+        // Fetch link clicks
+        const { data: linksData } = await supabase
+          .from('social_links')
+          .select('click_count')
+          .eq('profile_id', profileId);
+
+        if (linksData) {
+          const totalClicks = linksData.reduce((sum, link) => sum + (link.click_count || 0), 0);
+          setLinkClicks(totalClicks);
+        }
+      } catch (e) {
+        console.error('Failed to fetch stats:', e);
+      }
+    };
+
+    fetchStats();
+  }, [profileId]);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard 
-        icon={Eye} 
-        value={profileViews} 
-        label="Profile Views" 
-        index={0}
-        color="primary"
-      />
-      <StatCard 
-        icon={Hash} 
-        value={`#${uidNumber}`} 
-        label="User ID" 
-        index={1}
-        isNumber={false}
-        color="blue"
-      />
-      <StatCard 
-        icon={User} 
-        value={`@${username}`} 
-        label="Username" 
-        index={2}
-        isNumber={false}
-        color="amber"
-      />
-      <StatCard 
-        icon={TrendingUp} 
-        value={0} 
-        label="Link Clicks" 
-        index={3}
-        color="emerald"
-      />
+    <div className="space-y-4">
+      {/* Main stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <StatCard 
+          icon={Eye} 
+          value={profileViews} 
+          label="Profile Views" 
+          index={0}
+          color="primary"
+        />
+        <StatCard 
+          icon={Hash} 
+          value={`#${uidNumber}`} 
+          label="User ID" 
+          index={1}
+          isNumber={false}
+          color="blue"
+        />
+        <StatCard 
+          icon={ThumbsUp} 
+          value={likesCount} 
+          label="Likes" 
+          index={2}
+          color="emerald"
+        />
+        <StatCard 
+          icon={ThumbsDown} 
+          value={dislikesCount} 
+          label="Dislikes" 
+          index={3}
+          color="rose"
+        />
+        <StatCard 
+          icon={MessageCircle} 
+          value={commentsCount} 
+          label="Comments" 
+          index={4}
+          color="amber"
+        />
+        <StatCard 
+          icon={TrendingUp} 
+          value={linkClicks} 
+          label="Link Clicks" 
+          index={5}
+          color="blue"
+        />
+      </div>
     </div>
   );
 }

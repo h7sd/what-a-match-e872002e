@@ -838,6 +838,7 @@ export default function Dashboard() {
             profileViews={profile.views_count || 0}
             uidNumber={(profile as any).uid_number || 1}
             username={profile.username}
+            profileId={profile.id}
           />
 
           <div className="grid lg:grid-cols-3 gap-6">
