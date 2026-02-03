@@ -409,6 +409,47 @@ export type Database = {
           },
         ]
       }
+      profile_likes: {
+        Row: {
+          created_at: string
+          encrypted_data: string | null
+          id: string
+          is_like: boolean
+          liker_ip_hash: string
+          liker_user_id: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_data?: string | null
+          id?: string
+          is_like?: boolean
+          liker_ip_hash: string
+          liker_user_id?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_data?: string | null
+          id?: string
+          is_like?: boolean
+          liker_ip_hash?: string
+          liker_user_id?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_likes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_views: {
         Row: {
           id: number
@@ -470,7 +511,9 @@ export type Database = {
           discord_card_style: string | null
           discord_show_badge: boolean | null
           discord_user_id: string | null
+          dislikes_count: number
           display_name: string | null
+          display_name_animation: string | null
           effects_config: Json | null
           email_verified: boolean | null
           enable_profile_gradient: boolean | null
@@ -483,6 +526,7 @@ export type Database = {
           id: string
           is_premium: boolean | null
           layout_style: string | null
+          likes_count: number
           location: string | null
           monochrome_icons: boolean | null
           music_url: string | null
@@ -550,7 +594,9 @@ export type Database = {
           discord_card_style?: string | null
           discord_show_badge?: boolean | null
           discord_user_id?: string | null
+          dislikes_count?: number
           display_name?: string | null
+          display_name_animation?: string | null
           effects_config?: Json | null
           email_verified?: boolean | null
           enable_profile_gradient?: boolean | null
@@ -563,6 +609,7 @@ export type Database = {
           id?: string
           is_premium?: boolean | null
           layout_style?: string | null
+          likes_count?: number
           location?: string | null
           monochrome_icons?: boolean | null
           music_url?: string | null
@@ -630,7 +677,9 @@ export type Database = {
           discord_card_style?: string | null
           discord_show_badge?: boolean | null
           discord_user_id?: string | null
+          dislikes_count?: number
           display_name?: string | null
+          display_name_animation?: string | null
           effects_config?: Json | null
           email_verified?: boolean | null
           enable_profile_gradient?: boolean | null
@@ -643,6 +692,7 @@ export type Database = {
           id?: string
           is_premium?: boolean | null
           layout_style?: string | null
+          likes_count?: number
           location?: string | null
           monochrome_icons?: boolean | null
           music_url?: string | null
@@ -1156,6 +1206,13 @@ export type Database = {
           username: string
         }[]
       }
+      get_profile_like_counts: {
+        Args: { p_profile_id: string }
+        Returns: {
+          dislikes_count: number
+          likes_count: number
+        }[]
+      }
       get_public_badges: {
         Args: never
         Returns: {
@@ -1199,7 +1256,9 @@ export type Database = {
           discord_card_style: string
           discord_show_badge: boolean
           discord_user_id: string
+          dislikes_count: number
           display_name: string
+          display_name_animation: string
           effects_config: Json
           enable_profile_gradient: boolean
           glow_badges: boolean
@@ -1211,6 +1270,7 @@ export type Database = {
           id: string
           is_premium: boolean
           layout_style: string
+          likes_count: number
           location: string
           monochrome_icons: boolean
           music_url: string
@@ -1276,7 +1336,9 @@ export type Database = {
           discord_card_style: string
           discord_show_badge: boolean
           discord_user_id: string
+          dislikes_count: number
           display_name: string
+          display_name_animation: string
           effects_config: Json
           enable_profile_gradient: boolean
           glow_badges: boolean
@@ -1288,6 +1350,7 @@ export type Database = {
           id: string
           is_premium: boolean
           layout_style: string
+          likes_count: number
           location: string
           monochrome_icons: boolean
           music_url: string

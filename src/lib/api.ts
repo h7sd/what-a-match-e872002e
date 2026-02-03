@@ -56,6 +56,7 @@ export async function getFeaturedProfiles(limit = 50): Promise<FeaturedProfile[]
 
 // Public profile data
 export interface PublicProfile {
+  id: string;
   username: string;
   display_name: string | null;
   bio: string | null;
@@ -127,6 +128,9 @@ export interface PublicProfile {
   ascii_size: number | null;
   ascii_waves: boolean | null;
   is_premium: boolean | null;
+  display_name_animation: string | null;
+  likes_count: number | null;
+  dislikes_count: number | null;
 }
 
 export async function getPublicProfile(username: string): Promise<PublicProfile | null> {

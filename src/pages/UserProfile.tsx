@@ -11,6 +11,7 @@ import { CustomCursor } from '@/components/profile/CustomCursor';
 import { DiscordPresence } from '@/components/profile/DiscordPresence';
 import { StartScreen } from '@/components/profile/StartScreen';
 import { SimpleVolumeBar } from '@/components/profile/SimpleVolumeBar';
+import { ProfileLikeButtons } from '@/components/profile/ProfileLikeButtons';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
@@ -415,6 +416,16 @@ export default function UserProfile() {
             borderWidth={profile.card_border_width ?? 1}
             transparentBadges={profile.transparent_badges ?? false}
           />
+
+          {/* Like/Dislike Buttons */}
+          <div className="flex justify-center">
+            <ProfileLikeButtons
+              profileId={profile.id}
+              initialLikes={(profile as any).likes_count ?? 0}
+              initialDislikes={(profile as any).dislikes_count ?? 0}
+              accentColor={accentColor}
+            />
+          </div>
 
           {/* Discord Presence Widget - Only show when border/card is enabled */}
           {profile.discord_user_id && profile.card_border_enabled !== false && (

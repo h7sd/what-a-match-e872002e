@@ -58,6 +58,7 @@ import { DiscordEmbedSettings } from '@/components/dashboard/DiscordEmbedSetting
 import { VolumeControlSettings } from '@/components/dashboard/VolumeControlSettings';
 import { ProfileVisibilitySettings } from '@/components/dashboard/ProfileVisibilitySettings';
 import { CardBorderSettings } from '@/components/dashboard/CardBorderSettings';
+import { DisplayNameAnimationSettings } from '@/components/dashboard/DisplayNameAnimationSettings';
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { AdminPremiumManager } from '@/components/admin/AdminPremiumManager';
@@ -197,6 +198,9 @@ export default function Dashboard() {
   const [startScreenAnimation, setStartScreenAnimation] = useState<string>('none');
   const [asciiSize, setAsciiSize] = useState(8);
   const [asciiWaves, setAsciiWaves] = useState(true);
+  
+  // Display Name Animation
+  const [displayNameAnimation, setDisplayNameAnimation] = useState<string>('none');
 
   // Volume control settings
   const [showVolumeControl, setShowVolumeControl] = useState(true);
@@ -369,6 +373,7 @@ export default function Dashboard() {
       setStartScreenAnimation((profile as any).start_screen_animation || 'none');
       setAsciiSize((profile as any).ascii_size ?? 8);
       setAsciiWaves((profile as any).ascii_waves ?? true);
+      setDisplayNameAnimation((profile as any).display_name_animation || 'none');
       setShowVolumeControl((profile as any).show_volume_control ?? true);
       setShowUsername((profile as any).show_username ?? true);
       setShowDisplayName((profile as any).show_display_name ?? true);
@@ -574,6 +579,7 @@ export default function Dashboard() {
         og_image_url: ogEnabled ? (ogImageUrl || null) : null,
         og_icon_url: ogEnabled ? (ogIconUrl || null) : null,
         og_title_animation: ogEnabled ? ogTitleAnimation : 'none',
+        display_name_animation: displayNameAnimation,
       } as any);
       toast({ title: 'Profile saved!' });
     } catch (error) {
@@ -1114,6 +1120,19 @@ export default function Dashboard() {
                         asciiWaves={asciiWaves}
                         onAsciiWavesChange={setAsciiWaves}
                         hasAudio={Boolean(musicUrl || backgroundVideoUrl)}
+                        isPremium={(profile as any)?.is_premium ?? false}
+                      />
+                    </div>
+
+                    {/* Display Name Animation */}
+                    <div className="glass-card p-4">
+                      <DisplayNameAnimationSettings
+                        animation={displayNameAnimation}
+                        onAnimationChange={setDisplayNameAnimation}
+                        asciiSize={asciiSize}
+                        onAsciiSizeChange={setAsciiSize}
+                        asciiWaves={asciiWaves}
+                        onAsciiWavesChange={setAsciiWaves}
                         isPremium={(profile as any)?.is_premium ?? false}
                       />
                     </div>

@@ -190,16 +190,25 @@ export function ASCIIText({ text, className = '', style }: ASCIITextProps) {
 }
 
 // Wrapper component that selects animation type
-export type TextAnimationType = 'none' | 'shuffle' | 'fuzzy' | 'decrypted' | 'ascii' | 'glitch';
+export type TextAnimationType = 'none' | 'shuffle' | 'fuzzy' | 'decrypted' | 'ascii' | 'ascii-3d' | 'glitch';
 
 interface AnimatedDisplayNameProps {
   text: string;
   animation: TextAnimationType;
   className?: string;
   style?: React.CSSProperties;
+  asciiSize?: number;
+  asciiWaves?: boolean;
 }
 
-export function AnimatedDisplayName({ text, animation, className = '', style }: AnimatedDisplayNameProps) {
+export function AnimatedDisplayName({ 
+  text, 
+  animation, 
+  className = '', 
+  style,
+  asciiSize = 8,
+  asciiWaves = true
+}: AnimatedDisplayNameProps) {
   switch (animation) {
     case 'shuffle':
       return <ShuffleText text={text} className={className} style={style} />;
@@ -209,7 +218,46 @@ export function AnimatedDisplayName({ text, animation, className = '', style }: 
       return <DecryptedText text={text} className={className} style={style} />;
     case 'ascii':
       return <ASCIIText text={text} className={className} style={style} />;
+    case 'ascii-3d':
+      // For ASCII 3D, we use a lazy-loaded component to avoid loading Three.js for all users
+      return (
+        <ASCII3DWrapper 
+          text={text} 
+          className={className} 
+          style={style} 
+          asciiFontSize={asciiSize}
+          enableWaves={asciiWaves}
+        />
+      );
     default:
       return <span className={className} style={style}>{text}</span>;
   }
+}
+
+// Lazy-loaded ASCII 3D wrapper to avoid loading Three.js for all users
+import { lazy, Suspense } from 'react';
+const ASCIITextEffect = lazy(() => import('./ASCIITextEffect'));
+
+interface ASCII3DWrapperProps {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+  asciiFontSize?: number;
+  enableWaves?: boolean;
+}
+
+function ASCII3DWrapper({ text, className, style, asciiFontSize = 8, enableWaves = true }: ASCII3DWrapperProps) {
+  return (
+    <Suspense fallback={<span className={className} style={style}>{text}</span>}>
+      <div className={className} style={{ ...style, width: '200px', height: '60px' }}>
+        <ASCIITextEffect
+          text={text}
+          asciiFontSize={asciiFontSize}
+          textFontSize={120}
+          planeBaseHeight={6}
+          enableWaves={enableWaves}
+        />
+      </div>
+    </Suspense>
+  );
 }
