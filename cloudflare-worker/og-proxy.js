@@ -80,14 +80,28 @@ async function proxyToOrigin(request) {
   const url = new URL(request.url);
   // Rewrite host to Lovable origin
   const originUrl = new URL(url.pathname + url.search, LOVABLE_ORIGIN);
-  
+
+  // IMPORTANT: Ensure origin receives the correct Host header.
+  // If we forward the incoming Host (uservault.cc) some origins return a placeholder.
+  const originHost = new URL(LOVABLE_ORIGIN).host;
+  const headers = new Headers(request.headers);
+
+  // Explicitly set host + forwarded host for better compatibility.
+  headers.set("Host", originHost);
+  headers.set("X-Forwarded-Host", url.host);
+  headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""));
+
+  // Avoid sending a body for GET/HEAD requests
+  const method = request.method.toUpperCase();
+  const body = method === "GET" || method === "HEAD" ? undefined : request.body;
+
   const newRequest = new Request(originUrl.toString(), {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
+    method,
+    headers,
+    body,
     redirect: "follow",
   });
-  
+
   return fetch(newRequest);
 }
 
