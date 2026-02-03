@@ -21,33 +21,78 @@ export function BadgeIconUploader({ currentUrl, onUpload, onRemove, color = '#8B
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Allowed MIME types for badge icons
+  const ALLOWED_MIMES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'];
+  const MAX_SIZE = 3 * 1024 * 1024; // 3MB for badge icons
+
+  // Validate image file signature (magic bytes)
+  async function validateImageSignature(file: File): Promise<boolean> {
+    try {
+      const buffer = await file.slice(0, 12).arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      
+      // JPEG: FF D8 FF
+      if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return true;
+      // PNG: 89 50 4E 47
+      if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return true;
+      // GIF: 47 49 46 38
+      if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return true;
+      // WebP: 52 49 46 46 ... 57 45 42 50
+      if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+          bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return true;
+      // SVG (text-based, check for XML/svg tag) - allow if MIME is svg
+      if (file.type === 'image/svg+xml') return true;
+      
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  // Generate secure filename
+  function generateSecureFilename(originalName: string): string {
+    const ext = originalName.split('.').pop()?.toLowerCase() || 'png';
+    const safeExt = ext.replace(/[^a-z0-9]/g, '').substring(0, 10);
+    const randomPart = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `badge-${randomPart}.${safeExt}`;
+  }
+
   const handleUpload = async (file: File) => {
     if (!user) {
       toast({ title: 'Not authenticated', variant: 'destructive' });
       return;
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Only image files are allowed', variant: 'destructive' });
+    // Validate MIME type strictly
+    if (!ALLOWED_MIMES.includes(file.type)) {
+      toast({ title: 'Only PNG, JPEG, WebP, GIF, or SVG allowed', variant: 'destructive' });
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'File size must be under 2MB', variant: 'destructive' });
+    // Validate file size
+    if (file.size > MAX_SIZE) {
+      toast({ title: 'File size must be under 3MB', variant: 'destructive' });
+      return;
+    }
+
+    // Validate file signature (magic bytes)
+    const isValid = await validateImageSignature(file);
+    if (!isValid) {
+      toast({ title: 'Invalid image file', variant: 'destructive' });
       return;
     }
 
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `badge-${Date.now()}.${fileExt}`;
+      const fileName = generateSecureFilename(file.name);
       const filePath = `${user.id}/badge-icons/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-assets')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { 
+          upsert: true,
+          contentType: file.type,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -59,7 +104,7 @@ export function BadgeIconUploader({ currentUrl, onUpload, onRemove, color = '#8B
       toast({ title: 'Badge icon uploaded!' });
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast({ title: error.message || 'Upload failed', variant: 'destructive' });
+      toast({ title: 'Upload failed. Please try again.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
     }

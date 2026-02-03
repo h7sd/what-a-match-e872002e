@@ -13,36 +13,62 @@ interface FileUploaderProps {
   onRemove?: () => void;
 }
 
+// Secure upload configuration with size limits and allowed MIME types
 const typeConfig = {
   background: {
     icon: ImageIcon,
     label: 'Background',
-    accept: 'image/*,video/mp4,video/quicktime,.mov',
+    accept: 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime',
     folder: 'backgrounds',
     color: 'text-primary',
+    maxSize: 15 * 1024 * 1024, // 15MB for backgrounds
+    allowedMimes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime'],
   },
   audio: {
     icon: Music,
     label: 'Audio',
-    accept: 'audio/*',
+    accept: 'audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/aac',
     folder: 'audio',
     color: 'text-green-400',
+    maxSize: 25 * 1024 * 1024, // 25MB for audio
+    allowedMimes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/x-m4a'],
   },
   avatar: {
     icon: User,
     label: 'Profile Avatar',
-    accept: 'image/*',
+    accept: 'image/jpeg,image/png,image/webp,image/gif',
     folder: 'avatars',
     color: 'text-pink-400',
+    maxSize: 5 * 1024 * 1024, // 5MB for avatars
+    allowedMimes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   },
   cursor: {
     icon: MousePointer2,
     label: 'Custom Cursor',
-    accept: 'image/png,image/gif,.cur,.ani',
+    accept: 'image/png,image/gif',
     folder: 'cursors',
     color: 'text-purple-400',
+    maxSize: 1 * 1024 * 1024, // 1MB for cursors
+    allowedMimes: ['image/png', 'image/gif', 'image/x-icon'],
   },
 };
+
+// Sanitize filename to prevent path traversal and injection
+function sanitizeFilename(filename: string): string {
+  // Remove path components and dangerous characters
+  const base = filename.split('/').pop()?.split('\\').pop() || 'file';
+  // Only allow alphanumeric, dash, underscore, and dot
+  return base.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 100);
+}
+
+// Generate cryptographically random filename
+function generateSecureFilename(originalName: string): string {
+  const ext = originalName.split('.').pop()?.toLowerCase() || 'bin';
+  const safeExt = ext.replace(/[^a-z0-9]/g, '').substring(0, 10);
+  // Use crypto for random bytes, fallback to timestamp + random
+  const randomPart = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${randomPart}.${safeExt}`;
+}
 
 export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploaderProps) {
   const { user } = useAuth();
@@ -65,15 +91,40 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
       return;
     }
 
+    // Validate file size
+    if (file.size > config.maxSize) {
+      const maxMB = Math.round(config.maxSize / (1024 * 1024));
+      toast({ title: `File too large. Maximum ${maxMB}MB allowed.`, variant: 'destructive' });
+      return;
+    }
+
+    // Validate MIME type strictly
+    if (!config.allowedMimes.includes(file.type)) {
+      toast({ title: 'Invalid file type. Please use an allowed format.', variant: 'destructive' });
+      return;
+    }
+
+    // Additional validation: check file signature (magic bytes) for images
+    if (file.type.startsWith('image/')) {
+      const isValid = await validateImageSignature(file);
+      if (!isValid) {
+        toast({ title: 'Invalid image file. File appears to be corrupted or spoofed.', variant: 'destructive' });
+        return;
+      }
+    }
+
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      // Generate secure random filename to prevent enumeration
+      const fileName = generateSecureFilename(file.name);
       const filePath = `${user.id}/${config.folder}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-assets')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { 
+          upsert: true,
+          contentType: file.type, // Explicitly set content type
+        });
 
       if (uploadError) throw uploadError;
 
@@ -85,11 +136,36 @@ export function FileUploader({ type, currentUrl, onUpload, onRemove }: FileUploa
       toast({ title: `${config.label} uploaded!` });
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast({ title: error.message || 'Upload failed', variant: 'destructive' });
+      toast({ title: 'Upload failed. Please try again.', variant: 'destructive' });
     } finally {
       setIsUploading(false);
     }
   };
+
+  // Validate image file signature (magic bytes)
+  async function validateImageSignature(file: File): Promise<boolean> {
+    try {
+      const buffer = await file.slice(0, 12).arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      
+      // Check common image signatures
+      // JPEG: FF D8 FF
+      if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return true;
+      // PNG: 89 50 4E 47
+      if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return true;
+      // GIF: 47 49 46 38
+      if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return true;
+      // WebP: 52 49 46 46 ... 57 45 42 50
+      if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+          bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return true;
+      // ICO: 00 00 01 00
+      if (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x01 && bytes[3] === 0x00) return true;
+      
+      return false;
+    } catch {
+      return false;
+    }
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
