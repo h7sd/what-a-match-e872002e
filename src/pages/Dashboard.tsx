@@ -73,6 +73,7 @@ import { AdminAccountLookup } from '@/components/admin/AdminAccountLookup';
 import { AdminUIDManager } from '@/components/admin/AdminUIDManager';
 import { AdminPurchaseHistory } from '@/components/admin/AdminPurchaseHistory';
 import { AdminPromoCodeManager } from '@/components/admin/AdminPromoCodeManager';
+import { AdminEarlyBadgeCounter } from '@/components/admin/AdminEarlyBadgeCounter';
 import { SocialLinksGrid } from '@/components/dashboard/SocialLinksGrid';
 import { BadgeRequestForm } from '@/components/dashboard/BadgeRequestForm';
 import { CustomizationPanel } from '@/components/dashboard/CustomizationPanel';
@@ -1317,6 +1318,11 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 )}
+
+                {/* EARLY Badge Counter */}
+                <div className="glass-card p-6">
+                  <AdminEarlyBadgeCounter />
+                </div>
 
                 {/* Account Lookup - Full Width Top */}
                 <div className="glass-card p-6">
