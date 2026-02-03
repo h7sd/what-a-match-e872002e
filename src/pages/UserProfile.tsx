@@ -333,10 +333,17 @@ export default function UserProfile() {
   const showCursorTrail = effectsConfig?.cursorTrail ?? effectsConfig?.sparkles ?? false;
   const customCursorUrl = profile.custom_cursor_url as string | null;
 
+  // Determine if profile has audio (music OR video background which typically has sound)
+  const hasAudio = Boolean(profile.music_url || profile.background_video_url);
+  
+  // Start screen is required if audio is present (browser autoplay policy)
+  // Otherwise, respect the user's start_screen_enabled setting
+  const shouldShowStartScreen = hasAudio ? true : (profile.start_screen_enabled !== false);
+
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Start Screen */}
-      {showStartScreen && profile.start_screen_enabled !== false && (
+      {/* Start Screen - Required for audio, optional otherwise */}
+      {showStartScreen && shouldShowStartScreen && (
         <StartScreen 
           onStart={handleStart} 
           message={profile.start_screen_text || "Click anywhere to enter"}
@@ -349,8 +356,8 @@ export default function UserProfile() {
         />
       )}
       
-      {/* Auto-start if start screen is disabled */}
-      {profile.start_screen_enabled === false && showStartScreen && (() => {
+      {/* Auto-start if start screen is disabled AND no audio */}
+      {!shouldShowStartScreen && showStartScreen && (() => {
         setTimeout(() => handleStart(), 100);
         return null;
       })()}
