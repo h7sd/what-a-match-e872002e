@@ -178,23 +178,7 @@ serve(async (req) => {
         console.log('profile-comment admin check skipped - no userId');
       }
 
-      // Rate limit: max 3 comments per IP per profile per hour (non-admin only)
-      if (!isAdmin) {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-        const { count: recentCount } = await supabase
-          .from('profile_comments')
-          .select('*', { count: 'exact', head: true })
-          .eq('profile_id', profile.id)
-          .eq('commenter_ip_hash', ipHash)
-          .gte('created_at', oneHourAgo);
-
-        if ((recentCount || 0) >= 3) {
-          return new Response(
-            JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
+      // Rate limiting disabled for comments (per request).
 
       // Encrypt the comment content
       const encryptedContent = await encrypt(content, encryptionSecret);
