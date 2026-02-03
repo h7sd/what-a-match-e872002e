@@ -32,77 +32,65 @@ const MemoizedLaserFlow = memo(() => (
 MemoizedLaserFlow.displayName = 'MemoizedLaserFlow';
 
 export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayProps) {
-  const [show, setShow] = useState(true);
-  const [isExiting, setIsExiting] = useState(false);
-  const [contentVisible, setContentVisible] = useState(false);
-  const [laserVisible, setLaserVisible] = useState(false);
+  const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('entering');
 
   const handleExit = useCallback(() => {
-    if (isExiting) return;
-    setIsExiting(true);
-    setTimeout(() => {
-      setShow(false);
-    }, 350);
-  }, [isExiting]);
+    if (phase === 'exiting' || phase === 'hidden') return;
+    setPhase('exiting');
+  }, [phase]);
 
   useEffect(() => {
-    // Fade in laser smoothly first
-    const showLaser = setTimeout(() => setLaserVisible(true), 50);
-    // Then show content
-    const showContent = setTimeout(() => setContentVisible(true), 200);
-    // Auto-dismiss after 2.5 seconds
-    const timer = setTimeout(handleExit, 2500);
+    // Simple timeline: enter -> visible -> auto-exit
+    const enterTimer = setTimeout(() => setPhase('visible'), 50);
+    const exitTimer = setTimeout(handleExit, 2500);
     return () => {
-      clearTimeout(showLaser);
-      clearTimeout(showContent);
-      clearTimeout(timer);
+      clearTimeout(enterTimer);
+      clearTimeout(exitTimer);
     };
   }, [handleExit]);
 
   useEffect(() => {
-    if (!show) {
-      const completeTimer = setTimeout(onComplete, 50);
-      return () => clearTimeout(completeTimer);
+    if (phase === 'exiting') {
+      const hideTimer = setTimeout(() => setPhase('hidden'), 400);
+      return () => clearTimeout(hideTimer);
     }
-  }, [show, onComplete]);
+    if (phase === 'hidden') {
+      onComplete();
+    }
+  }, [phase, onComplete]);
 
-  if (!show) return null;
+  if (phase === 'hidden') return null;
+
+  const isVisible = phase === 'visible';
+  const isExiting = phase === 'exiting';
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden cursor-pointer"
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden cursor-pointer bg-[#0a0a0b]"
       onClick={handleExit}
-      style={{
-        opacity: isExiting ? 0 : 1,
-        transition: 'opacity 0.35s ease-out',
-        willChange: 'opacity',
-        background: '#0a0a0b',
-      }}
     >
-      {/* LaserFlow WebGL Background with smooth fade */}
+      {/* LaserFlow with CSS animation class */}
       <div 
         className="absolute inset-0"
         style={{
-          opacity: laserVisible && !isExiting ? 1 : 0,
-          transition: 'opacity 0.8s ease-out',
-          willChange: 'opacity',
+          opacity: isExiting ? 0 : isVisible ? 1 : 0,
+          transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <MemoizedLaserFlow />
       </div>
       
-      {/* Welcome Text with CSS transitions */}
+      {/* Welcome Text */}
       <div 
         className="relative z-10 text-center px-6"
         style={{
-          opacity: contentVisible && !isExiting ? 1 : 0,
-          transform: contentVisible && !isExiting 
-            ? 'translateY(0) scale(1)' 
-            : isExiting 
-              ? 'translateY(-15px) scale(0.97)' 
-              : 'translateY(20px) scale(0.98)',
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          willChange: 'transform, opacity',
+          opacity: isExiting ? 0 : isVisible ? 1 : 0,
+          transform: isExiting 
+            ? 'translateY(-10px)' 
+            : isVisible 
+              ? 'translateY(0)' 
+              : 'translateY(15px)',
+          transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
         }}
       >
         <p className="text-lg md:text-xl text-white/70 mb-2 font-light tracking-wide">
@@ -121,12 +109,11 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
           {username}
         </h1>
         
-        {/* Subtle hint */}
         <p 
           className="text-sm text-white/40 mt-8 font-light"
           style={{
-            opacity: contentVisible ? 0.5 : 0,
-            transition: 'opacity 0.5s ease-out 1s',
+            opacity: isVisible && !isExiting ? 0.5 : 0,
+            transition: 'opacity 0.4s ease-out 0.8s',
           }}
         >
           Click anywhere to continue
