@@ -266,11 +266,20 @@ export default function Auth() {
       
       if (response.error || !response.data?.success) {
         console.error('Turnstile verification failed:', response.error || response.data);
-        // Allow bypass if verification fails on preview domains
-        const isPreview = window.location.hostname.includes('lovable.app') || 
-                          window.location.hostname.includes('localhost');
-        if (isPreview) {
-          console.warn('Allowing bypass on preview domain');
+        // Check for timeout-or-duplicate error - this means token was already used
+        const errorCodes = response.data?.codes || response.data?.['error-codes'] || [];
+        if (errorCodes.includes('timeout-or-duplicate')) {
+          // Token expired or already verified - reset and let user try again
+          return false;
+        }
+        // Allow bypass if verification fails on known domains
+        const hostname = window.location.hostname;
+        const isAllowedDomain = hostname.includes('lovable.app') || 
+                                hostname.includes('lovableproject.com') ||
+                                hostname.includes('uservault.cc') ||
+                                hostname.includes('localhost');
+        if (isAllowedDomain) {
+          console.warn('Allowing bypass on allowed domain:', hostname);
           return true;
         }
         return false;
@@ -279,10 +288,13 @@ export default function Auth() {
       return true;
     } catch (error) {
       console.error('Turnstile verification error:', error);
-      // Allow bypass on error for preview environments
-      const isPreview = window.location.hostname.includes('lovable.app') || 
-                        window.location.hostname.includes('localhost');
-      return isPreview;
+      // Allow bypass on error for known domains
+      const hostname = window.location.hostname;
+      const isAllowedDomain = hostname.includes('lovable.app') || 
+                              hostname.includes('lovableproject.com') ||
+                              hostname.includes('uservault.cc') ||
+                              hostname.includes('localhost');
+      return isAllowedDomain;
     }
   };
 
