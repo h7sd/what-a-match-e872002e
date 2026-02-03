@@ -68,8 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { username: usernameInput }
       });
       
-      if (userError || !userData) {
-        console.error('Get user email error:', userError);
+      // Check for errors - edge function returns error in body for user not found
+      if (userError || !userData || userData.error) {
+        console.error('Get user email error:', userError || userData?.error);
         return { error: new Error('Invalid username or password') };
       }
       
