@@ -210,11 +210,11 @@ export function ProfileCommentInput({
               }}
             >
               <div
-                className="rounded-full backdrop-blur-md font-bold whitespace-nowrap"
+                className="rounded-full backdrop-blur-xl font-bold whitespace-nowrap border border-white/30"
                 style={{
-                  background: accentColor,
+                  background: 'rgba(255, 255, 255, 0.15)',
                   color: '#ffffff',
-                  boxShadow: `0 12px 40px ${accentColor}70, 0 6px 20px rgba(0,0,0,0.5)`,
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
                   fontSize: `${0.6 + bubble.scale * 0.7}rem`,
                   padding: bubble.scale > 1.5 
                     ? '0.75rem 1.5rem' 
@@ -224,12 +224,13 @@ export function ProfileCommentInput({
                 }}
               >
                 <span 
-                  className="block whitespace-normal break-words text-center"
+                  className="block whitespace-normal break-words text-center drop-shadow-lg"
                   style={{
                     maxWidth: bubble.scale > 1.5 ? 'min(90vw, 28rem)' : 'min(70vw, 18rem)',
+                    textShadow: '0 2px 8px rgba(0,0,0,0.5)',
                   }}
                 >
-                  ✓ {bubble.text}
+                  {bubble.text}
                 </span>
               </div>
             </div>
