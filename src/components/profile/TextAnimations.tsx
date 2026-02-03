@@ -247,14 +247,29 @@ interface ASCII3DWrapperProps {
 }
 
 function ASCII3DWrapper({ text, className, style, asciiFontSize = 8, enableWaves = true }: ASCII3DWrapperProps) {
+  // Calculate width based on text length to prevent pixelation
+  const textLength = text.length;
+  const minWidth = Math.max(280, textLength * 24);
+  const height = 80;
+  
   return (
     <Suspense fallback={<span className={className} style={style}>{text}</span>}>
-      <div className={className} style={{ ...style, width: '200px', height: '60px' }}>
+      <div 
+        className={className} 
+        style={{ 
+          ...style, 
+          width: `${minWidth}px`, 
+          height: `${height}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <ASCIITextEffect
           text={text}
           asciiFontSize={asciiFontSize}
-          textFontSize={120}
-          planeBaseHeight={6}
+          textFontSize={Math.min(180, Math.max(100, 1200 / textLength))}
+          planeBaseHeight={8}
           enableWaves={enableWaves}
         />
       </div>

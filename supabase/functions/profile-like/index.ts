@@ -49,22 +49,6 @@ async function encrypt(data: string, secret: string): Promise<string> {
   return btoa(String.fromCharCode(...combined));
 }
 
-async function decrypt(encryptedData: string, secret: string): Promise<string> {
-  const combined = new Uint8Array(
-    atob(encryptedData).split('').map(c => c.charCodeAt(0))
-  );
-  const salt = combined.slice(0, 16);
-  const iv = combined.slice(16, 28);
-  const data = combined.slice(28);
-  const key = await deriveKey(secret, salt);
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    data
-  );
-  return new TextDecoder().decode(decrypted);
-}
-
 // Hash IP address for privacy
 async function hashIP(ip: string, salt: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -99,18 +83,7 @@ serve(async (req) => {
     const ipHash = await hashIP(clientIp, encryptionSecret);
 
     const body = await req.json();
-    const { action, profile_id, is_like, encrypted_payload } = body;
-
-    // Decrypt payload if provided
-    let decryptedPayload = null;
-    if (encrypted_payload) {
-      try {
-        const decrypted = await decrypt(encrypted_payload, encryptionSecret);
-        decryptedPayload = JSON.parse(decrypted);
-      } catch (e) {
-        console.error('Failed to decrypt payload:', e);
-      }
-    }
+    const { action, username, profile_id, is_like } = body;
 
     // Get user ID if authenticated
     const authHeader = req.headers.get('Authorization');
@@ -121,26 +94,55 @@ serve(async (req) => {
       userId = user?.id || null;
     }
 
-    if (action === 'vote') {
-      // Validate profile exists
-      const { data: profile, error: profileError } = await supabase
+    // Helper to get profile by username
+    async function getProfileByUsername(uname: string) {
+      const { data, error } = await supabase
         .from('profiles')
-        .select('id, username')
-        .eq('id', profile_id)
+        .select('id, username, likes_count, dislikes_count')
+        .eq('username', uname.toLowerCase())
         .single();
+      
+      if (error || !data) {
+        // Try alias
+        const { data: aliasData, error: aliasError } = await supabase
+          .from('profiles')
+          .select('id, username, likes_count, dislikes_count')
+          .eq('alias_username', uname.toLowerCase())
+          .single();
+        
+        return aliasData;
+      }
+      return data;
+    }
 
-      if (profileError || !profile) {
+    if (action === 'vote') {
+      // Get profile - support both username and profile_id for backwards compatibility
+      let profile;
+      if (username) {
+        profile = await getProfileByUsername(username);
+      } else if (profile_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, likes_count, dislikes_count')
+          .eq('id', profile_id)
+          .single();
+        profile = data;
+      }
+
+      if (!profile) {
         return new Response(
           JSON.stringify({ error: 'Profile not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
+      const targetProfileId = profile.id;
+
       // Check if user already voted
       const { data: existingVote } = await supabase
         .from('profile_likes')
         .select('id, is_like')
-        .eq('profile_id', profile_id)
+        .eq('profile_id', targetProfileId)
         .eq('liker_ip_hash', ipHash)
         .maybeSingle();
 
@@ -163,7 +165,7 @@ serve(async (req) => {
 
           // Get updated counts
           const { data: counts } = await supabase
-            .rpc('get_profile_like_counts', { p_profile_id: profile_id });
+            .rpc('get_profile_like_counts', { p_profile_id: targetProfileId });
 
           return new Response(
             JSON.stringify({ 
@@ -190,7 +192,7 @@ serve(async (req) => {
 
           // Get updated counts
           const { data: counts } = await supabase
-            .rpc('get_profile_like_counts', { p_profile_id: profile_id });
+            .rpc('get_profile_like_counts', { p_profile_id: targetProfileId });
 
           return new Response(
             JSON.stringify({ 
@@ -208,7 +210,7 @@ serve(async (req) => {
         const { error: insertError } = await supabase
           .from('profile_likes')
           .insert({
-            profile_id,
+            profile_id: targetProfileId,
             liker_ip_hash: ipHash,
             liker_user_id: userId,
             is_like,
@@ -219,7 +221,7 @@ serve(async (req) => {
 
         // Get updated counts
         const { data: counts } = await supabase
-          .rpc('get_profile_like_counts', { p_profile_id: profile_id });
+          .rpc('get_profile_like_counts', { p_profile_id: targetProfileId });
 
         return new Response(
           JSON.stringify({ 
@@ -233,26 +235,44 @@ serve(async (req) => {
         );
       }
     } else if (action === 'get_status') {
+      // Get profile - support both username and profile_id
+      let profile;
+      if (username) {
+        profile = await getProfileByUsername(username);
+      } else if (profile_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, likes_count, dislikes_count')
+          .eq('id', profile_id)
+          .single();
+        profile = data;
+      }
+
+      if (!profile) {
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            likes_count: 0,
+            dislikes_count: 0,
+            user_vote: null
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Get current vote status for this IP
       const { data: existingVote } = await supabase
         .from('profile_likes')
         .select('is_like')
-        .eq('profile_id', profile_id)
+        .eq('profile_id', profile.id)
         .eq('liker_ip_hash', ipHash)
         .maybeSingle();
-
-      // Get counts from profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('likes_count, dislikes_count')
-        .eq('id', profile_id)
-        .single();
 
       return new Response(
         JSON.stringify({
           success: true,
-          likes_count: profile?.likes_count || 0,
-          dislikes_count: profile?.dislikes_count || 0,
+          likes_count: profile.likes_count || 0,
+          dislikes_count: profile.dislikes_count || 0,
           user_vote: existingVote ? existingVote.is_like : null
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

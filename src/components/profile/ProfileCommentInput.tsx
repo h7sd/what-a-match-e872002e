@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Loader2, MessageCircle } from 'lucide-react';
+import { gsap } from 'gsap';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +20,47 @@ export function ProfileCommentInput({
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const successRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // GSAP plop animation like BubbleMenu
+  useEffect(() => {
+    if (showSuccess && successRef.current) {
+      gsap.killTweensOf(successRef.current);
+      
+      // Initial state
+      gsap.set(successRef.current, {
+        scale: 0,
+        opacity: 0,
+        y: 0,
+        transformOrigin: '50% 50%'
+      });
+
+      // Plop in with back.out easing (like BubbleMenu)
+      const tl = gsap.timeline();
+      tl.to(successRef.current, {
+        scale: 1,
+        opacity: 1,
+        y: -30,
+        duration: 0.5,
+        ease: 'back.out(1.5)'
+      });
+
+      // Hold for a moment then fade away
+      tl.to(successRef.current, {
+        opacity: 0,
+        y: -50,
+        scale: 0.8,
+        duration: 0.4,
+        ease: 'power3.in',
+        delay: 1.2
+      });
+
+      tl.eventCallback('onComplete', () => {
+        setShowSuccess(false);
+      });
+    }
+  }, [showSuccess]);
 
   const handleSubmit = async () => {
     if (!comment.trim() || isSubmitting) return;
@@ -47,13 +88,9 @@ export function ProfileCommentInput({
         return;
       }
 
-      // Success animation
+      // Trigger GSAP plop animation
       setShowSuccess(true);
       setComment('');
-      
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 2000);
 
     } catch (e) {
       console.error('Failed to submit comment:', e);
@@ -64,7 +101,7 @@ export function ProfileCommentInput({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full relative", className)}>
       <motion.div
         className={cn(
           "relative flex items-center gap-2 p-2 rounded-full",
@@ -118,31 +155,26 @@ export function ProfileCommentInput({
         </motion.button>
       </motion.div>
 
-      {/* Success Plop Animation */}
-      <AnimatePresence>
-        {showSuccess && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5, y: 0 }}
-            animate={{ opacity: 1, scale: 1, y: -20 }}
-            exit={{ opacity: 0, scale: 0.8, y: -40 }}
-            transition={{ 
-              type: "spring",
-              stiffness: 500,
-              damping: 30
+      {/* Success Plop Animation - GSAP based like BubbleMenu */}
+      {showSuccess && (
+        <div
+          ref={successRef}
+          className="absolute left-1/2 -translate-x-1/2 -top-4 pointer-events-none z-50"
+          style={{ opacity: 0 }}
+        >
+          <div
+            className="px-4 py-2 rounded-full border backdrop-blur-sm text-sm font-medium whitespace-nowrap"
+            style={{
+              background: `${accentColor}20`,
+              borderColor: `${accentColor}50`,
+              color: accentColor,
+              boxShadow: `0 4px 16px ${accentColor}30`
             }}
-            className="absolute left-1/2 -translate-x-1/2 -top-8 pointer-events-none"
           >
-            <motion.div
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 0 }}
-              transition={{ delay: 1, duration: 1 }}
-              className="px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/50 text-green-400 text-xs font-medium backdrop-blur-sm"
-            >
-              ✓ Comment sent!
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            ✓ Comment sent!
+          </div>
+        </div>
+      )}
 
       {/* Character count */}
       {comment.length > 200 && (

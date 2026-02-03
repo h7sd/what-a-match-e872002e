@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface ProfileLikeButtonsProps {
-  profileId: string;
+  username: string;
   initialLikes?: number;
   initialDislikes?: number;
   accentColor?: string;
@@ -13,7 +13,7 @@ interface ProfileLikeButtonsProps {
 }
 
 export function ProfileLikeButtons({
-  profileId,
+  username,
   initialLikes = 0,
   initialDislikes = 0,
   accentColor = '#8b5cf6',
@@ -30,7 +30,7 @@ export function ProfileLikeButtons({
     const fetchStatus = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('profile-like', {
-          body: { action: 'get_status', profile_id: profileId }
+          body: { action: 'get_status', username }
         });
 
         if (!error && data) {
@@ -45,8 +45,10 @@ export function ProfileLikeButtons({
       }
     };
 
-    fetchStatus();
-  }, [profileId, initialLikes, initialDislikes]);
+    if (username) {
+      fetchStatus();
+    }
+  }, [username, initialLikes, initialDislikes]);
 
   const handleVote = async (isLike: boolean) => {
     if (isLoading) return;
@@ -83,7 +85,7 @@ export function ProfileLikeButtons({
 
     try {
       const { data, error } = await supabase.functions.invoke('profile-like', {
-        body: { action: 'vote', profile_id: profileId, is_like: isLike }
+        body: { action: 'vote', username, is_like: isLike }
       });
 
       if (error) throw error;
@@ -112,7 +114,12 @@ export function ProfileLikeButtons({
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <motion.div 
+      className={cn("flex items-center gap-3 p-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10", className)}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5 }}
+    >
       {/* Like Button */}
       <motion.button
         onClick={() => handleVote(true)}
@@ -220,6 +227,6 @@ export function ProfileLikeButtons({
           </motion.span>
         </AnimatePresence>
       </motion.button>
-    </div>
+    </motion.div>
   );
 }

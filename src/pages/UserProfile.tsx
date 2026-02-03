@@ -418,24 +418,12 @@ export default function UserProfile() {
             transparentBadges={profile.transparent_badges ?? false}
           />
 
-          {/* Like/Dislike Buttons - Bottom Center */}
-          {((profile as any).show_likes ?? true) && (
-            <div className="flex justify-center">
-              <ProfileLikeButtons
-                profileId={profile.id}
-                initialLikes={(profile as any).likes_count ?? 0}
-                initialDislikes={(profile as any).dislikes_count ?? 0}
-                accentColor={accentColor}
-              />
-            </div>
-          )}
-
           {/* Comment Input */}
           <div className="relative flex justify-center">
             <ProfileCommentInput
               username={profile.username}
               accentColor={accentColor}
-              className="max-w-sm"
+              className="max-w-sm w-full"
             />
           </div>
 
@@ -476,6 +464,18 @@ export default function UserProfile() {
             />
           )}
         </motion.div>
+
+        {/* Like/Dislike Buttons - FIXED BOTTOM CENTER */}
+        {((profile as any).show_likes ?? true) && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+            <ProfileLikeButtons
+              username={profile.username}
+              initialLikes={(profile as any).likes_count ?? 0}
+              initialDislikes={(profile as any).dislikes_count ?? 0}
+              accentColor={accentColor}
+            />
+          </div>
+        )}
 
       </div>
 
