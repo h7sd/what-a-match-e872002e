@@ -34,14 +34,21 @@ MemoizedLaserFlow.displayName = 'MemoizedLaserFlow';
 export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayProps) {
   const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('entering');
 
+  // NOTE: keep this callback stable; otherwise effects that depend on it re-run
+  // on every phase change, re-scheduling timers and potentially re-showing the overlay.
   const handleExit = useCallback(() => {
-    if (phase === 'exiting' || phase === 'hidden') return;
-    setPhase('exiting');
-  }, [phase]);
+    setPhase((prev) => (prev === 'exiting' || prev === 'hidden' ? prev : 'exiting'));
+  }, []);
 
   useEffect(() => {
     // Simple timeline: enter -> visible -> auto-exit
-    const enterTimer = setTimeout(() => setPhase('visible'), 50);
+    const enterTimer = setTimeout(
+      () =>
+        setPhase((prev) =>
+          prev === 'exiting' || prev === 'hidden' ? prev : 'visible'
+        ),
+      50
+    );
     const exitTimer = setTimeout(handleExit, 2500);
     return () => {
       clearTimeout(enterTimer);
@@ -51,7 +58,8 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
 
   useEffect(() => {
     if (phase === 'exiting') {
-      const hideTimer = setTimeout(() => setPhase('hidden'), 400);
+      // Match the fade-out duration so we don't cut it off early.
+      const hideTimer = setTimeout(() => setPhase('hidden'), 650);
       return () => clearTimeout(hideTimer);
     }
     if (phase === 'hidden') {
@@ -63,19 +71,21 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
 
   const isVisible = phase === 'visible';
   const isExiting = phase === 'exiting';
+  const overlayOpacity = isExiting ? 0 : isVisible ? 1 : 0;
 
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden cursor-pointer bg-[#0a0a0b]"
       onClick={handleExit}
+      style={{
+        opacity: overlayOpacity,
+        transition: 'opacity 0.65s cubic-bezier(0.4, 0, 0.2, 1)',
+        willChange: 'opacity',
+      }}
     >
       {/* LaserFlow with CSS animation class */}
       <div 
         className="absolute inset-0"
-        style={{
-          opacity: isExiting ? 0 : isVisible ? 1 : 0,
-          transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
       >
         <MemoizedLaserFlow />
       </div>
@@ -84,13 +94,12 @@ export function WelcomeBackOverlay({ username, onComplete }: WelcomeBackOverlayP
       <div 
         className="relative z-10 text-center px-6"
         style={{
-          opacity: isExiting ? 0 : isVisible ? 1 : 0,
           transform: isExiting 
             ? 'translateY(-10px)' 
             : isVisible 
               ? 'translateY(0)' 
               : 'translateY(15px)',
-          transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
+          transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s',
         }}
       >
         <p className="text-lg md:text-xl text-white/70 mb-2 font-light tracking-wide">
