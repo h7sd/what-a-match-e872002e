@@ -13,6 +13,8 @@ const MemoizedLaserFlow = memo(() => (
     dpr={1}
     mouseSmoothTime={0}
     mouseTiltStrength={0.005}
+    horizontalBeamOffset={0}
+    verticalBeamOffset={0.15}
     flowSpeed={0.2}
     verticalSizing={1.8}
     horizontalSizing={0.4}
