@@ -59,19 +59,28 @@ const handler = async (req: Request): Promise<Response> => {
     if (action === "create") {
       // Get the authenticated user
       const authHeader = req.headers.get("Authorization");
-      if (!authHeader) {
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        console.log("No authorization header found");
         return new Response(
-          JSON.stringify({ error: "Unauthorized" }),
+          JSON.stringify({ error: "Authentication required" }),
           { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
       const token = authHeader.replace("Bearer ", "");
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      
+      // Create auth client with token to validate user
+      const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      // Validate user via auth client
+      const { data: { user }, error: userError } = await authClient.auth.getUser();
       
       if (userError || !user) {
+        console.log("Auth validation failed:", userError?.message);
         return new Response(
-          JSON.stringify({ error: "Invalid token" }),
+          JSON.stringify({ error: "Invalid session" }),
           { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
@@ -343,21 +352,25 @@ const handler = async (req: Request): Promise<Response> => {
         }
         request = data;
       } else if (requestId) {
-        // Otherwise check auth
+        // Otherwise check auth with proper validation
         const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
           return new Response(
-            JSON.stringify({ error: "Unauthorized" }),
+            JSON.stringify({ error: "Authentication required" }),
             { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
         }
 
-        const authToken = authHeader.replace("Bearer ", "");
-        const { data: { user }, error: userError } = await supabase.auth.getUser(authToken);
+        // Create auth client with token to validate user
+        const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: authHeader } }
+        });
+        
+        const { data: { user }, error: userError } = await authClient.auth.getUser();
         
         if (userError || !user) {
           return new Response(
-            JSON.stringify({ error: "Invalid token" }),
+            JSON.stringify({ error: "Invalid session" }),
             { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
         }
