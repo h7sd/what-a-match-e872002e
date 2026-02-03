@@ -210,24 +210,35 @@ export function ProfileCommentInput({
               }}
             >
               <div
-                className="rounded-full backdrop-blur-xl font-bold whitespace-nowrap border border-white/30"
+                className="rounded-full font-bold whitespace-nowrap"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.15) 100%)',
+                  backdropFilter: 'blur(20px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                  border: '1px solid rgba(255,255,255,0.35)',
                   color: '#ffffff',
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  boxShadow: `
+                    0 8px 32px rgba(0,0,0,0.25),
+                    0 2px 8px rgba(0,0,0,0.15),
+                    inset 0 2px 4px rgba(255,255,255,0.25),
+                    inset 0 -1px 2px rgba(255,255,255,0.1),
+                    0 0 0 1px rgba(255,255,255,0.1)
+                  `,
                   fontSize: `${0.6 + bubble.scale * 0.7}rem`,
                   padding: bubble.scale > 1.5 
-                    ? '0.75rem 1.5rem' 
+                    ? '0.85rem 1.75rem' 
                     : bubble.scale < 0.6 
-                      ? '0.25rem 0.5rem' 
-                      : '0.5rem 1rem',
+                      ? '0.3rem 0.6rem' 
+                      : '0.6rem 1.2rem',
                 }}
               >
                 <span 
-                  className="block whitespace-normal break-words text-center drop-shadow-lg"
+                  className="block whitespace-normal break-words text-center"
                   style={{
                     maxWidth: bubble.scale > 1.5 ? 'min(90vw, 28rem)' : 'min(70vw, 18rem)',
-                    textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.15)',
+                    fontWeight: 600,
+                    letterSpacing: '0.02em',
                   }}
                 >
                   {bubble.text}
