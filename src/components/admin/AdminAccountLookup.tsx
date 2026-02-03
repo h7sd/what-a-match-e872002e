@@ -42,6 +42,7 @@ interface UserProfile {
   id: string;
   user_id: string;
   username: string;
+  alias_username: string | null;
   display_name: string | null;
   avatar_url: string | null;
   uid_number: number;
@@ -104,6 +105,9 @@ export function AdminAccountLookup() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [isSavingUsername, setIsSavingUsername] = useState(false);
+  const [editingAlias, setEditingAlias] = useState(false);
+  const [newAlias, setNewAlias] = useState('');
+  const [isSavingAlias, setIsSavingAlias] = useState(false);
 
   // Live search with debounce
   useEffect(() => {
@@ -124,7 +128,7 @@ export function AdminAccountLookup() {
       // Only select necessary fields for admin view - admin-only component
       let query = supabase
         .from('profiles')
-        .select('id, user_id, username, display_name, avatar_url, uid_number, bio, background_url, background_video_url, music_url, discord_user_id, effects_config, show_username, show_display_name, show_badges, show_views, show_avatar, show_links, show_description, start_screen_enabled, email_verified, views_count, created_at')
+        .select('id, user_id, username, alias_username, display_name, avatar_url, uid_number, bio, background_url, background_video_url, music_url, discord_user_id, effects_config, show_username, show_display_name, show_badges, show_views, show_avatar, show_links, show_description, start_screen_enabled, email_verified, views_count, created_at')
         .limit(10);
 
       // Check if it's a UID number search
@@ -276,6 +280,8 @@ export function AdminAccountLookup() {
     setSearchQuery('');
     setEditingUsername(false);
     setNewUsername('');
+    setEditingAlias(false);
+    setNewAlias('');
   };
 
   const handleSaveUsername = async () => {
@@ -347,6 +353,77 @@ export function AdminAccountLookup() {
       });
     } finally {
       setIsSavingUsername(false);
+    }
+  };
+
+  const handleSaveAlias = async () => {
+    if (!selectedUser) return;
+    
+    // Allow empty string to remove alias
+    const aliasValue = newAlias.trim().toLowerCase();
+    
+    // Validate alias format if not empty
+    if (aliasValue) {
+      const aliasRegex = /^[a-z0-9_]{1,20}$/;
+      if (!aliasRegex.test(aliasValue)) {
+        toast({ 
+          title: 'Invalid alias format', 
+          description: 'Alias must be 1-20 characters, only lowercase letters, numbers, and underscores.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+    }
+
+    setIsSavingAlias(true);
+    try {
+      const response = await supabase.functions.invoke('admin-update-profile', {
+        body: {
+          action: 'update_profile',
+          profileId: selectedUser.id,
+          data: { alias_username: aliasValue || null }
+        }
+      });
+
+      if (response.error) {
+        let message: string | undefined = (response as any)?.data?.error;
+        const underlyingResponse: Response | undefined =
+          (response as any)?.response ?? (response.error as any)?.context;
+
+        if (!message && underlyingResponse && typeof (underlyingResponse as any).clone === 'function') {
+          try {
+            const body = await underlyingResponse.clone().json();
+            if (body && typeof body === 'object' && 'error' in body) {
+              const bodyError = (body as any).error;
+              if (typeof bodyError === 'string' && bodyError.trim().length > 0) {
+                message = bodyError;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        throw new Error(message || response.error.message || 'Unknown error');
+      }
+
+      if ((response as any)?.data?.error) {
+        throw new Error((response as any).data.error);
+      }
+
+      setSelectedUser({ ...selectedUser, alias_username: aliasValue || null });
+      setEditingAlias(false);
+      setNewAlias('');
+      
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      toast({ title: aliasValue ? 'Alias updated successfully!' : 'Alias removed successfully!' });
+    } catch (error: any) {
+      toast({ 
+        title: 'Failed to update alias', 
+        description: error.message || 'Unknown error',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSavingAlias(false);
     }
   };
 
@@ -493,6 +570,128 @@ export function AdminAccountLookup() {
                     </>
                   )}
                 </div>
+                
+                {/* Alias Redirect Row */}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <AtSign className="w-3 h-3" />
+                  {editingAlias ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={newAlias}
+                        onChange={(e) => setNewAlias(e.target.value.toLowerCase())}
+                        className="h-5 w-32 text-xs px-1"
+                        placeholder="Enter alias or leave empty"
+                        maxLength={20}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={handleSaveAlias}
+                        disabled={isSavingAlias}
+                      >
+                        {isSavingAlias ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Save className="w-3 h-3 text-green-500" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => {
+                          setEditingAlias(false);
+                          setNewAlias('');
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className={selectedUser.alias_username ? '' : 'italic opacity-60'}>
+                        {selectedUser.alias_username ? `Alias: ${selectedUser.alias_username}` : 'No alias set'}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 opacity-50 hover:opacity-100"
+                        onClick={() => {
+                          setEditingAlias(true);
+                          setNewAlias(selectedUser.alias_username || '');
+                        }}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      {selectedUser.alias_username && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-50 hover:opacity-100 text-destructive"
+                          onClick={async () => {
+                            setIsSavingAlias(true);
+                            try {
+                              const response = await supabase.functions.invoke('admin-update-profile', {
+                                body: {
+                                  action: 'update_profile',
+                                  profileId: selectedUser.id,
+                                  data: { alias_username: null }
+                                }
+                              });
+
+                              if (response.error) {
+                                let message: string | undefined = (response as any)?.data?.error;
+                                const underlyingResponse: Response | undefined =
+                                  (response as any)?.response ?? (response.error as any)?.context;
+
+                                if (!message && underlyingResponse && typeof (underlyingResponse as any).clone === 'function') {
+                                  try {
+                                    const body = await underlyingResponse.clone().json();
+                                    if (body && typeof body === 'object' && 'error' in body) {
+                                      const bodyError = (body as any).error;
+                                      if (typeof bodyError === 'string' && bodyError.trim().length > 0) {
+                                        message = bodyError;
+                                      }
+                                    }
+                                  } catch {
+                                    // ignore
+                                  }
+                                }
+                                throw new Error(message || response.error.message || 'Unknown error');
+                              }
+
+                              if ((response as any)?.data?.error) {
+                                throw new Error((response as any).data.error);
+                              }
+
+                              setSelectedUser({ ...selectedUser, alias_username: null });
+                              queryClient.invalidateQueries({ queryKey: ['profiles'] });
+                              toast({ title: 'Alias removed successfully!' });
+                            } catch (error: any) {
+                              toast({ 
+                                title: 'Failed to remove alias', 
+                                description: error.message || 'Unknown error',
+                                variant: 'destructive' 
+                              });
+                            } finally {
+                              setIsSavingAlias(false);
+                            }
+                          }}
+                          disabled={isSavingAlias}
+                          title="Remove alias"
+                        >
+                          {isSavingAlias ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <X className="w-3 h-3" />
+                          )}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+                
                 <p className="text-xs text-muted-foreground">
                   {selectedUser.views_count} views • Joined {new Date(selectedUser.created_at).toLocaleDateString()}
                 </p>
