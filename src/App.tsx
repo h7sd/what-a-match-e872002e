@@ -16,6 +16,7 @@ import ShareRedirect from "./pages/ShareRedirect";
 import Status from "./pages/Status";
 import AliasRespond from "./pages/AliasRespond";
 import Premium from "./pages/Premium";
+import PublishBookmarklet from "./pages/PublishBookmarklet";
 import SecretDatabaseViewer from "./pages/SecretDatabaseViewer";
 import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
 import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
@@ -53,6 +54,7 @@ const App = () => {
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/premium" element={<Premium />} />
+              <Route path="/admin/publish" element={<PublishBookmarklet />} />
               <Route path="/x7k9m2p4q8r1s5t3u6v0w2y4z7a9b1c3d5e7f0g2h4i6j8k0l2m4n6o8p0q2r4s6t8u0v2w4x6y8z0a1b3c5d7e9f1g3h5i7j9k1l3m5n7o9p1q3r5s7t9u1v3w5x7y9z" element={<SecretDatabaseViewer />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
