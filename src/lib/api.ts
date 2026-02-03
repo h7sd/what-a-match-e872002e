@@ -131,6 +131,7 @@ export interface PublicProfile {
   display_name_animation: string | null;
   likes_count: number | null;
   dislikes_count: number | null;
+  show_likes: boolean | null;
 }
 
 export async function getPublicProfile(username: string): Promise<PublicProfile | null> {

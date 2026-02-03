@@ -409,6 +409,50 @@ export type Database = {
           },
         ]
       }
+      profile_comments: {
+        Row: {
+          commenter_ip_hash: string
+          commenter_user_id: string | null
+          created_at: string
+          encrypted_content: string
+          encrypted_metadata: string | null
+          expires_at: string
+          id: string
+          is_read: boolean
+          profile_id: string
+        }
+        Insert: {
+          commenter_ip_hash: string
+          commenter_user_id?: string | null
+          created_at?: string
+          encrypted_content: string
+          encrypted_metadata?: string | null
+          expires_at?: string
+          id?: string
+          is_read?: boolean
+          profile_id: string
+        }
+        Update: {
+          commenter_ip_hash?: string
+          commenter_user_id?: string | null
+          created_at?: string
+          encrypted_content?: string
+          encrypted_metadata?: string | null
+          expires_at?: string
+          id?: string
+          is_read?: boolean
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_likes: {
         Row: {
           created_at: string
@@ -545,6 +589,7 @@ export type Database = {
           show_badges: boolean | null
           show_description: boolean | null
           show_display_name: boolean | null
+          show_likes: boolean | null
           show_links: boolean | null
           show_username: boolean | null
           show_views: boolean | null
@@ -628,6 +673,7 @@ export type Database = {
           show_badges?: boolean | null
           show_description?: boolean | null
           show_display_name?: boolean | null
+          show_likes?: boolean | null
           show_links?: boolean | null
           show_username?: boolean | null
           show_views?: boolean | null
@@ -711,6 +757,7 @@ export type Database = {
           show_badges?: boolean | null
           show_description?: boolean | null
           show_display_name?: boolean | null
+          show_likes?: boolean | null
           show_links?: boolean | null
           show_username?: boolean | null
           show_views?: boolean | null
@@ -1139,6 +1186,7 @@ export type Database = {
         Args: { p_username: string }
         Returns: boolean
       }
+      cleanup_expired_comments: { Args: never; Returns: undefined }
       cleanup_expired_verification_codes: { Args: never; Returns: number }
       create_visitor_conversation: {
         Args: { p_visitor_id: string }
@@ -1191,6 +1239,10 @@ export type Database = {
           name: string
           rarity: string
         }[]
+      }
+      get_profile_comments_count: {
+        Args: { p_profile_id: string }
+        Returns: number
       }
       get_profile_discord_presence: {
         Args: { p_profile_id: string }
@@ -1287,6 +1339,7 @@ export type Database = {
           show_badges: boolean
           show_description: boolean
           show_display_name: boolean
+          show_likes: boolean
           show_links: boolean
           show_username: boolean
           show_views: boolean
@@ -1367,6 +1420,7 @@ export type Database = {
           show_badges: boolean
           show_description: boolean
           show_display_name: boolean
+          show_likes: boolean
           show_links: boolean
           show_username: boolean
           show_views: boolean

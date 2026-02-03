@@ -213,6 +213,7 @@ export default function Dashboard() {
   const [showAvatar, setShowAvatar] = useState(true);
   const [showLinks, setShowLinks] = useState(true);
   const [showDescription, setShowDescription] = useState(true);
+  const [showLikes, setShowLikes] = useState(true);
   const [transparentBadges, setTransparentBadges] = useState(false);
 
   // Card border settings
@@ -382,6 +383,7 @@ export default function Dashboard() {
       setShowAvatar((profile as any).show_avatar ?? true);
       setShowLinks((profile as any).show_links ?? true);
       setShowDescription((profile as any).show_description ?? true);
+      setShowLikes((profile as any).show_likes ?? true);
       setTransparentBadges((profile as any).transparent_badges ?? false);
       setCardBorderEnabled((profile as any).card_border_enabled ?? true);
       setCardBorderColor((profile as any).card_border_color || '');
@@ -570,6 +572,7 @@ export default function Dashboard() {
         show_avatar: showAvatar,
         show_links: showLinks,
         show_description: showDescription,
+        show_likes: showLikes,
         transparent_badges: transparentBadges,
         card_border_enabled: cardBorderEnabled,
         card_border_color: cardBorderColor || null,
@@ -1169,6 +1172,7 @@ export default function Dashboard() {
                         showAvatar={showAvatar}
                         showLinks={showLinks}
                         showDescription={showDescription}
+                        showLikes={showLikes}
                         onShowUsernameChange={setShowUsername}
                         onShowDisplayNameChange={setShowDisplayName}
                         onShowBadgesChange={setShowBadges}
@@ -1176,6 +1180,7 @@ export default function Dashboard() {
                         onShowAvatarChange={setShowAvatar}
                         onShowLinksChange={setShowLinks}
                         onShowDescriptionChange={setShowDescription}
+                        onShowLikesChange={setShowLikes}
                       />
                     </div>
 

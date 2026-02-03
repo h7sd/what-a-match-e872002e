@@ -12,6 +12,7 @@ import { DiscordPresence } from '@/components/profile/DiscordPresence';
 import { StartScreen } from '@/components/profile/StartScreen';
 import { SimpleVolumeBar } from '@/components/profile/SimpleVolumeBar';
 import { ProfileLikeButtons } from '@/components/profile/ProfileLikeButtons';
+import { ProfileCommentInput } from '@/components/profile/ProfileCommentInput';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
@@ -417,13 +418,24 @@ export default function UserProfile() {
             transparentBadges={profile.transparent_badges ?? false}
           />
 
-          {/* Like/Dislike Buttons */}
-          <div className="flex justify-center">
-            <ProfileLikeButtons
-              profileId={profile.id}
-              initialLikes={(profile as any).likes_count ?? 0}
-              initialDislikes={(profile as any).dislikes_count ?? 0}
+          {/* Like/Dislike Buttons - Bottom Center */}
+          {((profile as any).show_likes ?? true) && (
+            <div className="flex justify-center">
+              <ProfileLikeButtons
+                profileId={profile.id}
+                initialLikes={(profile as any).likes_count ?? 0}
+                initialDislikes={(profile as any).dislikes_count ?? 0}
+                accentColor={accentColor}
+              />
+            </div>
+          )}
+
+          {/* Comment Input */}
+          <div className="relative flex justify-center">
+            <ProfileCommentInput
+              username={profile.username}
               accentColor={accentColor}
+              className="max-w-sm"
             />
           </div>
 
