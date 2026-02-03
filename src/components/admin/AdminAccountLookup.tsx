@@ -295,7 +295,7 @@ export function AdminAccountLookup() {
     setIsSavingUsername(true);
     try {
       // Use the admin-update-profile edge function
-      const { data, error } = await supabase.functions.invoke('admin-update-profile', {
+      const response = await supabase.functions.invoke('admin-update-profile', {
         body: {
           action: 'update_profile',
           profileId: selectedUser.id,
@@ -303,8 +303,16 @@ export function AdminAccountLookup() {
         }
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Check for errors in both error and data properties
+      if (response.error) {
+        // Try to parse error context for better message
+        const errorMessage = response.data?.error || response.error.message || 'Unknown error';
+        throw new Error(errorMessage);
+      }
+      
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
 
       // Update local state
       setSelectedUser({ ...selectedUser, username: newUsername.toLowerCase() });
