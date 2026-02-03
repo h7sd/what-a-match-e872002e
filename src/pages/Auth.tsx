@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { LiquidEther } from '@/components/landing/LiquidEther';
+import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
@@ -22,7 +23,12 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .refine(
+      (p) => /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p) && /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
+      'Password must include uppercase, lowercase, number and special character'
+    ),
   username: z
     .string()
     .min(1, 'Username must be at least 1 character')
@@ -856,8 +862,9 @@ export default function Auth() {
                     className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
                   />
                   {errors.password && (
-                    <p className="text-sm text-red-400">{errors.password}</p>
+                    <p className="text-sm text-destructive">{errors.password}</p>
                   )}
+                  <PasswordStrengthIndicator password={password} />
                 </div>
 
                 {/* Turnstile Widget */}
@@ -867,7 +874,7 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  disabled={loading || !turnstileToken}
+                  disabled={loading || !turnstileToken || !getPasswordStrength(password).isStrong}
                   className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20 hover:shadow-primary/30"
                 >
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
