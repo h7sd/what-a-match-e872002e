@@ -338,10 +338,18 @@ Deno.serve(async (req) => {
 
         if (error) throw error;
 
-        // Return only non-null avatar URLs shuffled
+        // Proxy URL to hide Supabase infrastructure
+        const PROXY_URL = 'https://api.uservault.cc';
+        const supabaseUrlPattern = /https:\/\/[a-z0-9]+\.supabase\.co/gi;
+
+        // Return only non-null avatar URLs, transformed through proxy
         const avatars = (data || [])
           .map(p => p.avatar_url)
-          .filter(Boolean);
+          .filter(Boolean)
+          .map((url: string) => {
+            // Replace Supabase URL with proxy URL
+            return url.replace(supabaseUrlPattern, PROXY_URL);
+          });
 
         // Shuffle for randomness
         for (let i = avatars.length - 1; i > 0; i--) {
