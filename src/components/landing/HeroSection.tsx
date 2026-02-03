@@ -104,24 +104,22 @@ export function HeroSection() {
           <Magnet magnetStrength={0.15}>
             <Link
               to={user ? '/dashboard' : '/auth'}
-              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg transition-all duration-300 hover:shadow-2xl hover:shadow-primary/30 overflow-hidden"
+              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#00B4D8] via-[#00D9A5] to-[#0077B6] text-white font-semibold text-lg transition-all duration-300 hover:shadow-2xl hover:shadow-[#00D9A5]/40 overflow-hidden border border-white/20"
             >
               <span className="relative z-10">{user ? 'Open Dashboard' : 'Start for Free'}</span>
               <ArrowRight className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" />
               
-              {/* Animated gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] opacity-0 group-hover:opacity-100 transition-opacity duration-500" 
-                style={{ animation: 'gradient-shift 3s ease infinite' }}
-              />
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
             </Link>
           </Magnet>
           
           <Magnet magnetStrength={0.15}>
             <Link
               to="/uservault"
-              className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl border-2 border-border/50 hover:border-primary/50 text-foreground font-semibold text-lg transition-all duration-300 hover:bg-primary/5 backdrop-blur-sm"
+              className="group inline-flex items-center gap-3 px-8 py-4 rounded-xl border border-[#00D9A5]/30 hover:border-[#00D9A5]/60 text-foreground font-semibold text-lg transition-all duration-300 hover:bg-[#00D9A5]/5 backdrop-blur-sm bg-white/[0.02]"
             >
-              <Play className="w-5 h-5 text-primary" />
+              <Play className="w-5 h-5 text-[#00D9A5]" />
               <span>View Demo</span>
             </Link>
           </Magnet>

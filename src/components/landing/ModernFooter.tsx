@@ -2,7 +2,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { useAuth } from '@/lib/auth';
-import { Zap, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
+import { UVLogo, UVLogoText } from './UVLogo';
 
 const footerSections = [
   {
@@ -58,7 +59,7 @@ export function ModernFooter() {
   return (
     <footer ref={ref} className="border-t border-border/30 mt-20 relative overflow-hidden">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#00D9A5]/5 to-transparent" />
       
       <div className="max-w-6xl mx-auto px-6 py-20 relative z-10">
         <motion.div
@@ -69,13 +70,9 @@ export function ModernFooter() {
         >
           {/* Brand column */}
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-6 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
-                UserVault
-              </span>
+            <Link to="/" className="flex items-center gap-3 mb-6 group">
+              <UVLogo size={40} />
+              <UVLogoText className="text-xl" />
             </Link>
             <p className="text-muted-foreground mb-6 max-w-xs leading-relaxed">
               The modern way to share your online presence. Create beautiful, customizable bio pages in minutes.
@@ -83,7 +80,7 @@ export function ModernFooter() {
             {user && (
               <button
                 onClick={handleLogout}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
+                className="text-sm text-muted-foreground hover:text-[#00D9A5] transition-colors font-medium"
               >
                 Sign out
               </button>

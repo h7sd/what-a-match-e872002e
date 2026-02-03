@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Menu, X, Zap } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { ReportUserDialog } from './ReportUserDialog';
 import { Magnet } from './Magnet';
+import { UVLogo, UVLogoText } from './UVLogo';
 
 export function ModernHeader() {
   const { user } = useAuth();
@@ -47,14 +48,10 @@ export function ModernHeader() {
             {/* Logo */}
             <Link 
               to="/" 
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-3 group"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Zap className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">
-                UserVault
-              </span>
+              <UVLogo size={36} />
+              <UVLogoText className="text-xl" />
             </Link>
 
             {/* Desktop Nav - Clean pill style */}
@@ -100,27 +97,27 @@ export function ModernHeader() {
                 <Magnet magnetStrength={0.2}>
                   <Link
                     to="/dashboard"
-                    className="relative text-sm px-6 py-2.5 rounded-full bg-primary text-primary-foreground font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 overflow-hidden group"
+                    className="relative text-sm px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00B4D8] to-[#00D9A5] text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-[#00D9A5]/30 overflow-hidden group border border-white/10"
                   >
                     <span className="relative z-10">Dashboard</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-gradient-shift" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#00D9A5] to-[#0077B6] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </Link>
                 </Magnet>
               ) : (
                 <div className="hidden md:flex items-center gap-3">
                   <Link
                     to="/auth"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 font-medium"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 font-medium hover:bg-white/5 rounded-lg"
                   >
                     Sign in
                   </Link>
                   <Magnet magnetStrength={0.2}>
                     <Link
                       to="/auth"
-                      className="relative text-sm px-6 py-2.5 rounded-full bg-primary text-primary-foreground font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 overflow-hidden group"
+                      className="relative text-sm px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00B4D8] to-[#00D9A5] text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-[#00D9A5]/30 overflow-hidden group border border-white/10"
                     >
                       <span className="relative z-10">Get Started</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#00D9A5] to-[#0077B6] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </Link>
                   </Magnet>
                 </div>
@@ -186,7 +183,7 @@ export function ModernHeader() {
                 {user ? (
                   <Link
                     to="/dashboard"
-                    className="text-center py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold"
+                    className="text-center py-3.5 rounded-xl bg-gradient-to-r from-[#00B4D8] to-[#00D9A5] text-white font-semibold border border-white/10"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
@@ -195,14 +192,14 @@ export function ModernHeader() {
                   <>
                     <Link
                       to="/auth"
-                      className="text-center py-3 text-foreground font-medium"
+                      className="text-center py-3 text-foreground font-medium hover:bg-white/5 rounded-lg transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Sign in
                     </Link>
                     <Link
                       to="/auth"
-                      className="text-center py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold"
+                      className="text-center py-3.5 rounded-xl bg-gradient-to-r from-[#00B4D8] to-[#00D9A5] text-white font-semibold border border-white/10"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Get Started
