@@ -84,11 +84,10 @@ export function FriendBadgesManager() {
     enabled: !!user?.id,
   });
 
-  // Live search for users
-  const handleSearch = async (query: string) => {
-    setSearchUsername(query);
-    
-    if (query.trim().length < 2) {
+  // Search for users with button
+  const handleSearch = async () => {
+    const query = searchUsername.trim();
+    if (query.length < 1) {
       setSearchResults([]);
       return;
     }
@@ -96,7 +95,7 @@ export function FriendBadgesManager() {
     setIsSearching(true);
     try {
       // Search by username, alias, or UID
-      const isNumeric = /^\d+$/.test(query.trim());
+      const isNumeric = /^\d+$/.test(query);
       
       let data;
       if (isNumeric) {
@@ -104,7 +103,7 @@ export function FriendBadgesManager() {
         const { data: uidData } = await supabase
           .from('profiles')
           .select('user_id, username, avatar_url, uid_number')
-          .eq('uid_number', parseInt(query.trim()))
+          .eq('uid_number', parseInt(query))
           .limit(10);
         data = uidData;
       } else {
@@ -112,7 +111,7 @@ export function FriendBadgesManager() {
         const { data: usernameData } = await supabase
           .from('profiles')
           .select('user_id, username, avatar_url, alias_username')
-          .or(`username.ilike.%${query.trim()}%,alias_username.ilike.%${query.trim()}%`)
+          .or(`username.ilike.%${query}%,alias_username.ilike.%${query}%`)
           .limit(10);
         data = usernameData;
       }
@@ -120,8 +119,13 @@ export function FriendBadgesManager() {
       // Filter out self
       const filtered = (data || []).filter(p => p.user_id !== user?.id);
       setSearchResults(filtered);
+      
+      if (filtered.length === 0) {
+        toast({ title: 'No users found', variant: 'destructive' });
+      }
     } catch (error) {
       console.error('Search error:', error);
+      toast({ title: 'Search failed', variant: 'destructive' });
     } finally {
       setIsSearching(false);
     }
@@ -315,27 +319,35 @@ export function FriendBadgesManager() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <div className="relative">
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
                       <Input
                         value={searchUsername}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        placeholder="Search by username, alias, or UID..."
-                        className="pr-8"
+                        onChange={(e) => setSearchUsername(e.target.value)}
+                        placeholder="Username, Alias oder UID..."
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                       />
-                      {isSearching && (
-                        <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-                      )}
+                      <Button 
+                        variant="outline" 
+                        onClick={handleSearch}
+                        disabled={isSearching || !searchUsername.trim()}
+                      >
+                        {isSearching ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Search className="w-4 h-4" />
+                        )}
+                      </Button>
                     </div>
                     
-                    {/* Search Results Dropdown */}
+                    {/* Search Results */}
                     {searchResults.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                      <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
                         {searchResults.map((profile) => (
                           <button
                             key={profile.user_id}
                             type="button"
-                            className="w-full flex items-center gap-2 p-2 hover:bg-accent text-left transition-colors"
+                            className="w-full flex items-center gap-2 p-2 hover:bg-accent text-left transition-colors border-b border-border last:border-b-0"
                             onClick={() => selectRecipient(profile)}
                           >
                             {profile.avatar_url ? (
@@ -348,12 +360,6 @@ export function FriendBadgesManager() {
                             <span className="text-sm">@{profile.username}</span>
                           </button>
                         ))}
-                      </div>
-                    )}
-                    
-                    {searchUsername.length >= 2 && !isSearching && searchResults.length === 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-3 text-center">
-                        <p className="text-sm text-muted-foreground">No users found</p>
                       </div>
                     )}
                   </div>
