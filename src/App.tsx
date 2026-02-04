@@ -21,6 +21,7 @@ import SecretDatabaseViewer from "./pages/SecretDatabaseViewer";
 import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
 import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
 import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
+import { GlobalAdminNotification } from "@/components/notifications/GlobalAdminNotification";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => {
             <Sonner />
             <WelcomeBackGate />
             <GlobalPopups />
+            <GlobalAdminNotification />
             {/* Global Event Banner (also visible on profile pages) */}
             <EventAnnouncementBanner />
             <Routes>

@@ -86,6 +86,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { ProfileCommentsViewer } from '@/components/dashboard/ProfileCommentsViewer';
 import { FriendBadgesManager } from '@/components/dashboard/FriendBadgesManager';
 import { AdminEventController } from '@/components/admin/AdminEventController';
+import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'admin' | 'settings';
@@ -1374,6 +1375,11 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 )}
+
+                {/* Live Notification Sender */}
+                <div className="glass-card p-6">
+                  <AdminNotificationSender />
+                </div>
 
                 {/* Badge Events Controller */}
                 <div className="glass-card p-6">
