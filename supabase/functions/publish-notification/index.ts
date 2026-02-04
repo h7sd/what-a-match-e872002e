@@ -113,26 +113,39 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get webhook URL from secrets
-    const webhookUrlRaw = Deno.env.get('DISCORD_PUBLISH_WEBHOOK_URL')
-    if (!webhookUrlRaw) {
-      console.error('[SECURITY] Webhook configuration missing')
-      return new Response(
-        JSON.stringify({ error: 'Webhook not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Get request body first to check for custom webhook
+    const body = await req.json()
+    const { version, changes, publishedAt, customWebhookUrl } = body
 
-    // Derive encryption key from service role key (never exposed)
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const encryptionKey = await deriveKey(serviceKey)
-    
-    // Decrypt webhook URL if encrypted, or use as-is for backwards compatibility
+    // Determine which webhook URL to use
     let webhookUrl: string
-    if (webhookUrlRaw.startsWith('http')) {
-      webhookUrl = webhookUrlRaw
+    
+    if (customWebhookUrl) {
+      // Use custom webhook URL passed from client (stored in DB)
+      webhookUrl = customWebhookUrl
+      console.log('[SECURE] Using custom webhook from request')
     } else {
-      webhookUrl = await decryptWebhookUrl(webhookUrlRaw, encryptionKey)
+      // Get default webhook URL from secrets
+      const webhookUrlRaw = Deno.env.get('DISCORD_PUBLISH_WEBHOOK_URL')
+      if (!webhookUrlRaw) {
+        console.error('[SECURITY] Webhook configuration missing')
+        return new Response(
+          JSON.stringify({ error: 'Webhook not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Derive encryption key from service role key (never exposed)
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      const encryptionKey = await deriveKey(serviceKey)
+      
+      // Decrypt webhook URL if encrypted, or use as-is for backwards compatibility
+      if (webhookUrlRaw.startsWith('http')) {
+        webhookUrl = webhookUrlRaw
+      } else {
+        webhookUrl = await decryptWebhookUrl(webhookUrlRaw, encryptionKey)
+      }
+      console.log('[SECURE] Using default webhook from env')
     }
 
     // Get auth header to identify user
@@ -160,7 +173,8 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if user is admin
+    // Verify user is admin
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabaseAdmin = createClient(supabaseUrl, serviceKey)
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
@@ -176,10 +190,6 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Get request body
-    const body = await req.json()
-    const { version, changes, publishedAt } = body
 
     // Get publisher's profile
     const { data: profile } = await supabaseAdmin
