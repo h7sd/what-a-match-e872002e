@@ -1,41 +1,117 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Info, AlertTriangle, CheckCircle, AlertCircle, Bell } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { gsap } from 'gsap';
 
 interface AdminNotification {
   id: string;
   message: string;
-  type: string;
   created_at: string;
-  expires_at: string | null;
+  admin_username?: string;
+  admin_avatar?: string;
+}
+
+interface PlopBubble {
+  id: number;
+  message: string;
+  adminUsername: string;
+  adminAvatar: string | null;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  delay: number;
 }
 
 export function GlobalAdminNotification() {
-  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [bubbles, setBubbles] = useState<PlopBubble[]>([]);
+  const bubbleRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const nextBubbleId = useRef(0);
+  const processedIds = useRef<Set<string>>(new Set());
 
-  // Load active notifications
+  // Generate random bubbles across the viewport
+  const spawnBubbles = useCallback((message: string, adminUsername: string, adminAvatar: string | null) => {
+    const count = 8 + Math.floor(Math.random() * 6); // 8-13 bubbles
+    const newBubbles: PlopBubble[] = [];
+
+    // Size distribution
+    const sizes = [0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8];
+
+    for (let i = 0; i < count; i++) {
+      newBubbles.push({
+        id: nextBubbleId.current++,
+        message,
+        adminUsername,
+        adminAvatar,
+        x: 5 + Math.random() * 90, // 5-95%
+        y: 5 + Math.random() * 85, // 5-90%
+        scale: sizes[Math.floor(Math.random() * sizes.length)],
+        rotation: -20 + Math.random() * 40, // -20 to +20 degrees
+        delay: i * 0.08,
+      });
+    }
+
+    setBubbles(prev => [...prev, ...newBubbles]);
+  }, []);
+
+  // Animate bubbles with GSAP
   useEffect(() => {
-    const loadNotifications = async () => {
-      const { data, error } = await supabase
-        .from('admin_notifications')
-        .select('*')
-        .eq('is_active', true)
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-        .order('created_at', { ascending: false })
-        .limit(5);
+    if (bubbles.length === 0) return;
 
-      if (!error && data) {
-        setNotifications(data);
-      }
-    };
+    bubbles.forEach((bubble) => {
+      const el = bubbleRefs.current.get(bubble.id);
+      if (!el || el.dataset.animated === 'true') return;
+      
+      el.dataset.animated = 'true';
 
-    loadNotifications();
+      gsap.killTweensOf(el);
 
-    // Subscribe to realtime changes
+      // Initial state
+      gsap.set(el, {
+        scale: 0,
+        opacity: 0,
+        rotation: bubble.rotation,
+        transformOrigin: '50% 50%',
+      });
+
+      // Plop in with back.out overshoot
+      const tl = gsap.timeline({ delay: bubble.delay });
+
+      tl.to(el, {
+        scale: bubble.scale,
+        opacity: 1,
+        duration: 0.5,
+        ease: 'back.out(1.7)',
+      });
+
+      // Subtle float
+      tl.to(el, {
+        y: -8 + Math.random() * 16,
+        rotation: bubble.rotation + (-4 + Math.random() * 8),
+        duration: 0.6,
+        ease: 'power1.inOut',
+      });
+
+      // Plop out after a short time
+      tl.to(el, {
+        scale: 0,
+        opacity: 0,
+        duration: 0.3,
+        ease: 'back.in(1.5)',
+        delay: 2.5, // Show for ~2.5 seconds
+      });
+
+      tl.eventCallback('onComplete', () => {
+        setBubbles(prev => prev.filter(b => b.id !== bubble.id));
+        bubbleRefs.current.delete(bubble.id);
+      });
+    });
+  }, [bubbles]);
+
+  // Subscribe to realtime notifications
+  useEffect(() => {
     const channel = supabase
-      .channel('admin-notifications-global')
+      .channel('admin-notifications-plop')
       .on(
         'postgres_changes',
         {
@@ -43,35 +119,33 @@ export function GlobalAdminNotification() {
           schema: 'public',
           table: 'admin_notifications'
         },
-        (payload) => {
-          const newNotification = payload.new as AdminNotification;
-          setNotifications(prev => [newNotification, ...prev].slice(0, 5));
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'admin_notifications'
-        },
-        (payload) => {
-          const updated = payload.new as AdminNotification & { is_active: boolean };
-          if (!updated.is_active) {
-            setNotifications(prev => prev.filter(n => n.id !== updated.id));
+        async (payload) => {
+          const notif = payload.new as AdminNotification;
+          
+          // Prevent duplicate processing
+          if (processedIds.current.has(notif.id)) return;
+          processedIds.current.add(notif.id);
+
+          // Fetch admin profile info
+          let adminUsername = 'Admin';
+          let adminAvatar: string | null = null;
+
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('user_id', (payload.new as any).created_by)
+              .maybeSingle();
+
+            if (profile) {
+              adminUsername = profile.username;
+              adminAvatar = profile.avatar_url;
+            }
+          } catch (e) {
+            console.error('Failed to fetch admin profile:', e);
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'admin_notifications'
-        },
-        (payload) => {
-          const deleted = payload.old as { id: string };
-          setNotifications(prev => prev.filter(n => n.id !== deleted.id));
+
+          spawnBubbles(notif.message, adminUsername, adminAvatar);
         }
       )
       .subscribe();
@@ -79,126 +153,84 @@ export function GlobalAdminNotification() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [spawnBubbles]);
 
-  // Check for expired notifications
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNotifications(prev => 
-        prev.filter(n => !n.expires_at || new Date(n.expires_at) > new Date())
-      );
-    }, 10000);
+  if (bubbles.length === 0) return null;
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleDismiss = (id: string) => {
-    setDismissedIds(prev => new Set([...prev, id]));
-  };
-
-  const visibleNotifications = notifications.filter(n => !dismissedIds.has(n.id));
-
-  const typeStyles: Record<string, { bg: string; border: string; icon: JSX.Element }> = {
-    info: {
-      bg: 'from-blue-600/90 to-blue-800/90',
-      border: 'border-blue-400/50',
-      icon: <Info className="w-5 h-5 text-blue-200" />
-    },
-    warning: {
-      bg: 'from-yellow-600/90 to-orange-700/90',
-      border: 'border-yellow-400/50',
-      icon: <AlertTriangle className="w-5 h-5 text-yellow-200" />
-    },
-    success: {
-      bg: 'from-green-600/90 to-emerald-700/90',
-      border: 'border-green-400/50',
-      icon: <CheckCircle className="w-5 h-5 text-green-200" />
-    },
-    error: {
-      bg: 'from-red-600/90 to-red-800/90',
-      border: 'border-red-400/50',
-      icon: <AlertCircle className="w-5 h-5 text-red-200" />
-    }
-  };
-
-  if (visibleNotifications.length === 0) return null;
-
-  return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-md pointer-events-none">
-      <AnimatePresence mode="popLayout">
-        {visibleNotifications.map((notification) => {
-          const style = typeStyles[notification.type] || typeStyles.info;
-          
-          return (
-            <motion.div
-              key={notification.id}
-              initial={{ opacity: 0, x: 100, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 100, scale: 0.8 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className={`
-                pointer-events-auto
-                bg-gradient-to-r ${style.bg}
-                backdrop-blur-xl
-                border ${style.border}
-                rounded-xl
-                shadow-2xl
-                overflow-hidden
-              `}
-            >
-              {/* Animated glow effect */}
-              <div className="absolute inset-0 opacity-30">
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 animate-shimmer" />
-              </div>
-
-              <div className="relative p-4">
-                <div className="flex items-start gap-3">
-                  {/* Icon */}
-                  <div className="flex-shrink-0 p-2 bg-white/10 rounded-lg">
-                    {style.icon}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Bell className="w-3 h-3 text-white/60" />
-                      <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                        Admin Mitteilung
-                      </span>
-                    </div>
-                    <p className="text-white font-medium text-sm leading-relaxed break-words">
-                      {notification.message}
-                    </p>
-                  </div>
-
-                  {/* Dismiss button */}
-                  <button
-                    onClick={() => handleDismiss(notification.id)}
-                    className="flex-shrink-0 p-1.5 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-4 h-4 text-white/80" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Progress bar for expiring notifications */}
-              {notification.expires_at && (
-                <div className="h-1 bg-white/10">
-                  <motion.div
-                    className="h-full bg-white/40"
-                    initial={{ width: '100%' }}
-                    animate={{ width: '0%' }}
-                    transition={{
-                      duration: Math.max(0, (new Date(notification.expires_at).getTime() - Date.now()) / 1000),
-                      ease: 'linear'
-                    }}
-                  />
+  // Render bubbles via portal to document.body
+  return createPortal(
+    <div 
+      className="fixed inset-0 pointer-events-none overflow-hidden"
+      style={{ zIndex: 99999 }}
+    >
+      {bubbles.map((bubble) => (
+        <div
+          key={bubble.id}
+          ref={(el) => {
+            if (el) bubbleRefs.current.set(bubble.id, el);
+          }}
+          className="absolute pointer-events-none"
+          style={{
+            left: `${bubble.x}%`,
+            top: `${bubble.y}%`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          {/* Liquid glass bubble - iOS 26 style */}
+          <div
+            className="relative px-4 py-3 rounded-2xl max-w-[280px] min-w-[140px]"
+            style={{
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.2) 100%)',
+              backdropFilter: 'blur(40px)',
+              WebkitBackdropFilter: 'blur(40px)',
+              boxShadow: `
+                0 8px 32px rgba(0,0,0,0.15),
+                inset 0 2px 4px rgba(255,255,255,0.6),
+                inset 0 -1px 2px rgba(255,255,255,0.2)
+              `,
+              border: '1px solid rgba(255,255,255,0.35)',
+            }}
+          >
+            {/* Admin info */}
+            <div className="flex items-center gap-2 mb-2">
+              {bubble.adminAvatar ? (
+                <img 
+                  src={bubble.adminAvatar} 
+                  alt={bubble.adminUsername}
+                  className="w-5 h-5 rounded-full object-cover ring-1 ring-white/50"
+                />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-white">
+                    {bubble.adminUsername.charAt(0).toUpperCase()}
+                  </span>
                 </div>
               )}
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
-    </div>
+              <span 
+                className="text-xs font-semibold"
+                style={{
+                  color: 'rgba(0,0,0,0.7)',
+                  textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                }}
+              >
+                @{bubble.adminUsername}
+              </span>
+            </div>
+
+            {/* Message */}
+            <p
+              className="text-sm font-medium leading-snug break-words"
+              style={{
+                color: 'rgba(0,0,0,0.85)',
+                textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+              }}
+            >
+              {bubble.message}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>,
+    document.body
   );
 }
