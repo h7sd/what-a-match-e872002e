@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X, Sparkles, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { ReportUserDialog } from './ReportUserDialog';
 import { Magnet } from './Magnet';
 import { UVLogo, UVLogoText } from './UVLogo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LandingEventsPopover } from './LandingEventsPopover';
+import { MarketplacePopover } from './MarketplacePopover';
 
 export function ModernHeader() {
   const { user } = useAuth();
@@ -87,6 +88,26 @@ export function ModernHeader() {
                   </Link>
                 )
               )}
+
+              {/* Marketplace dropdown */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300 inline-flex items-center gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    Market
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="center"
+                  sideOffset={12}
+                  className="w-[380px] p-4 bg-card/95 backdrop-blur-2xl border-border/50"
+                >
+                  <MarketplacePopover />
+                </PopoverContent>
+              </Popover>
 
               {/* Events dropdown */}
               <Popover>
