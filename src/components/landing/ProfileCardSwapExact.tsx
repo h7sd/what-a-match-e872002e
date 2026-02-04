@@ -20,6 +20,9 @@ type SwapProfile = {
   badges: PublicBadge[];
 };
 
+// Fixed number of card slots
+const CARD_SLOTS = 5;
+
 function shuffle<T>(arr: T[]): T[] {
   const result = [...arr];
   for (let i = result.length - 1; i > 0; i--) {
@@ -34,9 +37,24 @@ function hasBackground(profile: PublicProfile): boolean {
   return !!(profile.background_url || profile.background_video_url);
 }
 
-// Hook to manage dynamic profile loading with replacement on swap
-function useDynamicProfiles() {
+// Load a single profile with background check
+async function loadProfile(username: string): Promise<SwapProfile | null> {
+  try {
+    const [profile, badges] = await Promise.all([
+      getPublicProfile(username),
+      getProfileBadges(username),
+    ]);
+    if (!profile || !hasBackground(profile)) return null;
+    return { profile, badges };
+  } catch {
+    return null;
+  }
+}
+
+// Hook to manage profile queue - profiles rotate through fixed slots
+function useProfileQueue() {
   const poolRef = useRef<FeaturedProfile[]>([]);
+  const poolIndexRef = useRef(0);
   const usedUsernames = useRef<Set<string>>(new Set());
 
   // Load the pool of featured profiles
@@ -46,97 +64,102 @@ function useDynamicProfiles() {
       const featured = await getFeaturedProfiles(100);
       return shuffle(featured);
     },
-    staleTime: 60_000,
-    gcTime: 120_000,
+    staleTime: 120_000,
+    gcTime: 180_000,
     refetchOnWindowFocus: false,
   });
 
-  // Track pool in ref for replacement logic
+  // Track pool in ref
   useEffect(() => {
     if (pool) {
       poolRef.current = pool;
+      poolIndexRef.current = 0;
     }
   }, [pool]);
 
-  // State for active profiles shown in the carousel
-  const [activeProfiles, setActiveProfiles] = useState<SwapProfile[]>([]);
+  // State: array of CARD_SLOTS slots, each containing a profile or null
+  const [slots, setSlots] = useState<(SwapProfile | null)[]>(
+    Array(CARD_SLOTS).fill(null)
+  );
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load a single profile with background check
-  const loadProfile = useCallback(async (username: string): Promise<SwapProfile | null> => {
-    try {
-      const [profile, badges] = await Promise.all([
-        getPublicProfile(username),
-        getProfileBadges(username),
-      ]);
-      if (!profile || !hasBackground(profile)) return null;
-      return { profile, badges };
-    } catch {
-      return null;
-    }
-  }, []);
+  // Get next valid profile from pool
+  const getNextFromPool = useCallback(async (): Promise<SwapProfile | null> => {
+    const pool = poolRef.current;
+    if (pool.length === 0) return null;
 
-  // Find and load the next valid profile from the pool
-  const getNextProfile = useCallback(async (): Promise<SwapProfile | null> => {
-    const available = poolRef.current.filter(p => !usedUsernames.current.has(p.u));
-    
-    for (const candidate of available) {
+    // Try up to pool.length candidates
+    for (let attempts = 0; attempts < pool.length; attempts++) {
+      const candidate = pool[poolIndexRef.current % pool.length];
+      poolIndexRef.current++;
+
+      // Skip if already in use
+      if (usedUsernames.current.has(candidate.u)) continue;
+
       usedUsernames.current.add(candidate.u);
       const loaded = await loadProfile(candidate.u);
       if (loaded) return loaded;
+      
+      // If profile didn't load (no background), remove from used
+      usedUsernames.current.delete(candidate.u);
     }
-    
-    // If we've exhausted the pool, reset and try again
-    usedUsernames.current.clear();
-    activeProfiles.forEach(p => usedUsernames.current.add(p.profile.username));
-    
-    return null;
-  }, [loadProfile, activeProfiles]);
 
-  // Initial load of 5 profiles with backgrounds
+    return null;
+  }, []);
+
+  // Initial load - fill all slots
   useEffect(() => {
     if (!pool || pool.length === 0) return;
 
     const loadInitial = async () => {
       setIsLoading(true);
-      const loaded: SwapProfile[] = [];
-      
-      for (const candidate of pool) {
-        if (loaded.length >= 5) break;
-        usedUsernames.current.add(candidate.u);
-        const profile = await loadProfile(candidate.u);
-        if (profile) {
-          loaded.push(profile);
-        }
+      const loadedSlots: (SwapProfile | null)[] = [];
+
+      for (let i = 0; i < CARD_SLOTS; i++) {
+        const profile = await getNextFromPool();
+        loadedSlots.push(profile);
       }
 
-      setActiveProfiles(loaded);
+      setSlots(loadedSlots);
       setIsLoading(false);
     };
 
     loadInitial();
-  }, [pool, loadProfile]);
+  }, [pool, getNextFromPool]);
 
-  // Replace a profile at a given index with a new one
-  const replaceProfile = useCallback(async (index: number) => {
-    const newProfile = await getNextProfile();
-    if (!newProfile) return;
+  // Replace profile at a specific slot index
+  const replaceSlot = useCallback(
+    async (slotIndex: number) => {
+      const newProfile = await getNextFromPool();
+      if (!newProfile) return;
 
-    setActiveProfiles(prev => {
-      const updated = [...prev];
-      // Remove old username from used set
-      if (updated[index]) {
-        usedUsernames.current.delete(updated[index].profile.username);
-      }
-      updated[index] = newProfile;
-      return updated;
-    });
-  }, [getNextProfile]);
+      setSlots((prev) => {
+        const updated = [...prev];
+        const old = updated[slotIndex];
+        if (old) {
+          usedUsernames.current.delete(old.profile.username);
+        }
+        updated[slotIndex] = newProfile;
+        return updated;
+      });
+    },
+    [getNextFromPool]
+  );
+
+  // Filter out null slots for display, but keep slot indices
+  const validSlots = useMemo(
+    () =>
+      slots
+        .map((slot, index) => ({ slot, index }))
+        .filter((s): s is { slot: SwapProfile; index: number } => s.slot !== null),
+    [slots]
+  );
 
   return {
-    profiles: activeProfiles,
+    slots: validSlots,
     isLoading,
-    replaceProfile,
+    replaceSlot,
+    hasProfiles: validSlots.length > 0,
   };
 }
 
@@ -230,18 +253,26 @@ function ProfilePageCardPreview({ data }: { data: SwapProfile }) {
 }
 
 export function ProfileCardSwapExact() {
-  const ref = useRef<HTMLElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  
-  const { profiles, isLoading, replaceProfile } = useDynamicProfiles();
+  const sectionRef = useRef<HTMLElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
 
-  // When a card swaps to the back, replace it with a new profile
-  const handleCardSwap = useCallback((frontIdx: number) => {
-    replaceProfile(frontIdx);
-  }, [replaceProfile]);
+  const { slots, isLoading, replaceSlot, hasProfiles } = useProfileQueue();
+
+  // Track which slot index maps to which card position
+  // When a card (by position in CardSwap children) swaps to back, replace its content
+  const handleCardSwap = useCallback(
+    (cardPosition: number) => {
+      // cardPosition is the index in the current CardSwap children array
+      const slotData = slots[cardPosition];
+      if (slotData) {
+        replaceSlot(slotData.index);
+      }
+    },
+    [slots, replaceSlot]
+  );
 
   return (
-    <section ref={ref} className="py-24 px-6 relative overflow-hidden">
+    <section ref={sectionRef} className="py-24 px-6 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -272,11 +303,13 @@ export function ProfileCardSwapExact() {
           >
             {isLoading ? (
               <div className="w-[420px] h-[600px] bg-muted/10 rounded-2xl animate-pulse" />
-            ) : profiles.length < 1 ? (
+            ) : !hasProfiles ? (
               <div className="w-[420px] h-[600px] rounded-2xl border border-border bg-card/30 backdrop-blur-sm flex items-center justify-center p-10 text-center">
                 <div>
                   <p className="text-foreground font-semibold mb-2">Keine Profiles verfügbar</p>
-                  <p className="text-muted-foreground text-sm">Sobald welche da sind, erscheinen sie hier automatisch.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Sobald welche da sind, erscheinen sie hier automatisch.
+                  </p>
                 </div>
               </div>
             ) : (
@@ -291,14 +324,14 @@ export function ProfileCardSwapExact() {
                 easing="elastic"
                 onCardSwap={handleCardSwap}
               >
-                {profiles.map(({ profile, badges }) => (
-                  <Card key={profile.id} className="!bg-transparent !border-0">
+                {slots.map(({ slot, index }) => (
+                  <Card key={`slot-${index}`} className="!bg-transparent !border-0">
                     <Link
-                      to={`/${profile.username}`}
+                      to={`/${slot.profile.username}`}
                       className="group block w-full h-full"
-                      aria-label={`Open profile ${profile.username}`}
+                      aria-label={`Open profile ${slot.profile.username}`}
                     >
-                      <ProfilePageCardPreview data={{ profile, badges }} />
+                      <ProfilePageCardPreview data={slot} />
                     </Link>
                   </Card>
                 ))}
