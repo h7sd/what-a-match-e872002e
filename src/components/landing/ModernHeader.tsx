@@ -8,7 +8,6 @@ import { Magnet } from './Magnet';
 import { UVLogo, UVLogoText } from './UVLogo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LandingEventsPopover } from './LandingEventsPopover';
-import { MarketplacePopover } from './MarketplacePopover';
 
 export function ModernHeader() {
   const { user } = useAuth();
@@ -28,6 +27,7 @@ export function ModernHeader() {
     { label: 'Pricing', to: '/premium' },
     { label: 'Discord', href: 'https://discord.gg/uservault', external: true },
     { label: 'Status', to: '/status' },
+    { label: 'Market', to: '/marketplace', icon: ShoppingBag },
   ];
 
   return (
@@ -66,48 +66,31 @@ export function ModernHeader() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300"
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300 inline-flex items-center gap-2"
                   >
+                    {link.icon && <link.icon className="w-4 h-4" />}
                     {link.label}
                   </a>
                 ) : link.href?.startsWith('#') ? (
                   <a
                     key={link.label}
                     href={link.href}
-                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300"
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300 inline-flex items-center gap-2"
                   >
+                    {link.icon && <link.icon className="w-4 h-4" />}
                     {link.label}
                   </a>
                 ) : (
                   <Link
                     key={link.label}
                     to={link.to!}
-                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300"
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300 inline-flex items-center gap-2"
                   >
+                    {link.icon && <link.icon className="w-4 h-4" />}
                     {link.label}
                   </Link>
                 )
               )}
-
-              {/* Marketplace dropdown */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300 inline-flex items-center gap-2"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    Market
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="center"
-                  sideOffset={12}
-                  className="w-[380px] p-4 bg-card/95 backdrop-blur-2xl border-border/50"
-                >
-                  <MarketplacePopover />
-                </PopoverContent>
-              </Popover>
 
               {/* Events dropdown */}
               <Popover>
