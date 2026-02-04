@@ -98,22 +98,43 @@ export function FriendBadgesManager() {
       const isNumeric = /^\d+$/.test(query);
       
       let data;
+      let error;
+      
       if (isNumeric) {
         // Search by UID
-        const { data: uidData } = await supabase
+        const result = await supabase
           .from('profiles')
           .select('user_id, username, avatar_url, uid_number')
           .eq('uid_number', parseInt(query))
           .limit(10);
-        data = uidData;
+        data = result.data;
+        error = result.error;
       } else {
-        // Search by username or alias (partial match)
-        const { data: usernameData } = await supabase
-          .from('profiles')
-          .select('user_id, username, avatar_url, alias_username')
-          .or(`username.ilike.%${query}%,alias_username.ilike.%${query}%`)
-          .limit(10);
-        data = usernameData;
+        // Search by username or alias (partial match) - use separate queries and combine
+        const [usernameResult, aliasResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('user_id, username, avatar_url')
+            .ilike('username', `%${query}%`)
+            .limit(10),
+          supabase
+            .from('profiles')
+            .select('user_id, username, avatar_url')
+            .ilike('alias_username', `%${query}%`)
+            .limit(10)
+        ]);
+        
+        // Combine results and remove duplicates
+        const combined = [...(usernameResult.data || []), ...(aliasResult.data || [])];
+        const uniqueMap = new Map(combined.map(p => [p.user_id, p]));
+        data = Array.from(uniqueMap.values());
+        error = usernameResult.error || aliasResult.error;
+      }
+      
+      if (error) {
+        console.error('Search error:', error);
+        toast({ title: 'Suche fehlgeschlagen', variant: 'destructive' });
+        return;
       }
       
       // Filter out self
@@ -121,11 +142,11 @@ export function FriendBadgesManager() {
       setSearchResults(filtered);
       
       if (filtered.length === 0) {
-        toast({ title: 'No users found', variant: 'destructive' });
+        toast({ title: 'Keine Benutzer gefunden', variant: 'destructive' });
       }
     } catch (error) {
       console.error('Search error:', error);
-      toast({ title: 'Search failed', variant: 'destructive' });
+      toast({ title: 'Suche fehlgeschlagen', variant: 'destructive' });
     } finally {
       setIsSearching(false);
     }
