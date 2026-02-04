@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.bot-commands]
 verify_jwt = false
+
+[functions.bot-command-notifications]
+verify_jwt = false
