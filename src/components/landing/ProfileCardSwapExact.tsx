@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useInView } from "framer-motion";
@@ -12,7 +12,6 @@ import {
   getPublicProfile,
   type PublicBadge,
   type PublicProfile,
-  type FeaturedProfile,
 } from "@/lib/api";
 
 type SwapProfile = {
@@ -21,98 +20,51 @@ type SwapProfile = {
 };
 
 function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
 }
 
-// Fetch the pool of available usernames
-function useFeaturedPool() {
+// Load profiles once with proper shuffling - no dynamic reloading
+function useShuffledProfiles() {
   return useQuery({
-    queryKey: ["landing", "card-swap", "pool"],
-    queryFn: () => getFeaturedProfiles(100),
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
+    queryKey: ["landing", "card-swap", "shuffled-profiles"],
+    queryFn: async (): Promise<SwapProfile[]> => {
+      // Get featured profiles
+      const featured = await getFeaturedProfiles(50);
+      if (!featured.length) return [];
+
+      // Shuffle and pick 5 random ones
+      const picked = shuffle(featured).slice(0, 5);
+
+      // Load full profile data for each
+      const loaded = await Promise.all(
+        picked.map(async (p) => {
+          try {
+            const [profile, badges] = await Promise.all([
+              getPublicProfile(p.u),
+              getProfileBadges(p.u),
+            ]);
+            if (!profile) return null;
+            return { profile, badges } as SwapProfile;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      return loaded.filter(Boolean) as SwapProfile[];
+    },
+    staleTime: 30_000, // Re-shuffle every 30 seconds
+    gcTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
-// Load a single random profile with badges
-async function loadRandomProfile(
-  pool: FeaturedProfile[],
-  excludeUsernames: Set<string>
-): Promise<SwapProfile | null> {
-  const available = pool.filter((p) => !excludeUsernames.has(p.u));
-  if (!available.length) return null;
-
-  const pick = available[Math.floor(Math.random() * available.length)];
-  const [profile, badges] = await Promise.all([
-    getPublicProfile(pick.u),
-    getProfileBadges(pick.u),
-  ]);
-  if (!profile) return null;
-  return { profile, badges };
-}
-
-// Hook that manages rotating profiles - loads new random one when card swaps
-function useRotatingProfiles(pool: FeaturedProfile[] | undefined) {
-  const [profiles, setProfiles] = useState<SwapProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const loadedUsernames = useRef(new Set<string>());
-  const swapIndexRef = useRef(0);
-
-  // Initial load of 5 random profiles
-  useEffect(() => {
-    if (!pool || pool.length === 0) return;
-
-    const loadInitial = async () => {
-      setIsLoading(true);
-      const shuffled = shuffle(pool).slice(0, 5);
-      const loaded: SwapProfile[] = [];
-
-      for (const p of shuffled) {
-        const [profile, badges] = await Promise.all([
-          getPublicProfile(p.u),
-          getProfileBadges(p.u),
-        ]);
-        if (profile) {
-          loaded.push({ profile, badges });
-          loadedUsernames.current.add(p.u);
-        }
-      }
-
-      setProfiles(loaded);
-      setIsLoading(false);
-    };
-
-    loadInitial();
-  }, [pool]);
-
-  // Replace the front card with a new random profile when swap happens
-  const onCardSwap = useCallback(
-    async (swappedIndex: number) => {
-      if (!pool || pool.length === 0) return;
-
-      // Load a new random profile that's not currently shown
-      const currentUsernames = new Set(profiles.map((p) => p.profile.username));
-      const newProfile = await loadRandomProfile(pool, currentUsernames);
-
-      if (newProfile) {
-        setProfiles((prev) => {
-          const updated = [...prev];
-          // Replace the card that just went to the back
-          updated[swappedIndex] = newProfile;
-          return updated;
-        });
-        loadedUsernames.current.add(newProfile.profile.username);
-      }
-    },
-    [pool, profiles]
-  );
-
-  return { profiles, isLoading, onCardSwap };
-}
-
 function ProfilePreviewBackground({ profile }: { profile: PublicProfile }) {
-  // NOTE: On the real profile page this is rendered via <BackgroundEffects /> (fixed fullscreen).
-  // For the swap cards we render a clipped, card-local equivalent.
   const accent = profile.accent_color || "#8b5cf6";
   const bg = profile.background_color || "#0a0a0a";
 
@@ -194,7 +146,7 @@ function ProfilePageCardPreview({ data }: { data: SwapProfile }) {
 
       {/* Hover ring */}
       <div
-        className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none"
         style={{ boxShadow: `0 0 50px ${accentColor}30, inset 0 0 30px ${accentColor}10` }}
       />
     </div>
@@ -205,10 +157,9 @@ export function ProfileCardSwapExact() {
   const ref = useRef<HTMLElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   
-  const { data: pool, isLoading: poolLoading, isError } = useFeaturedPool();
-  const { profiles, isLoading: profilesLoading, onCardSwap } = useRotatingProfiles(pool);
+  const { data: profiles, isLoading, isError } = useShuffledProfiles();
 
-  const isLoading = poolLoading || profilesLoading;
+  const items = profiles ?? [];
 
   return (
     <section ref={ref} className="py-24 px-6 relative overflow-hidden">
@@ -242,7 +193,7 @@ export function ProfileCardSwapExact() {
           >
             {isLoading ? (
               <div className="w-[420px] h-[600px] bg-muted/10 rounded-2xl animate-pulse" />
-            ) : isError || profiles.length < 1 ? (
+            ) : isError || items.length < 1 ? (
               <div className="w-[420px] h-[600px] rounded-2xl border border-border bg-card/30 backdrop-blur-sm flex items-center justify-center p-10 text-center">
                 <div>
                   <p className="text-foreground font-semibold mb-2">Keine Profiles verfügbar</p>
@@ -259,13 +210,9 @@ export function ProfileCardSwapExact() {
                 pauseOnHover={true}
                 skewAmount={4}
                 easing="elastic"
-                onCardSwap={(frontIdx) => {
-                  // When a card goes to the back, load a new random profile to replace it
-                  onCardSwap(frontIdx);
-                }}
               >
-                {profiles.map(({ profile, badges }, idx) => (
-                  <Card key={`${profile.id}-${idx}`} className="!bg-transparent !border-0">
+                {items.map(({ profile, badges }) => (
+                  <Card key={profile.id} className="!bg-transparent !border-0">
                     <Link
                       to={`/${profile.username}`}
                       className="group block w-full h-full"
