@@ -84,57 +84,73 @@ serve(async (req) => {
     const userId = profile.user_id;
 
     if (action === "add_uv") {
-      // Add UV to user's balance
-      const { error: balanceError } = await supabase.rpc("add_user_uv", {
-        p_user_id: userId,
-        p_amount: amount,
-        p_description: description || `Minigame: ${gameType}`,
-        p_reference_type: "minigame",
-      });
+      // First, get current balance
+      const { data: currentBalance } = await supabase
+        .from("user_balances")
+        .select("balance, total_earned")
+        .eq("user_id", userId)
+        .single();
 
-      if (balanceError) {
-        // If RPC doesn't exist, do it manually
+      if (currentBalance) {
+        // Update existing balance by ADDING the amount
+        const newBalanceValue = currentBalance.balance + amount;
+        const newTotalEarned = amount > 0 
+          ? currentBalance.total_earned + amount 
+          : currentBalance.total_earned;
+
         await supabase
           .from("user_balances")
-          .upsert({
-            user_id: userId,
-            balance: amount,
-            total_earned: amount,
-          }, { onConflict: "user_id" });
-
-        // Update existing balance
-        const { data: currentBalance } = await supabase
+          .update({
+            balance: newBalanceValue,
+            total_earned: newTotalEarned,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId);
+      } else {
+        // No balance exists - create new record
+        await supabase
           .from("user_balances")
-          .select("balance, total_earned")
-          .eq("user_id", userId)
-          .single();
-
-        if (currentBalance) {
-          await supabase
-            .from("user_balances")
-            .update({
-              balance: currentBalance.balance + amount,
-              total_earned: currentBalance.total_earned + amount,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", userId);
-        }
-
-        // Log transaction
-        await supabase.from("uv_transactions").insert({
-          user_id: userId,
-          amount: amount,
-          transaction_type: "earn",
-          description: description || `Minigame: ${gameType}`,
-          reference_type: "minigame",
-        });
+          .insert({
+            user_id: userId,
+            balance: amount > 0 ? amount : 0,
+            total_earned: amount > 0 ? amount : 0,
+            total_spent: 0,
+          });
       }
 
-      // Update minigame stats
-      await supabase
+      // Log transaction
+      await supabase.from("uv_transactions").insert({
+        user_id: userId,
+        amount: amount,
+        transaction_type: amount > 0 ? "earn" : "spend",
+        description: description || `Minigame: ${gameType}`,
+        reference_type: "minigame",
+      });
+
+      // Update minigame stats - use proper increment logic
+      const { data: existingStats } = await supabase
         .from("minigame_stats")
-        .upsert(
-          {
+        .select("games_played, games_won, total_earned, total_lost")
+        .eq("discord_user_id", discordUserId)
+        .eq("game_type", gameType)
+        .single();
+
+      if (existingStats) {
+        await supabase
+          .from("minigame_stats")
+          .update({
+            games_played: existingStats.games_played + 1,
+            games_won: existingStats.games_won + (amount > 0 ? 1 : 0),
+            total_earned: existingStats.total_earned + (amount > 0 ? amount : 0),
+            total_lost: existingStats.total_lost + (amount < 0 ? Math.abs(amount) : 0),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("discord_user_id", discordUserId)
+          .eq("game_type", gameType);
+      } else {
+        await supabase
+          .from("minigame_stats")
+          .insert({
             discord_user_id: discordUserId,
             user_id: userId,
             game_type: gameType,
@@ -142,12 +158,10 @@ serve(async (req) => {
             games_won: amount > 0 ? 1 : 0,
             total_earned: amount > 0 ? amount : 0,
             total_lost: amount < 0 ? Math.abs(amount) : 0,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "discord_user_id,game_type" }
-        );
+          });
+      }
 
-      // Get new balance
+      // Get final balance
       const { data: newBalance } = await supabase
         .from("user_balances")
         .select("balance")
