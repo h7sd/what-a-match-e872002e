@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
           },
           {
             name: '🔗 Participate',
-            value: '[Join on UserVault](https://what-a-match.lovable.app)',
+            value: '[Join on UserVault](https://uservault.cc)',
             inline: false
           }
         ],
