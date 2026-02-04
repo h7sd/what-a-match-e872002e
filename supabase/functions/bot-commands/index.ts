@@ -5,8 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-signature, x-webhook-timestamp',
 }
 
-// Discord channel for command update notifications
-const COMMAND_UPDATES_CHANNEL_ID = '1468730139012628622'
+// Discord webhook URL for command update notifications (stored in admin_webhooks table)
 
 interface CommandPayload {
   name: string
@@ -20,14 +19,23 @@ interface CommandPayload {
 
 // Send Discord webhook notification
 async function sendDiscordNotification(
+  supabaseAdmin: any,
   action: 'created' | 'updated' | 'deleted',
   commandName: string,
   author?: string,
   changes?: Record<string, unknown>
 ) {
-  const botToken = Deno.env.get('DISCORD_BOT_TOKEN')
-  if (!botToken) {
-    console.warn('[bot-commands] Discord bot token not configured, skipping notification')
+  // Get webhook URL from admin_webhooks table
+  const { data: webhook } = await supabaseAdmin
+    .from('admin_webhooks')
+    .select('webhook_url')
+    .eq('notification_type', 'command_updates')
+    .limit(1)
+    .maybeSingle()
+
+  const webhookUrl = webhook?.webhook_url as string | undefined
+  if (!webhookUrl) {
+    console.warn('[bot-commands] No command_updates webhook configured, skipping notification')
     return
   }
 
@@ -86,23 +94,19 @@ async function sendDiscordNotification(
   }
 
   try {
-    const response = await fetch(
-      `https://discord.com/api/v10/channels/${COMMAND_UPDATES_CHANNEL_ID}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          embeds: [embed],
-        }),
-      }
-    )
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        embeds: [embed],
+      }),
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[bot-commands] Discord notification failed:', response.status, errorText)
+      console.error('[bot-commands] Discord webhook failed:', response.status, errorText)
     } else {
       console.log(`[bot-commands] Discord notification sent: ${action} ${commandName}`)
     }
@@ -222,7 +226,7 @@ Deno.serve(async (req) => {
       }
 
       // Send Discord notification
-      await sendDiscordNotification('created', body.name, authorEmail, {
+      await sendDiscordNotification(supabaseAdmin, 'created', body.name, authorEmail, {
         description: body.description || 'None',
         category: body.category || 'general',
       })
@@ -291,7 +295,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      await sendDiscordNotification('updated', currentCommand.name, authorEmail, changes)
+      await sendDiscordNotification(supabaseAdmin, 'updated', currentCommand.name, authorEmail, changes)
 
       console.log(`[bot-commands] Updated: ${currentCommand.name} by ${authorEmail}`)
       return new Response(JSON.stringify({ command: updatedCommand }), {
@@ -336,7 +340,7 @@ Deno.serve(async (req) => {
         })
       }
 
-      await sendDiscordNotification('deleted', command.name, authorEmail)
+      await sendDiscordNotification(supabaseAdmin, 'deleted', command.name, authorEmail)
 
       console.log(`[bot-commands] Deleted: ${command.name} by ${authorEmail}`)
       return new Response(JSON.stringify({ success: true }), {
