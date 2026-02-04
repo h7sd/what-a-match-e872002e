@@ -5,8 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Discord role IDs to mention
-const ADMIN_ROLE_IDS = ['1464317378929233992', '1464309180252033273']
+// Default Discord role IDs to mention (fallback if none provided)
+const DEFAULT_ADMIN_ROLE_IDS = ['1464317378929233992', '1464309180252033273']
 
 // AES-256-GCM encryption utilities
 async function deriveKey(secret: string): Promise<CryptoKey> {
@@ -115,7 +115,11 @@ Deno.serve(async (req) => {
   try {
     // Get request body first to check for custom webhook
     const body = await req.json()
-    const { version, changes, publishedAt, customWebhookUrl } = body
+    const { version, changes, publishedAt, customWebhookUrl, notificationType, roleIds } = body
+    
+    // Determine which role IDs to use
+    const rolesToMention: string[] = (roleIds && roleIds.length > 0) ? roleIds : DEFAULT_ADMIN_ROLE_IDS
+    const isAnnouncement = notificationType === 'announce'
 
     // Determine which webhook URL to use
     let webhookUrl: string
@@ -202,12 +206,12 @@ Deno.serve(async (req) => {
     const timestamp = new Date(publishedAt || Date.now()).toISOString()
 
     // Create role mentions
-    const roleMentions = ADMIN_ROLE_IDS.map(id => `<@&${id}>`).join(' ')
+    const roleMentions = rolesToMention.map(id => `<@&${id}>`).join(' ')
 
-    // Create Discord embed
+    // Create Discord embed based on notification type
     const embed = {
-      title: '🚀 Website Update Published',
-      color: 0x7c3aed,
+      title: isAnnouncement ? '📢 New Announcement' : '🚀 Website Update Published',
+      color: isAnnouncement ? 0x10b981 : 0x7c3aed, // Emerald for announcements, Purple for changelog
       fields: [
         {
           name: '👤 Publisher',
@@ -226,7 +230,7 @@ Deno.serve(async (req) => {
         }
       ],
       footer: {
-        text: 'UserVault Update System'
+        text: isAnnouncement ? 'UserVault Announcement' : 'UserVault Update System'
       },
       timestamp: timestamp
     }
@@ -238,7 +242,7 @@ Deno.serve(async (req) => {
         : changes
       
       embed.fields.push({
-        name: '📝 Changes',
+        name: isAnnouncement ? '📝 Details' : '📝 Changes',
         value: changesText.substring(0, 1024),
         inline: false
       })
@@ -251,12 +255,16 @@ Deno.serve(async (req) => {
       inline: false
     })
 
-    // Prepare payload
+    // Prepare payload with dynamic content based on type
+    const contentMessage = isAnnouncement 
+      ? `${roleMentions} **New Announcement!**`
+      : `${roleMentions} **Website Update Published!**`
+    
     const payload = {
-      content: `${roleMentions} **Neue Website-Aktualisierung!**`,
+      content: contentMessage,
       embeds: [embed],
       allowed_mentions: {
-        roles: ADMIN_ROLE_IDS
+        roles: rolesToMention
       }
     }
 
