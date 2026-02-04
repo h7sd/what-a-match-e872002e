@@ -10,7 +10,7 @@ import { BackgroundEffects } from '@/components/profile/BackgroundEffects';
 import { CustomCursor } from '@/components/profile/CustomCursor';
 import { DiscordPresence } from '@/components/profile/DiscordPresence';
 import { StartScreen } from '@/components/profile/StartScreen';
-import { SimpleVolumeBar } from '@/components/profile/SimpleVolumeBar';
+import ElasticSlider from '@/components/profile/ElasticSlider';
 import { ProfileLikeButtons } from '@/components/profile/ProfileLikeButtons';
 import { ProfileCommentInput } from '@/components/profile/ProfileCommentInput';
 import { supabase } from '@/integrations/supabase/client';
@@ -474,12 +474,14 @@ export default function UserProfile() {
           )}
         </motion.div>
 
-        {/* Volume control - fixed top right */}
+        {/* Volume control - fixed top right, below any banners */}
         {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
-          <div className="fixed top-4 right-4 z-50">
-            <SimpleVolumeBar
-              volume={volume}
-              onVolumeChange={setVolume}
+          <div className="fixed top-16 right-4 z-50">
+            <ElasticSlider
+              defaultValue={Math.round(volume * 100)}
+              startingValue={0}
+              maxValue={100}
+              onChange={setVolume}
             />
           </div>
         )}
