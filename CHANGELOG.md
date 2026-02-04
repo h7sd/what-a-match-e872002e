@@ -4,6 +4,29 @@ All notable changes to UserVault will be documented in this file.
 
 ---
 
+## [1.6.0] - 2026-02-04
+
+### 🎖️ Friend Badges
+
+#### Dual Badge Assignment
+- When creating a Friend Badge, both the creator and recipient now receive a copy
+- Badge creators can now showcase the badges they've gifted to others
+
+#### File Upload Support
+- Replaced URL input with direct file upload for badge icons
+- Increased upload limit to 100MB (PNG/JPG/GIF supported)
+- Added image preview before submission
+
+### ⚡ Performance Optimizations
+
+#### Dashboard Background Fix
+- Replaced Aurora WebGL effects with performant static CSS gradients
+- Fixed buggy/flickering dashboard background that randomly disappeared
+- Removed multiple WebGL renderers that caused excessive GPU load
+- Affected components: OverviewStats, StatCard, TopLinksChart, RegisteredUsersList
+
+---
+
 ## [1.5.0] - 2026-02-03
 
 ### 🔐 Security & Encryption
