@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Target, X, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +50,7 @@ export function StealableBadge({
 }: StealableBadgeProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showStealDialog, setShowStealDialog] = useState(false);
   const [isStealing, setIsStealing] = useState(false);
 
@@ -94,6 +96,18 @@ export function StealableBadge({
         });
         setShowStealDialog(false);
         onStealSuccess?.();
+
+        // Get the current user's profile to navigate to it (they are now the holder)
+        const { data: myProfile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('user_id', user.id)
+          .single();
+
+        if (myProfile?.username) {
+          // Navigate to own profile to see the badge
+          navigate(`/${myProfile.username}`, { replace: true });
+        }
       } else {
         toast({
           title: 'Error',
