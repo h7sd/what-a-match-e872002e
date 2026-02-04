@@ -30,10 +30,12 @@ export function FriendBadgesManager() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchUsername, setSearchUsername] = useState('');
-  const [selectedRecipient, setSelectedRecipient] = useState<{ id: string; username: string } | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<{ id: string; username: string; avatar_url?: string | null } | null>(null);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<{ user_id: string; username: string; avatar_url: string | null }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newBadge, setNewBadge] = useState({
     name: '',
@@ -82,27 +84,53 @@ export function FriendBadgesManager() {
     enabled: !!user?.id,
   });
 
-  // Search for user
-  const searchUser = async () => {
-    if (!searchUsername.trim()) return;
+  // Live search for users
+  const handleSearch = async (query: string) => {
+    setSearchUsername(query);
     
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('user_id, username')
-      .ilike('username', searchUsername)
-      .single();
-    
-    if (error || !data) {
-      toast({ title: 'User not found', variant: 'destructive' });
+    if (query.trim().length < 2) {
+      setSearchResults([]);
       return;
     }
     
-    if (data.user_id === user?.id) {
-      toast({ title: 'Cannot give badge to yourself', variant: 'destructive' });
-      return;
+    setIsSearching(true);
+    try {
+      // Search by username, alias, or UID
+      const isNumeric = /^\d+$/.test(query.trim());
+      
+      let data;
+      if (isNumeric) {
+        // Search by UID
+        const { data: uidData } = await supabase
+          .from('profiles')
+          .select('user_id, username, avatar_url, uid_number')
+          .eq('uid_number', parseInt(query.trim()))
+          .limit(10);
+        data = uidData;
+      } else {
+        // Search by username or alias (partial match)
+        const { data: usernameData } = await supabase
+          .from('profiles')
+          .select('user_id, username, avatar_url, alias_username')
+          .or(`username.ilike.%${query.trim()}%,alias_username.ilike.%${query.trim()}%`)
+          .limit(10);
+        data = usernameData;
+      }
+      
+      // Filter out self
+      const filtered = (data || []).filter(p => p.user_id !== user?.id);
+      setSearchResults(filtered);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
     }
-    
-    setSelectedRecipient({ id: data.user_id, username: data.username });
+  };
+
+  const selectRecipient = (profile: { user_id: string; username: string; avatar_url: string | null }) => {
+    setSelectedRecipient({ id: profile.user_id, username: profile.username, avatar_url: profile.avatar_url });
+    setSearchUsername('');
+    setSearchResults([]);
   };
 
   // Handle file selection
@@ -267,23 +295,16 @@ export function FriendBadgesManager() {
             <div className="space-y-4">
               {/* User Search */}
               <div className="space-y-2">
-                <Label>Recipient Username</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={searchUsername}
-                    onChange={(e) => setSearchUsername(e.target.value)}
-                    placeholder="Enter username..."
-                    onKeyDown={(e) => e.key === 'Enter' && searchUser()}
-                  />
-                  <Button variant="outline" onClick={searchUser}>
-                    <Search className="w-4 h-4" />
-                  </Button>
-                </div>
+                <Label>Recipient (Username, Alias, or UID)</Label>
                 
-                {selectedRecipient && (
+                {selectedRecipient ? (
                   <div className="flex items-center gap-2 p-2 rounded bg-primary/10 border border-primary/30">
-                    <User className="w-4 h-4 text-primary" />
-                    <span className="text-sm">@{selectedRecipient.username}</span>
+                    {selectedRecipient.avatar_url ? (
+                      <img src={selectedRecipient.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4 text-primary" />
+                    )}
+                    <span className="text-sm font-medium">@{selectedRecipient.username}</span>
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -292,6 +313,49 @@ export function FriendBadgesManager() {
                     >
                       <X className="w-3 h-3" />
                     </Button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative">
+                      <Input
+                        value={searchUsername}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        placeholder="Search by username, alias, or UID..."
+                        className="pr-8"
+                      />
+                      {isSearching && (
+                        <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    
+                    {/* Search Results Dropdown */}
+                    {searchResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                        {searchResults.map((profile) => (
+                          <button
+                            key={profile.user_id}
+                            type="button"
+                            className="w-full flex items-center gap-2 p-2 hover:bg-accent text-left transition-colors"
+                            onClick={() => selectRecipient(profile)}
+                          >
+                            {profile.avatar_url ? (
+                              <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                                <User className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                            )}
+                            <span className="text-sm">@{profile.username}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {searchUsername.length >= 2 && !isSearching && searchResults.length === 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-3 text-center">
+                        <p className="text-sm text-muted-foreground">No users found</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
