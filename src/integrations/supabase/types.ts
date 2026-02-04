@@ -369,6 +369,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_command_notifications: {
+        Row: {
+          action: string
+          changes: Json | null
+          command_name: string
+          created_at: string
+          id: string
+          processed: boolean
+          processed_at: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          command_name: string
+          created_at?: string
+          id?: string
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          command_name?: string
+          created_at?: string
+          id?: string
+          processed?: boolean
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
       bot_commands: {
         Row: {
           category: string | null

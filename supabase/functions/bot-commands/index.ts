@@ -17,101 +17,29 @@ interface CommandPayload {
   required_role?: string
 }
 
-// Send Discord webhook notification
-async function sendDiscordNotification(
+// Queue notification for Python bot to pick up
+async function queueNotification(
   supabaseAdmin: any,
   action: 'created' | 'updated' | 'deleted',
   commandName: string,
-  author?: string,
   changes?: Record<string, unknown>
 ) {
-  // Get webhook URL from admin_webhooks table
-  const { data: webhook } = await supabaseAdmin
-    .from('admin_webhooks')
-    .select('webhook_url')
-    .eq('notification_type', 'command_updates')
-    .limit(1)
-    .maybeSingle()
-
-  const webhookUrl = webhook?.webhook_url as string | undefined
-  if (!webhookUrl) {
-    console.warn('[bot-commands] No command_updates webhook configured, skipping notification')
-    return
-  }
-
-  const colors = {
-    created: 0x22c55e, // green
-    updated: 0xf59e0b, // amber
-    deleted: 0xef4444, // red
-  }
-
-  const emojis = {
-    created: '✨',
-    updated: '📝',
-    deleted: '🗑️',
-  }
-
-  const embed: Record<string, unknown> = {
-    title: `${emojis[action]} Command ${action.charAt(0).toUpperCase() + action.slice(1)}`,
-    description: `**\`/${commandName}\`** was ${action}`,
-    color: colors[action],
-    fields: [
-      {
-        name: '⏰ Timestamp',
-        value: `<t:${Math.floor(Date.now() / 1000)}:F>`,
-        inline: true,
-      },
-    ],
-    footer: {
-      text: 'UserVault Command System',
-    },
-    timestamp: new Date().toISOString(),
-  }
-
-  if (author) {
-    embed.fields = [
-      ...(embed.fields as Array<Record<string, unknown>>),
-      {
-        name: '👤 Author',
-        value: author,
-        inline: true,
-      },
-    ]
-  }
-
-  if (changes && Object.keys(changes).length > 0) {
-    const changesText = Object.entries(changes)
-      .map(([key, value]) => `• **${key}**: ${value}`)
-      .join('\n')
-    embed.fields = [
-      ...(embed.fields as Array<Record<string, unknown>>),
-      {
-        name: '📋 Changes',
-        value: changesText.slice(0, 1024),
-        inline: false,
-      },
-    ]
-  }
-
   try {
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        embeds: [embed],
-      }),
-    })
+    const { error } = await supabaseAdmin
+      .from('bot_command_notifications')
+      .insert({
+        action,
+        command_name: commandName,
+        changes: changes || null,
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[bot-commands] Discord webhook failed:', response.status, errorText)
+    if (error) {
+      console.error('[bot-commands] Failed to queue notification:', error)
     } else {
-      console.log(`[bot-commands] Discord notification sent: ${action} ${commandName}`)
+      console.log(`[bot-commands] Queued notification: ${action} ${commandName}`)
     }
   } catch (error) {
-    console.error('[bot-commands] Failed to send Discord notification:', error)
+    console.error('[bot-commands] Error queuing notification:', error)
   }
 }
 
@@ -225,8 +153,8 @@ Deno.serve(async (req) => {
         })
       }
 
-      // Send Discord notification
-      await sendDiscordNotification(supabaseAdmin, 'created', body.name, authorEmail, {
+      // Queue notification for bot
+      await queueNotification(supabaseAdmin, 'created', body.name, {
         description: body.description || 'None',
         category: body.category || 'general',
       })
@@ -295,7 +223,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      await sendDiscordNotification(supabaseAdmin, 'updated', currentCommand.name, authorEmail, changes)
+      await queueNotification(supabaseAdmin, 'updated', currentCommand.name, changes)
 
       console.log(`[bot-commands] Updated: ${currentCommand.name} by ${authorEmail}`)
       return new Response(JSON.stringify({ command: updatedCommand }), {
@@ -340,7 +268,7 @@ Deno.serve(async (req) => {
         })
       }
 
-      await sendDiscordNotification(supabaseAdmin, 'deleted', command.name, authorEmail)
+      await queueNotification(supabaseAdmin, 'deleted', command.name)
 
       console.log(`[bot-commands] Deleted: ${command.name} by ${authorEmail}`)
       return new Response(JSON.stringify({ success: true }), {

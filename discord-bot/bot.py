@@ -39,6 +39,10 @@ WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 API_URL = "https://api.uservault.cc/functions/v1"
 GAME_API = f"{API_URL}/minigame-data"
 REWARD_API = f"{API_URL}/minigame-reward"
+NOTIFICATIONS_API = f"{API_URL}/bot-command-notifications"
+
+# Channel for command update notifications
+COMMAND_UPDATES_CHANNEL_ID = int(os.getenv("COMMAND_UPDATES_CHANNEL_ID", "1468730139012628622"))
 
 # Validate configuration
 if not BOT_TOKEN:
@@ -280,6 +284,54 @@ class UserVaultAPI:
     async def claim_daily(self, discord_user_id: str) -> dict:
         """Claim daily reward."""
         return await self.reward_api("daily_reward", discord_user_id)
+    
+    # ============ COMMAND NOTIFICATIONS ============
+    
+    async def get_pending_notifications(self) -> dict:
+        """Get pending command notifications from queue."""
+        session = await self._get_session()
+        payload = {"action": "get_pending"}
+        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        signature, timestamp = self._generate_signature(payload_json)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-webhook-signature": signature,
+            "x-webhook-timestamp": timestamp,
+        }
+        
+        try:
+            async with session.post(
+                NOTIFICATIONS_API,
+                data=payload_json.encode("utf-8"),
+                headers=headers,
+            ) as response:
+                return await response.json()
+        except Exception as e:
+            return {"error": str(e)}
+    
+    async def mark_notification_processed(self, notification_id: str) -> dict:
+        """Mark a notification as processed."""
+        session = await self._get_session()
+        payload = {"action": "mark_processed", "notificationId": notification_id}
+        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        signature, timestamp = self._generate_signature(payload_json)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-webhook-signature": signature,
+            "x-webhook-timestamp": timestamp,
+        }
+        
+        try:
+            async with session.post(
+                NOTIFICATIONS_API,
+                data=payload_json.encode("utf-8"),
+                headers=headers,
+            ) as response:
+                return await response.json()
+        except Exception as e:
+            return {"error": str(e)}
 
 
 class TriviaView(discord.ui.View):
@@ -402,6 +454,7 @@ class UserVaultBot(commands.Bot):
         
         self.api = UserVaultAPI(WEBHOOK_SECRET)
         self.active_guess_games: Dict[int, dict] = {}
+        self.notification_task: Optional[asyncio.Task] = None
     
     async def setup_hook(self):
         """Called when the bot is ready to set up commands."""
@@ -439,8 +492,88 @@ class UserVaultBot(commands.Bot):
     async def on_ready(self):
         print(f"🤖 Bot ready: {self.user}")
         print(f"📊 Connected to {len(self.guilds)} guilds")
+        
+        # Start notification polling
+        if self.notification_task is None or self.notification_task.done():
+            self.notification_task = asyncio.create_task(self.poll_notifications())
+            print("📡 Started command notification polling")
+    
+    async def poll_notifications(self):
+        """Poll for command notifications and send to Discord."""
+        await self.wait_until_ready()
+        
+        channel = self.get_channel(COMMAND_UPDATES_CHANNEL_ID)
+        if not channel:
+            print(f"⚠️ Could not find channel {COMMAND_UPDATES_CHANNEL_ID} for command notifications")
+            return
+        
+        print(f"📢 Sending command updates to #{channel.name}")
+        
+        while not self.is_closed():
+            try:
+                result = await self.api.get_pending_notifications()
+                
+                if result.get("notifications"):
+                    for notif in result["notifications"]:
+                        await self.send_command_notification(channel, notif)
+                        await self.api.mark_notification_processed(notif["id"])
+                        
+            except Exception as e:
+                print(f"❌ Notification poll error: {e}")
+            
+            # Poll every 5 seconds
+            await asyncio.sleep(5)
+    
+    async def send_command_notification(self, channel, notif: dict):
+        """Send a command notification embed to Discord."""
+        action = notif.get("action", "unknown")
+        command_name = notif.get("command_name", "unknown")
+        changes = notif.get("changes") or {}
+        
+        colors = {
+            "created": 0x22c55e,  # green
+            "updated": 0xf59e0b,  # amber
+            "deleted": 0xef4444,  # red
+        }
+        
+        emojis = {
+            "created": "✨",
+            "updated": "📝",
+            "deleted": "🗑️",
+        }
+        
+        embed = discord.Embed(
+            title=f"{emojis.get(action, '📋')} Command {action.capitalize()}",
+            description=f"**`/{command_name}`** was {action}",
+            color=colors.get(action, 0x6366f1),
+            timestamp=discord.utils.utcnow()
+        )
+        
+        embed.add_field(
+            name="⏰ Timestamp",
+            value=f"<t:{int(time.time())}:F>",
+            inline=True
+        )
+        
+        if changes:
+            changes_text = "\n".join([f"• **{k}**: {v}" for k, v in changes.items()])
+            embed.add_field(
+                name="📋 Changes",
+                value=changes_text[:1024],
+                inline=False
+            )
+        
+        embed.set_footer(text="UserVault Command System")
+        
+        try:
+            await channel.send(embed=embed)
+            print(f"📤 Sent notification: {action} /{command_name}")
+        except Exception as e:
+            print(f"❌ Failed to send notification: {e}")
     
     async def close(self):
+        if self.notification_task:
+            self.notification_task.cancel()
         await self.api.close()
         await super().close()
 
