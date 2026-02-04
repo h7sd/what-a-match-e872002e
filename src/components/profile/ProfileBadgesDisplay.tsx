@@ -18,6 +18,8 @@ interface ProfileBadgesDisplayProps {
   isOwnProfile: boolean;
   accentColor: string;
   transparentBadges?: boolean;
+  /** Externally computed flag – can be overridden by active hunt logic */
+  forceShow?: boolean;
 }
 
 export function ProfileBadgesDisplay({
@@ -26,6 +28,7 @@ export function ProfileBadgesDisplay({
   isOwnProfile,
   accentColor,
   transparentBadges = false,
+  forceShow = false,
 }: ProfileBadgesDisplayProps) {
   const { data: activeStealEvent } = useActiveStealEvent();
   const { data: activeHuntEvent } = useActiveHuntEvent();
@@ -51,9 +54,11 @@ export function ProfileBadgesDisplay({
     queryClient.invalidateQueries({ queryKey: ['has-stolen-in-event'] });
     queryClient.invalidateQueries({ queryKey: ['hunt-badge-holder'] });
     queryClient.invalidateQueries({ queryKey: ['activeHuntEvent'] });
+    queryClient.invalidateQueries({ queryKey: ['huntBadgeHolder'] });
   };
 
-  if (badges.length === 0) return null;
+  // Nothing to render (unless forced open)
+  if (badges.length === 0 && !forceShow) return null;
 
   return (
     <TooltipProvider delayDuration={100}>

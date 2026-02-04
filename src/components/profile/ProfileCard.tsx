@@ -7,6 +7,7 @@ import { AnimatedUsername } from './AnimatedUsername';
 import { AnimatedDisplayName, type TextAnimationType } from './TextAnimations';
 import { OrbitingAvatar } from './OrbitingAvatar';
 import { ProfileBadgesDisplay } from './ProfileBadgesDisplay';
+import { useActiveHuntEvent } from '@/hooks/useActiveHuntEvent';
 import {
   Tooltip,
   TooltipContent,
@@ -49,6 +50,12 @@ export function ProfileCard({
   const [rotateY, setRotateY] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  const { data: activeHuntEvent } = useActiveHuntEvent();
+  // Force badges visible when ANY badge is the active hunt target (owner cannot hide)
+  const hasHuntBadge = activeHuntEvent?.target_badge_id
+    ? badges.some((b) => b.id === activeHuntEvent.target_badge_id)
+    : false;
+  const effectiveShowBadges = showBadges || hasHuntBadge;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !profile.effects_config?.tilt) return;
@@ -170,13 +177,14 @@ export function ProfileCard({
             )}
 
             {/* Badges - with transparent rounded container */}
-            {showBadges && badges.length > 0 && (
+            {effectiveShowBadges && badges.length > 0 && (
               <ProfileBadgesDisplay
                 badges={badges}
                 profileUsername={profile.username}
                 isOwnProfile={isOwnProfile}
                 accentColor={accentColor}
                 transparentBadges={transparentBadges}
+                forceShow={hasHuntBadge}
               />
             )}
 
@@ -359,13 +367,14 @@ export function ProfileCard({
           )}
 
           {/* Badges - with transparent rounded container */}
-          {showBadges && badges.length > 0 && (
+          {effectiveShowBadges && badges.length > 0 && (
             <ProfileBadgesDisplay
               badges={badges}
               profileUsername={profile.username}
               isOwnProfile={isOwnProfile}
               accentColor={accentColor}
               transparentBadges={transparentBadges}
+              forceShow={hasHuntBadge}
             />
           )}
 
