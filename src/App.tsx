@@ -68,8 +68,8 @@ function EventBannerGate() {
 
   // Reserve space below fixed/sticky headers so banners never overlap UI.
   const top = (() => {
-    if (isDashboard) return isMobile ? "56px" : "72px";
-    if (isProfilePage) return "0px";
+    if (isDashboard) return "8px";
+    if (isProfilePage) return "8px";
     return "80px";
   })();
 

@@ -153,11 +153,11 @@ export function EventAnnouncementBanner() {
                 />
 
                 {/* Content */}
-                <div className="relative px-4 py-2 flex items-center gap-3">
+                <div className="relative px-3 py-1.5 flex items-center gap-2">
                   {/* Icon with pulse */}
                   <motion.div
                     animate={{ 
-                      scale: [1, 1.15, 1],
+                      scale: [1, 1.1, 1],
                       opacity: [0.8, 1, 0.8]
                     }}
                     transition={{ 
@@ -168,14 +168,14 @@ export function EventAnnouncementBanner() {
                     className="flex-shrink-0"
                   >
                     {event.event_type === 'steal' ? (
-                      <Target className="w-4 h-4 text-white drop-shadow-lg" />
+                      <Target className="w-3 h-3 text-white drop-shadow-lg" />
                     ) : (
-                      <Sparkles className="w-4 h-4 text-white drop-shadow-lg" />
+                      <Sparkles className="w-3 h-3 text-white drop-shadow-lg" />
                     )}
                   </motion.div>
                   
                   {/* Text content */}
-                  <span className="text-white text-sm font-bold tracking-wide whitespace-nowrap">
+                  <span className="text-white text-xs font-semibold tracking-wide whitespace-nowrap">
                     {event.name}
                   </span>
 
