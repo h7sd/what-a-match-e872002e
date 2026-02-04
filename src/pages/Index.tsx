@@ -12,7 +12,7 @@ import { ModernFooter } from "@/components/landing/ModernFooter";
 import { PremiumDialog } from "@/components/landing/PremiumDialog";
 import { LiveChatWidget } from "@/components/chat/LiveChatWidget";
 import { LiquidEther } from "@/components/landing/LiquidEther";
-import { ProfileCardSwap } from "@/components/landing/ProfileCardSwap";
+import { ProfileCardSwapExact } from "@/components/landing/ProfileCardSwapExact";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -59,11 +59,12 @@ export default function Index() {
 
           <div id="features">
             <BentoFeatures />
+
+            {/* Live profile previews (exact same card renderer as profile page) */}
+            <ProfileCardSwapExact />
           </div>
 
           <ClaimSection />
-
-          <ProfileCardSwap />
 
           <PricingSection />
 
