@@ -406,7 +406,7 @@ export default function UserProfile() {
       />
 
       <div 
-        className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 pt-12 pb-44"
+        className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 pt-32 pb-44"
         style={{ opacity: transparency }}
       >
         <motion.div
@@ -476,7 +476,7 @@ export default function UserProfile() {
 
         {/* Volume control - fixed top right, below any banners */}
         {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
-          <div className="fixed top-16 right-4 z-50">
+          <div className="fixed top-32 right-4 z-50">
             <ElasticSlider
               defaultValue={Math.round(volume * 100)}
               startingValue={0}

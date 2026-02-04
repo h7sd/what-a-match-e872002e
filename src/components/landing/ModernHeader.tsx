@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sparkles } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { ReportUserDialog } from './ReportUserDialog';
 import { Magnet } from './Magnet';
 import { UVLogo, UVLogoText } from './UVLogo';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LandingEventsPopover } from './LandingEventsPopover';
 
 export function ModernHeader() {
   const { user } = useAuth();
@@ -85,6 +87,26 @@ export function ModernHeader() {
                   </Link>
                 )
               )}
+
+              {/* Events dropdown */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-full transition-all duration-300 inline-flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Events
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  sideOffset={12}
+                  className="w-[420px] p-3 bg-card/90 backdrop-blur-2xl border-border/50"
+                >
+                  <LandingEventsPopover />
+                </PopoverContent>
+              </Popover>
             </nav>
 
             {/* Right side */}
