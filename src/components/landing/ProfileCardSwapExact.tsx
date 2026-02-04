@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useInView } from "framer-motion";
@@ -12,6 +12,7 @@ import {
   getPublicProfile,
   type PublicBadge,
   type PublicProfile,
+  type FeaturedProfile,
 } from "@/lib/api";
 
 type SwapProfile = {
@@ -23,32 +24,90 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
-function useSwapProfiles() {
+// Fetch the pool of available usernames
+function useFeaturedPool() {
   return useQuery({
-    queryKey: ["landing", "card-swap", "profiles", "exact"],
-    queryFn: async (): Promise<SwapProfile[]> => {
-      const featured = await getFeaturedProfiles(50);
-      if (!featured.length) return [];
-
-      const picked = shuffle(featured).slice(0, 5);
-
-      const resolved = await Promise.all(
-        picked.map(async (p) => {
-          const username = p.u;
-          const [profile, badges] = await Promise.all([
-            getPublicProfile(username),
-            getProfileBadges(username),
-          ]);
-          if (!profile) return null;
-          return { profile, badges } satisfies SwapProfile;
-        })
-      );
-
-      return resolved.filter(Boolean) as SwapProfile[];
-    },
-    staleTime: 60_000,
-    gcTime: 120_000,
+    queryKey: ["landing", "card-swap", "pool"],
+    queryFn: () => getFeaturedProfiles(100),
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
+}
+
+// Load a single random profile with badges
+async function loadRandomProfile(
+  pool: FeaturedProfile[],
+  excludeUsernames: Set<string>
+): Promise<SwapProfile | null> {
+  const available = pool.filter((p) => !excludeUsernames.has(p.u));
+  if (!available.length) return null;
+
+  const pick = available[Math.floor(Math.random() * available.length)];
+  const [profile, badges] = await Promise.all([
+    getPublicProfile(pick.u),
+    getProfileBadges(pick.u),
+  ]);
+  if (!profile) return null;
+  return { profile, badges };
+}
+
+// Hook that manages rotating profiles - loads new random one when card swaps
+function useRotatingProfiles(pool: FeaturedProfile[] | undefined) {
+  const [profiles, setProfiles] = useState<SwapProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const loadedUsernames = useRef(new Set<string>());
+  const swapIndexRef = useRef(0);
+
+  // Initial load of 5 random profiles
+  useEffect(() => {
+    if (!pool || pool.length === 0) return;
+
+    const loadInitial = async () => {
+      setIsLoading(true);
+      const shuffled = shuffle(pool).slice(0, 5);
+      const loaded: SwapProfile[] = [];
+
+      for (const p of shuffled) {
+        const [profile, badges] = await Promise.all([
+          getPublicProfile(p.u),
+          getProfileBadges(p.u),
+        ]);
+        if (profile) {
+          loaded.push({ profile, badges });
+          loadedUsernames.current.add(p.u);
+        }
+      }
+
+      setProfiles(loaded);
+      setIsLoading(false);
+    };
+
+    loadInitial();
+  }, [pool]);
+
+  // Replace the front card with a new random profile when swap happens
+  const onCardSwap = useCallback(
+    async (swappedIndex: number) => {
+      if (!pool || pool.length === 0) return;
+
+      // Load a new random profile that's not currently shown
+      const currentUsernames = new Set(profiles.map((p) => p.profile.username));
+      const newProfile = await loadRandomProfile(pool, currentUsernames);
+
+      if (newProfile) {
+        setProfiles((prev) => {
+          const updated = [...prev];
+          // Replace the card that just went to the back
+          updated[swappedIndex] = newProfile;
+          return updated;
+        });
+        loadedUsernames.current.add(newProfile.profile.username);
+      }
+    },
+    [pool, profiles]
+  );
+
+  return { profiles, isLoading, onCardSwap };
 }
 
 function ProfilePreviewBackground({ profile }: { profile: PublicProfile }) {
@@ -145,10 +204,11 @@ function ProfilePageCardPreview({ data }: { data: SwapProfile }) {
 export function ProfileCardSwapExact() {
   const ref = useRef<HTMLElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const { data, isLoading, isError } = useSwapProfiles();
+  
+  const { data: pool, isLoading: poolLoading, isError } = useFeaturedPool();
+  const { profiles, isLoading: profilesLoading, onCardSwap } = useRotatingProfiles(pool);
 
-  // Never disappear: we always render the section, even if data is empty.
-  const items = data ?? [];
+  const isLoading = poolLoading || profilesLoading;
 
   return (
     <section ref={ref} className="py-24 px-6 relative overflow-hidden">
@@ -182,7 +242,7 @@ export function ProfileCardSwapExact() {
           >
             {isLoading ? (
               <div className="w-[420px] h-[600px] bg-muted/10 rounded-2xl animate-pulse" />
-            ) : isError || items.length < 1 ? (
+            ) : isError || profiles.length < 1 ? (
               <div className="w-[420px] h-[600px] rounded-2xl border border-border bg-card/30 backdrop-blur-sm flex items-center justify-center p-10 text-center">
                 <div>
                   <p className="text-foreground font-semibold mb-2">Keine Profiles verfügbar</p>
@@ -199,9 +259,13 @@ export function ProfileCardSwapExact() {
                 pauseOnHover={true}
                 skewAmount={4}
                 easing="elastic"
+                onCardSwap={(frontIdx) => {
+                  // When a card goes to the back, load a new random profile to replace it
+                  onCardSwap(frontIdx);
+                }}
               >
-                {items.map(({ profile, badges }) => (
-                  <Card key={profile.id} className="!bg-transparent !border-0">
+                {profiles.map(({ profile, badges }, idx) => (
+                  <Card key={`${profile.id}-${idx}`} className="!bg-transparent !border-0">
                     <Link
                       to={`/${profile.username}`}
                       className="group block w-full h-full"
