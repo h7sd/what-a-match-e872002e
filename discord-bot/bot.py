@@ -47,12 +47,66 @@ if not WEBHOOK_SECRET:
     raise ValueError("DISCORD_WEBHOOK_SECRET is required!")
 
 
+class RequestLogger:
+    """Logger for API requests with colors and timing."""
+    
+    COLORS = {
+        'green': '\033[92m',
+        'red': '\033[91m',
+        'yellow': '\033[93m',
+        'blue': '\033[94m',
+        'cyan': '\033[96m',
+        'reset': '\033[0m',
+        'bold': '\033[1m',
+    }
+    
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+        self.request_count = 0
+        self.success_count = 0
+        self.error_count = 0
+    
+    def log(self, level: str, message: str):
+        if not self.enabled:
+            return
+        
+        timestamp = time.strftime("%H:%M:%S")
+        color = self.COLORS.get(level, self.COLORS['reset'])
+        reset = self.COLORS['reset']
+        print(f"{self.COLORS['cyan']}[{timestamp}]{reset} {color}{message}{reset}")
+    
+    def request_start(self, endpoint: str, action: str, user_id: str = None):
+        self.request_count += 1
+        user_info = f" (User: {user_id})" if user_id else ""
+        self.log('blue', f"📡 REQUEST #{self.request_count}: {action} → {endpoint}{user_info}")
+    
+    def request_success(self, action: str, duration_ms: float, response_preview: str = ""):
+        self.success_count += 1
+        preview = f" | {response_preview[:50]}..." if len(response_preview) > 50 else f" | {response_preview}" if response_preview else ""
+        self.log('green', f"✅ SUCCESS: {action} ({duration_ms:.0f}ms){preview}")
+    
+    def request_error(self, action: str, error: str, status_code: int = None):
+        self.error_count += 1
+        status = f" [HTTP {status_code}]" if status_code else ""
+        self.log('red', f"❌ ERROR: {action}{status} - {error}")
+    
+    def stats(self):
+        total = self.request_count
+        success_rate = (self.success_count / total * 100) if total > 0 else 0
+        self.log('yellow', f"📊 STATS: {total} requests | {self.success_count} success | {self.error_count} errors | {success_rate:.1f}% success rate")
+
+
+# Global request logger
+request_logger = RequestLogger(enabled=True)
+
+
 class UserVaultAPI:
     """API client for UserVault minigame endpoints."""
     
     def __init__(self, webhook_secret: str):
         self.webhook_secret = webhook_secret
         self.session: Optional[aiohttp.ClientSession] = None
+        self.logger = request_logger
     
     async def _get_session(self) -> aiohttp.ClientSession:
         if self.session is None or self.session.closed:
@@ -79,8 +133,25 @@ class UserVaultAPI:
         session = await self._get_session()
         payload = {"action": action, **params}
         
-        async with session.post(GAME_API, json=payload) as response:
-            return await response.json()
+        self.logger.request_start("minigame-data", action)
+        start_time = time.time()
+        
+        try:
+            async with session.post(GAME_API, json=payload) as response:
+                duration_ms = (time.time() - start_time) * 1000
+                result = await response.json()
+                
+                if response.status == 200 and not result.get("error"):
+                    preview = json.dumps(result)[:100] if result else ""
+                    self.logger.request_success(action, duration_ms, preview)
+                else:
+                    self.logger.request_error(action, result.get("error", "Unknown error"), response.status)
+                
+                return result
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            self.logger.request_error(action, str(e))
+            return {"error": str(e)}
     
     async def reward_api(self, action: str, discord_user_id: str, **extra) -> dict:
         """Call the reward API (needs webhook secret)."""
@@ -94,8 +165,25 @@ class UserVaultAPI:
             "x-webhook-timestamp": timestamp,
         }
         
-        async with session.post(REWARD_API, json=payload, headers=headers) as response:
-            return await response.json()
+        self.logger.request_start("minigame-reward", action, discord_user_id)
+        start_time = time.time()
+        
+        try:
+            async with session.post(REWARD_API, json=payload, headers=headers) as response:
+                duration_ms = (time.time() - start_time) * 1000
+                result = await response.json()
+                
+                if response.status == 200 and not result.get("error"):
+                    preview = json.dumps(result)[:100] if result else ""
+                    self.logger.request_success(action, duration_ms, preview)
+                else:
+                    self.logger.request_error(action, result.get("error", "Unknown error"), response.status)
+                
+                return result
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            self.logger.request_error(action, str(e))
+            return {"error": str(e)}
     
     # ============ GAME METHODS ============
     
@@ -300,6 +388,7 @@ class UserVaultBot(commands.Bot):
         self.tree.add_command(guess)
         self.tree.add_command(balance)
         self.tree.add_command(daily)
+        self.tree.add_command(apistats)
         
         # Sync commands
         await self.tree.sync()
@@ -482,6 +571,23 @@ async def daily(interaction: discord.Interaction):
             f"🔥 Streak: {result.get('streak', 1)} days\n"
             f"💰 New Balance: {result.get('newBalance', 0)} UC"
         )
+
+
+@app_commands.command(name="apistats", description="📊 Show API request statistics")
+async def apistats(interaction: discord.Interaction):
+    """Show current API request statistics."""
+    logger = request_logger
+    total = logger.request_count
+    success_rate = (logger.success_count / total * 100) if total > 0 else 0
+    
+    await interaction.response.send_message(
+        f"📊 **API Request Statistics**\n\n"
+        f"📡 Total Requests: **{total}**\n"
+        f"✅ Successful: **{logger.success_count}**\n"
+        f"❌ Errors: **{logger.error_count}**\n"
+        f"📈 Success Rate: **{success_rate:.1f}%**",
+        ephemeral=True
+    )
 
 
 # ============ MESSAGE HANDLER FOR GUESS GAME ============
