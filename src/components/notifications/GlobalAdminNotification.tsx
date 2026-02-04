@@ -3,14 +3,6 @@ import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { gsap } from 'gsap';
 
-interface AdminNotification {
-  id: string;
-  message: string;
-  created_at: string;
-  admin_username?: string;
-  admin_avatar?: string;
-}
-
 interface PlopBubble {
   id: number;
   message: string;
@@ -28,9 +20,17 @@ export function GlobalAdminNotification() {
   const bubbleRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const nextBubbleId = useRef(0);
   const processedIds = useRef<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Generate random bubbles across the viewport
   const spawnBubbles = useCallback((message: string, adminUsername: string, adminAvatar: string | null) => {
+    console.log('[GlobalNotification] Spawning bubbles for:', message, 'by', adminUsername);
+    
     const count = 8 + Math.floor(Math.random() * 6); // 8-13 bubbles
     const newBubbles: PlopBubble[] = [];
 
@@ -108,10 +108,45 @@ export function GlobalAdminNotification() {
     });
   }, [bubbles]);
 
+  // Fetch admin profile and spawn bubbles
+  const handleNotification = useCallback(async (notifId: string, message: string, createdBy: string) => {
+    // Prevent duplicate processing
+    if (processedIds.current.has(notifId)) {
+      console.log('[GlobalNotification] Already processed:', notifId);
+      return;
+    }
+    processedIds.current.add(notifId);
+
+    console.log('[GlobalNotification] Processing notification:', notifId);
+
+    // Fetch admin profile info
+    let adminUsername = 'Admin';
+    let adminAvatar: string | null = null;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('user_id', createdBy)
+        .maybeSingle();
+
+      if (profile) {
+        adminUsername = profile.username;
+        adminAvatar = profile.avatar_url;
+      }
+    } catch (e) {
+      console.error('[GlobalNotification] Failed to fetch admin profile:', e);
+    }
+
+    spawnBubbles(message, adminUsername, adminAvatar);
+  }, [spawnBubbles]);
+
   // Subscribe to realtime notifications
   useEffect(() => {
+    console.log('[GlobalNotification] Setting up realtime subscription');
+    
     const channel = supabase
-      .channel('admin-notifications-plop')
+      .channel('admin-notifications-plop-v2')
       .on(
         'postgres_changes',
         {
@@ -119,43 +154,23 @@ export function GlobalAdminNotification() {
           schema: 'public',
           table: 'admin_notifications'
         },
-        async (payload) => {
-          const notif = payload.new as AdminNotification;
-          
-          // Prevent duplicate processing
-          if (processedIds.current.has(notif.id)) return;
-          processedIds.current.add(notif.id);
-
-          // Fetch admin profile info
-          let adminUsername = 'Admin';
-          let adminAvatar: string | null = null;
-
-          try {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, avatar_url')
-              .eq('user_id', (payload.new as any).created_by)
-              .maybeSingle();
-
-            if (profile) {
-              adminUsername = profile.username;
-              adminAvatar = profile.avatar_url;
-            }
-          } catch (e) {
-            console.error('Failed to fetch admin profile:', e);
-          }
-
-          spawnBubbles(notif.message, adminUsername, adminAvatar);
+        (payload) => {
+          console.log('[GlobalNotification] Received INSERT:', payload);
+          const notif = payload.new as { id: string; message: string; created_by: string };
+          handleNotification(notif.id, notif.message, notif.created_by);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[GlobalNotification] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[GlobalNotification] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
-  }, [spawnBubbles]);
+  }, [handleNotification]);
 
-  if (bubbles.length === 0) return null;
+  if (!mounted || bubbles.length === 0) return null;
 
   // Render bubbles via portal to document.body
   return createPortal(
