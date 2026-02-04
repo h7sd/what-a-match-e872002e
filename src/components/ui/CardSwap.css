@@ -1,9 +1,10 @@
 .card-swap-container {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  transform: translate(5%, 20%);
-  transform-origin: bottom right;
+  /*
+    Keep the swap stack self-contained so it can be placed inside
+    any layout (e.g. centered in a flex container).
+  */
+  position: relative;
+  transform-origin: center;
   perspective: 900px;
   overflow: visible;
 }
@@ -24,12 +25,12 @@
 
 @media (max-width: 768px) {
   .card-swap-container {
-    transform: scale(0.75) translate(25%, 25%);
+    transform: scale(0.75);
   }
 }
 
 @media (max-width: 480px) {
   .card-swap-container {
-    transform: scale(0.55) translate(25%, 25%);
+    transform: scale(0.55);
   }
 }
