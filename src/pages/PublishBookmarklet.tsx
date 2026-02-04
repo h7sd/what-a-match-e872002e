@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Loader2, Copy, Check, Send, ArrowLeft, BookMarked, Rocket, 
-  Plus, Trash2, Webhook, Radio, Users, Megaphone, FileText, AtSign
+  Plus, Trash2, Webhook, Radio, Users, Megaphone, FileText, AtSign, Download
 } from 'lucide-react';
 import {
   Dialog,
@@ -28,6 +28,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+
+// Import changelog files as raw text
+import changelogContent from '/CHANGELOG.md?raw';
+import publicChangelogContent from '/PUBLIC_CHANGELOG.md?raw';
 
 interface SavedWebhook {
   id: string;
@@ -755,9 +759,33 @@ export default function PublishBookmarklet() {
               </div>
               
               <div>
-                <Label htmlFor="changes">
-                  {notificationType === 'changelog' ? 'Changes (one per line)' : 'Announcement Message'}
-                </Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="changes">
+                    {notificationType === 'changelog' ? 'Changes (one per line)' : 'Announcement Message'}
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const content = notificationType === 'changelog' ? changelogContent : publicChangelogContent;
+                      setChanges(content);
+                      // Try to extract version from the file
+                      const versionMatch = content.match(/##\s*\[(\d+\.\d+\.\d+)\]/);
+                      if (versionMatch) {
+                        setVersion(versionMatch[1]);
+                      }
+                      toast({
+                        title: 'Loaded!',
+                        description: `Content from ${notificationType === 'changelog' ? 'CHANGELOG.md' : 'PUBLIC_CHANGELOG.md'} loaded.`,
+                      });
+                    }}
+                    className="border-white/20 text-xs h-7"
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    {notificationType === 'changelog' ? 'CHANGELOG.md' : 'PUBLIC_CHANGELOG.md'}
+                  </Button>
+                </div>
                 <Textarea
                   id="changes"
                   value={changes}
@@ -765,7 +793,7 @@ export default function PublishBookmarklet() {
                   placeholder={notificationType === 'changelog' 
                     ? "Added new feature X\nFixed bug Y\nImproved performance"
                     : "🎉 Exciting new update!\n\nWe've added amazing new features..."}
-                  className="bg-white/5 border-white/10 mt-1 min-h-[120px]"
+                  className="bg-white/5 border-white/10 min-h-[120px]"
                 />
               </div>
               
