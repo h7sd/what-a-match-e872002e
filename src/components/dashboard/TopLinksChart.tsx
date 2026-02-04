@@ -1,8 +1,4 @@
 import { Link2, ExternalLink } from 'lucide-react';
-import { lazy, Suspense } from 'react';
-
-// Lazy load Aurora for performance
-const Aurora = lazy(() => import('@/components/ui/Aurora'));
 
 interface LinkData {
   name: string;
@@ -24,17 +20,8 @@ export function TopLinksChart({ links = [] }: TopLinksChartProps) {
   if (data.length === 0) {
     return (
       <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/40 backdrop-blur-xl p-5 space-y-4">
-        {/* Aurora background effect */}
-        <Suspense fallback={null}>
-          <div className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-500">
-            <Aurora
-              colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
-              amplitude={0.6}
-              blend={0.7}
-              speed={0.4}
-            />
-          </div>
-        </Suspense>
+        {/* Static gradient background */}
+        <div className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-500 bg-gradient-to-br from-[#00B4D8]/30 via-[#00D9A5]/20 to-[#0077B6]/30" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3">
@@ -56,17 +43,8 @@ export function TopLinksChart({ links = [] }: TopLinksChartProps) {
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/40 backdrop-blur-xl p-5 space-y-4">
-      {/* Aurora background effect */}
-      <Suspense fallback={null}>
-        <div className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-500">
-          <Aurora
-            colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
-            amplitude={0.6}
-            blend={0.7}
-            speed={0.4}
-          />
-        </div>
-      </Suspense>
+      {/* Static gradient background */}
+      <div className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-500 bg-gradient-to-br from-[#00B4D8]/30 via-[#00D9A5]/20 to-[#0077B6]/30" />
 
       <div className="relative z-10">
         <div className="flex items-center justify-between">

@@ -1,10 +1,7 @@
 import { Eye, Hash, ThumbsUp, ThumbsDown, MessageCircle, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useRef, useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-// Lazy load Aurora for performance
-const Aurora = lazy(() => import('@/components/ui/Aurora'));
 
 interface OverviewStatsProps {
   profileViews: number;
@@ -57,8 +54,6 @@ function StatCard({
   isNumber = true,
   color = 'primary'
 }: StatCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
   const colorStyles = {
     primary: {
       iconBg: 'from-[#00B4D8]/20 via-[#00D9A5]/15 to-[#0077B6]/20',
@@ -91,24 +86,14 @@ function StatCard({
 
   return (
     <motion.div
-      ref={cardRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/40 backdrop-blur-xl p-5"
     >
-      {/* Aurora background effect */}
-      <Suspense fallback={null}>
-        <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
-          <Aurora
-            colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
-            amplitude={0.6}
-            blend={0.7}
-            speed={0.4}
-          />
-        </div>
-      </Suspense>
+      {/* Static gradient background instead of Aurora for performance */}
+      <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500 bg-gradient-to-br from-[#00B4D8]/30 via-[#00D9A5]/20 to-[#0077B6]/30" />
       
       {/* Content */}
       <div className="relative z-10">

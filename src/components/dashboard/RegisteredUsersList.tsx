@@ -1,19 +1,14 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, ExternalLink, Loader2, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getFeaturedProfiles, FeaturedProfile } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 
-// Lazy load Aurora for performance
-const Aurora = lazy(() => import('@/components/ui/Aurora'));
-
 export function RegisteredUsersList() {
   const [users, setUsers] = useState<FeaturedProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -45,20 +40,10 @@ export function RegisteredUsersList() {
 
   return (
     <motion.div 
-      ref={cardRef}
       className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/40 backdrop-blur-xl p-5 space-y-4"
     >
-      {/* Aurora background effect */}
-      <Suspense fallback={null}>
-        <div className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-500">
-          <Aurora
-            colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
-            amplitude={0.6}
-            blend={0.7}
-            speed={0.4}
-          />
-        </div>
-      </Suspense>
+      {/* Static gradient background */}
+      <div className="absolute inset-0 opacity-15 group-hover:opacity-30 transition-opacity duration-500 bg-gradient-to-br from-[#00B4D8]/30 via-[#00D9A5]/20 to-[#0077B6]/30" />
 
       <div className="relative z-10">
         <div className="flex items-center gap-3 mb-4">

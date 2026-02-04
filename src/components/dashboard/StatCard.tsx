@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { ReactNode, useRef, useEffect, useState } from 'react';
-import Aurora from '@/components/ui/Aurora';
+import { useEffect, useState } from 'react';
 
 interface StatCardProps {
   icon: React.ElementType;
@@ -91,16 +90,9 @@ export function StatCard({
       whileHover={{ borderColor: 'rgba(255,255,255,0.12)', y: -2 }}
       transition={{ duration: 0.2 }}
     >
-      {/* Aurora background effect */}
+      {/* Static gradient background instead of Aurora for performance */}
       {showAurora && (
-        <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
-          <Aurora
-            colorStops={['#00B4D8', '#00D9A5', '#0077B6']}
-            amplitude={0.6}
-            blend={0.7}
-            speed={0.4}
-          />
-        </div>
+        <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500 bg-gradient-to-br from-[#00B4D8]/30 via-[#00D9A5]/20 to-[#0077B6]/30" />
       )}
 
       <div className="relative z-10">
