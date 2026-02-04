@@ -16,6 +16,11 @@ interface ProfileWithBadges {
   accent_color: string | null;
   location: string | null;
   occupation: string | null;
+  background_url: string | null;
+  background_video_url: string | null;
+  profile_opacity: number | null;
+  profile_blur: number | null;
+  card_color: string | null;
   badges: {
     name: string;
     color: string | null;
@@ -27,10 +32,10 @@ function useRandomProfilesWithBadges() {
   return useQuery({
     queryKey: ['card-swap-profiles'],
     queryFn: async () => {
-      // Get random profiles with more fields
+      // Get random profiles with full preview fields
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, bio, views_count, accent_color, location, occupation')
+        .select('id, username, display_name, avatar_url, bio, views_count, accent_color, location, occupation, background_url, background_video_url, profile_opacity, profile_blur, card_color')
         .limit(50);
       
       if (profilesError) throw profilesError;
@@ -77,38 +82,92 @@ function useRandomProfilesWithBadges() {
 
 function ProfileCardContent({ profile }: { profile: ProfileWithBadges }) {
   const accentColor = profile.accent_color || '#10b981';
+  const cardColor = profile.card_color || 'rgba(0,0,0,0.7)';
+  const opacity = profile.profile_opacity ?? 80;
+  const blur = profile.profile_blur ?? 12;
+  const hasBackground = profile.background_url || profile.background_video_url;
   
   return (
-    <Link to={`/${profile.username}`} className="block w-full h-full">
-      <div className="relative w-full h-full flex flex-col overflow-hidden">
+    <Link to={`/${profile.username}`} className="block w-full h-full group">
+      <div className="relative w-full h-full flex flex-col overflow-hidden rounded-2xl">
+        {/* Background Layer - Image or Video */}
+        {hasBackground && (
+          <div className="absolute inset-0 z-0">
+            {profile.background_video_url ? (
+              <video
+                src={profile.background_video_url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : profile.background_url ? (
+              <img
+                src={profile.background_url}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : null}
+            {/* Overlay with profile opacity */}
+            <div 
+              className="absolute inset-0"
+              style={{ 
+                backgroundColor: `rgba(0,0,0,${(100 - opacity) / 100})`,
+                backdropFilter: blur > 0 ? `blur(${blur}px)` : undefined
+              }}
+            />
+          </div>
+        )}
+
+        {/* Fallback gradient background if no media */}
+        {!hasBackground && (
+          <div 
+            className="absolute inset-0 z-0"
+            style={{
+              background: `linear-gradient(145deg, ${accentColor}20, rgba(0,0,0,0.9), ${accentColor}10)`
+            }}
+          />
+        )}
+
         {/* Animated glow effect behind card */}
         <motion.div
-          className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
+          className="absolute -inset-1 rounded-2xl opacity-40 blur-2xl z-[-1]"
           style={{
-            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
+            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}60, transparent)`,
           }}
           animate={{
-            opacity: [0.3, 0.5, 0.3],
+            opacity: [0.2, 0.4, 0.2],
           }}
           transition={{
-            duration: 3,
+            duration: 4,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
         />
 
+        {/* Card Content */}
         <div
-          className="relative rounded-2xl p-6 backdrop-blur-xl flex flex-col h-full"
+          className="relative z-10 rounded-2xl p-6 flex flex-col h-full"
           style={{
-            backgroundColor: 'rgba(0,0,0,0.7)',
+            backgroundColor: hasBackground ? `${cardColor}80` : cardColor,
+            backdropFilter: hasBackground ? `blur(${blur}px)` : undefined,
             border: `1px solid ${accentColor}30`,
           }}
         >
           {/* Corner sparkle decorations */}
           <motion.div
-            className="absolute top-3 right-3 text-sm"
-            animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute top-4 right-4 text-lg"
+            animate={{ opacity: [0.4, 1, 0.4], scale: [0.9, 1.1, 0.9] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+            style={{ color: accentColor }}
+          >
+            ✦
+          </motion.div>
+          <motion.div
+            className="absolute bottom-4 left-4 text-sm"
+            animate={{ opacity: [0.3, 0.8, 0.3], scale: [0.8, 1, 0.8] }}
+            transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
             style={{ color: accentColor }}
           >
             ✦
@@ -116,23 +175,23 @@ function ProfileCardContent({ profile }: { profile: ProfileWithBadges }) {
 
           {/* Gradient border glow */}
           <div
-            className="absolute inset-0 rounded-2xl opacity-30"
+            className="absolute inset-0 rounded-2xl opacity-20 pointer-events-none"
             style={{
-              background: `linear-gradient(135deg, ${accentColor}30, transparent 50%, ${accentColor}20)`,
+              background: `linear-gradient(135deg, ${accentColor}40, transparent 40%, transparent 60%, ${accentColor}30)`,
             }}
           />
 
-          <div className="relative z-10 flex flex-col items-center text-center flex-1">
-            {/* Avatar with glow ring */}
-            <div className="mb-4 relative">
+          <div className="relative z-10 flex flex-col items-center text-center flex-1 justify-center">
+            {/* Avatar with glow ring - larger */}
+            <div className="mb-5 relative">
               <div 
-                className="absolute -inset-1 rounded-full blur-md opacity-50"
+                className="absolute -inset-2 rounded-full blur-lg opacity-60"
                 style={{ background: accentColor }}
               />
               <div 
-                className="relative w-20 h-20 rounded-full overflow-hidden"
+                className="relative w-24 h-24 rounded-full overflow-hidden"
                 style={{ 
-                  boxShadow: `0 0 0 2px ${accentColor}50`
+                  boxShadow: `0 0 20px ${accentColor}50, 0 0 0 2px ${accentColor}60`
                 }}
               >
                 {profile.avatar_url ? (
@@ -143,7 +202,7 @@ function ProfileCardContent({ profile }: { profile: ProfileWithBadges }) {
                   />
                 ) : (
                   <div 
-                    className="w-full h-full flex items-center justify-center text-2xl font-bold"
+                    className="w-full h-full flex items-center justify-center text-3xl font-bold"
                     style={{ backgroundColor: `${accentColor}30`, color: accentColor }}
                   >
                     {(profile.display_name || profile.username).charAt(0).toUpperCase()}
@@ -152,71 +211,84 @@ function ProfileCardContent({ profile }: { profile: ProfileWithBadges }) {
               </div>
             </div>
 
-            {/* Display Name */}
+            {/* Display Name - larger */}
             <h3 
-              className="text-xl font-bold text-white mb-1"
+              className="text-2xl font-bold text-white mb-1 drop-shadow-lg"
             >
               {profile.display_name || profile.username}
             </h3>
 
             {/* Username */}
-            <p className="text-muted-foreground text-sm mb-3 flex items-center gap-0.5">
-              <AtSign className="w-3.5 h-3.5" />
+            <p className="text-muted-foreground text-sm mb-4 flex items-center gap-0.5">
+              <AtSign className="w-4 h-4" />
               {profile.username}
             </p>
 
-            {/* Badges */}
+            {/* Badges - larger pills */}
             {profile.badges.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-1.5 mb-3 px-2">
-                {profile.badges.map((badge, idx) => (
+              <div className="flex flex-wrap justify-center gap-2 mb-4 px-3">
+                {profile.badges.slice(0, 4).map((badge, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-md shadow-lg"
                     style={{
-                      backgroundColor: badge.color ? `${badge.color}20` : 'rgba(255,255,255,0.1)',
-                      border: `1px solid ${badge.color || 'rgba(255,255,255,0.2)'}40`,
+                      backgroundColor: badge.color ? `${badge.color}25` : 'rgba(255,255,255,0.1)',
+                      border: `1px solid ${badge.color || 'rgba(255,255,255,0.2)'}50`,
                       color: badge.color || '#fff',
+                      boxShadow: badge.color ? `0 0 10px ${badge.color}30` : undefined
                     }}
                   >
                     {badge.icon_url && (
-                      <img src={badge.icon_url} alt="" className="w-3.5 h-3.5" />
+                      <img src={badge.icon_url} alt="" className="w-4 h-4" />
                     )}
-                    <span className="truncate max-w-[60px]">{badge.name}</span>
+                    <span className="truncate max-w-[70px]">{badge.name}</span>
                   </div>
                 ))}
+                {profile.badges.length > 4 && (
+                  <div className="flex items-center px-2 py-1 rounded-full text-xs text-muted-foreground bg-white/5">
+                    +{profile.badges.length - 4}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Bio */}
+            {/* Bio - more space */}
             {profile.bio && (
-              <p className="text-muted-foreground text-xs max-w-[200px] leading-relaxed mb-3 line-clamp-2">
+              <p className="text-muted-foreground text-sm max-w-[280px] leading-relaxed mb-4 line-clamp-3">
                 {profile.bio}
               </p>
             )}
 
             {/* Location & Occupation */}
-            <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground mb-3">
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground mb-4">
               {profile.occupation && (
-                <div className="flex items-center gap-1">
-                  <Briefcase className="w-3 h-3" />
-                  <span className="truncate max-w-[80px]">{profile.occupation}</span>
+                <div className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4" />
+                  <span className="truncate max-w-[100px]">{profile.occupation}</span>
                 </div>
               )}
               {profile.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  <span className="truncate max-w-[80px]">{profile.location}</span>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  <span className="truncate max-w-[100px]">{profile.location}</span>
                 </div>
               )}
             </div>
 
-            {/* Views */}
-            <div className="mt-auto flex items-center justify-center gap-1 text-xs text-muted-foreground">
-              <Eye className="w-3.5 h-3.5" />
+            {/* Views - at bottom */}
+            <div className="mt-auto pt-4 flex items-center justify-center gap-1.5 text-sm text-muted-foreground border-t border-white/10 w-full">
+              <Eye className="w-4 h-4" />
               <span>{(profile.views_count || 0).toLocaleString()} views</span>
             </div>
           </div>
         </div>
+
+        {/* Hover effect */}
+        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+          style={{
+            boxShadow: `0 0 40px ${accentColor}40, inset 0 0 20px ${accentColor}10`
+          }}
+        />
       </div>
     </Link>
   );
@@ -238,8 +310,8 @@ export function ProfileCardSwap() {
               <div className="h-12 w-3/4 bg-muted/20 rounded mb-4 animate-pulse" />
               <div className="h-6 w-1/2 bg-muted/20 rounded animate-pulse" />
             </div>
-            <div className="h-[600px] flex items-center justify-center">
-              <div className="w-[340px] h-[480px] bg-muted/10 rounded-2xl animate-pulse" />
+            <div className="h-[700px] flex items-center justify-center">
+              <div className="w-[420px] h-[600px] bg-muted/10 rounded-2xl animate-pulse" />
             </div>
           </div>
         </div>
@@ -281,16 +353,16 @@ export function ProfileCardSwap() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={isInView ? { opacity: 1, scale: 1 } : {}}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="relative h-[600px] md:h-[700px] flex items-center justify-center"
+            className="relative h-[700px] md:h-[800px] flex items-center justify-center"
           >
             <CardSwap
-              width={340}
-              height={480}
-              cardDistance={55}
-              verticalDistance={65}
-              delay={4500}
+              width={420}
+              height={600}
+              cardDistance={65}
+              verticalDistance={75}
+              delay={5000}
               pauseOnHover={true}
-              skewAmount={5}
+              skewAmount={4}
               easing="elastic"
             >
               {profiles.map((profile) => (
