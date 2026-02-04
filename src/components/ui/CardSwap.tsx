@@ -202,7 +202,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
     }
 
     return () => clearInterval(intervalRef.current);
-  }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing, refs, config, onCardSwap]);
+  }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing, refs, config]);
 
   const rendered = childArr.map((child, i) =>
     isValidElement<CardProps>(child)
