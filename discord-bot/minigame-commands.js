@@ -1,5 +1,6 @@
 // minigame-commands.js - Discord command handlers for minigames
-// Requires: minigames.js (API client)
+// Currency: UC (UserCoin)
+// Commands are loaded dynamically from API
 
 const { 
   SlashCommandBuilder,
@@ -16,22 +17,71 @@ const activeTrivia = new Map();
 const activeBlackjack = new Map();
 const activeGuess = new Map();
 
-// ============ COMMAND DEFINITIONS ============
+// ============ DYNAMIC COMMAND BUILDER ============
 
-const commands = [
-  new SlashCommandBuilder().setName('trivia').setDescription('🎯 Play trivia and win UV!'),
-  new SlashCommandBuilder().setName('slots').setDescription('🎰 Spin the slots!'),
-  new SlashCommandBuilder().setName('coin').setDescription('🪙 Flip a coin')
-    .addStringOption(opt => opt.setName('guess').setDescription('Heads or tails?').setRequired(true)
-      .addChoices({ name: 'Heads', value: 'heads' }, { name: 'Tails', value: 'tails' })),
-  new SlashCommandBuilder().setName('rps').setDescription('✂️ Rock Paper Scissors')
-    .addStringOption(opt => opt.setName('choice').setDescription('Your choice').setRequired(true)
-      .addChoices({ name: '🪨 Rock', value: 'rock' }, { name: '📄 Paper', value: 'paper' }, { name: '✂️ Scissors', value: 'scissors' })),
-  new SlashCommandBuilder().setName('blackjack').setDescription('🃏 Play Blackjack!'),
-  new SlashCommandBuilder().setName('guess').setDescription('🔢 Guess the number (1-100)'),
-  new SlashCommandBuilder().setName('balance').setDescription('💰 Check your UV balance'),
-  new SlashCommandBuilder().setName('daily').setDescription('📅 Claim your daily reward'),
-];
+async function buildCommands() {
+  const { games: gameList } = await games.getAvailableGames();
+  
+  const commands = [];
+  
+  for (const game of gameList) {
+    const builder = new SlashCommandBuilder()
+      .setName(game.id)
+      .setDescription(`${game.emoji} ${game.description}`);
+    
+    // Add options if the game has them
+    if (game.options && game.options.length > 0) {
+      builder.addStringOption(opt => {
+        opt.setName('choice')
+          .setDescription('Your choice')
+          .setRequired(true);
+        
+        for (const option of game.options) {
+          opt.addChoices({ name: option.name, value: option.value });
+        }
+        
+        return opt;
+      });
+    }
+    
+    commands.push(builder);
+  }
+  
+  return commands;
+}
+
+// Fallback static commands (if API is down)
+function getStaticCommands() {
+  return [
+    new SlashCommandBuilder().setName('trivia').setDescription('🎯 Answer questions and win UC!'),
+    new SlashCommandBuilder().setName('slots').setDescription('🎰 Spin the slot machine!'),
+    new SlashCommandBuilder().setName('coin').setDescription('🪙 Flip a coin - heads or tails?')
+      .addStringOption(opt => opt.setName('choice').setDescription('Heads or tails?').setRequired(true)
+        .addChoices({ name: 'Heads', value: 'heads' }, { name: 'Tails', value: 'tails' })),
+    new SlashCommandBuilder().setName('rps').setDescription('✂️ Rock Paper Scissors!')
+      .addStringOption(opt => opt.setName('choice').setDescription('Your choice').setRequired(true)
+        .addChoices({ name: '🪨 Rock', value: 'rock' }, { name: '📄 Paper', value: 'paper' }, { name: '✂️ Scissors', value: 'scissors' })),
+    new SlashCommandBuilder().setName('blackjack').setDescription('🃏 Play 21 against the dealer!'),
+    new SlashCommandBuilder().setName('guess').setDescription('🔢 Guess the number (1-100)!'),
+    new SlashCommandBuilder().setName('balance').setDescription('💰 Check your UC balance'),
+    new SlashCommandBuilder().setName('daily').setDescription('📅 Claim your daily UC reward'),
+  ];
+}
+
+// Get commands (try dynamic, fallback to static)
+async function getCommands() {
+  try {
+    const dynamicCommands = await buildCommands();
+    if (dynamicCommands.length > 0) {
+      console.log(`✅ Loaded ${dynamicCommands.length} commands from API`);
+      return dynamicCommands;
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to load dynamic commands, using static fallback:', error.message);
+  }
+  
+  return getStaticCommands();
+}
 
 // ============ COMMAND HANDLER ============
 
@@ -62,7 +112,7 @@ async function handleCommand(interaction, webhookSecret) {
 
       case 'slots': {
         const slots = await games.spinSlots();
-        const result = slots.payout > 0 ? `🎉 **WIN! +${slots.payout} UV**` : '❌ No match';
+        const result = slots.payout > 0 ? `🎉 **WIN! +${slots.payout} UC**` : '❌ No match';
         await interaction.editReply(`🎰 **Slots**\n\n${slots.display}\n\n${result}`);
         
         if (slots.payout > 0) {
@@ -72,13 +122,13 @@ async function handleCommand(interaction, webhookSecret) {
       }
 
       case 'coin': {
-        const guess = interaction.options.getString('guess');
+        const guess = interaction.options.getString('choice');
         const coin = await games.flipCoin();
         const won = coin.result === guess;
         
         await interaction.editReply(
           `🪙 **Coinflip**\n\n${coin.emoji} The coin landed on **${coin.result}**!\n\n` +
-          (won ? '🎉 **You won! +10 UV**' : '❌ Better luck next time!')
+          (won ? '🎉 **You won! +10 UC**' : '❌ Better luck next time!')
         );
         
         if (won) {
@@ -98,8 +148,8 @@ async function handleCommand(interaction, webhookSecret) {
         
         let resultText = '';
         if (rps.result === 'win') {
-          resultText = '🎉 **You won! +15 UV**';
-          await games.sendReward(user.id, 15, 'rps', 'RPS win', webhookSecret);
+          resultText = `🎉 **You won! +${rps.reward} UC**`;
+          await games.sendReward(user.id, rps.reward, 'rps', 'RPS win', webhookSecret);
         } else if (rps.result === 'lose') {
           resultText = '❌ You lost!';
         } else {
@@ -121,10 +171,10 @@ async function handleCommand(interaction, webhookSecret) {
           new ButtonBuilder().setCustomId('bj_stand').setLabel('Stand').setStyle(ButtonStyle.Secondary)
         );
         
-        let content = `🃏 **Blackjack** (Bet: 50 UV)\n\nYour hand: ${bj.playerDisplay} (${bj.playerValue})\nDealer: ${bj.dealerDisplay}`;
+        let content = `🃏 **Blackjack** (Bet: 50 UC)\n\nYour hand: ${bj.playerDisplay} (${bj.playerValue})\nDealer: ${bj.dealerDisplay}`;
         
         if (bj.playerValue === 21) {
-          content += '\n\n🎉 **BLACKJACK! +75 UV**';
+          content += '\n\n🎉 **BLACKJACK! +75 UC**';
           await games.sendReward(user.id, 75, 'blackjack', 'Blackjack!', webhookSecret);
           await interaction.editReply({ content, components: [] });
         } else {
@@ -149,11 +199,11 @@ async function handleCommand(interaction, webhookSecret) {
           if (!game) { collector.stop(); return; }
           
           const guessNum = parseInt(m.content);
-          const result = await games.checkGuess(game.secret, guessNum);
           game.attempts--;
+          const result = await games.checkGuess(game.secret, guessNum, game.attempts);
           
           if (result.correct) {
-            await m.reply(`🎉 **Correct!** The number was ${guessNum}! **+${result.reward} UV**`);
+            await m.reply(`🎉 **Correct!** The number was ${guessNum}! **+${result.reward} UC**`);
             await games.sendReward(user.id, result.reward, 'guess', 'Number guess', webhookSecret);
             activeGuess.delete(user.id);
             collector.stop();
@@ -173,7 +223,7 @@ async function handleCommand(interaction, webhookSecret) {
         if (balance.error) {
           await interaction.editReply(`❌ Error: ${balance.error}`);
         } else {
-          await interaction.editReply(`💰 **Your Balance**\n\nBalance: **${balance.balance} UV**\nTotal Earned: ${balance.totalEarned} UV`);
+          await interaction.editReply(`💰 **Your Balance**\n\nBalance: **${balance.balance} UC**\nTotal Earned: ${balance.totalEarned} UC`);
         }
         break;
       }
@@ -183,10 +233,13 @@ async function handleCommand(interaction, webhookSecret) {
         if (daily.error) {
           await interaction.editReply(`❌ ${daily.error}`);
         } else {
-          await interaction.editReply(`📅 **Daily Reward**\n\n🎉 Claimed **${daily.amount} UV**!\n🔥 Streak: ${daily.streak} days\n💰 New Balance: ${daily.newBalance} UV`);
+          await interaction.editReply(`📅 **Daily Reward**\n\n🎉 Claimed **${daily.amount} UC**!\n🔥 Streak: ${daily.streak} days\n💰 New Balance: ${daily.newBalance} UC`);
         }
         break;
       }
+
+      default:
+        await interaction.editReply(`❌ Unknown game: ${commandName}`);
     }
   } catch (error) {
     console.error('Minigame error:', error);
@@ -213,7 +266,7 @@ async function handleButton(interaction, webhookSecret) {
     const result = await games.blackjackHit(game.deck, game.playerHand);
     Object.assign(game, result);
     
-    let content = `🃏 **Blackjack** (Bet: 50 UV)\n\nYour hand: ${result.playerDisplay} (${result.playerValue})\nDealer: ${game.dealerDisplay}`;
+    let content = `🃏 **Blackjack** (Bet: 50 UC)\n\nYour hand: ${result.playerDisplay} (${result.playerValue})\nDealer: ${game.dealerDisplay}`;
     
     if (result.busted) {
       content += '\n\n💥 **BUST! You lose!**';
@@ -229,11 +282,11 @@ async function handleButton(interaction, webhookSecret) {
   } else if (customId === 'bj_stand') {
     const result = await games.blackjackStand(game.deck, game.dealerHand, game.playerValue);
     
-    let content = `🃏 **Blackjack** (Bet: 50 UV)\n\nYour hand: ${game.playerDisplay} (${game.playerValue})\nDealer: ${result.dealerDisplay} (${result.dealerValue})\n\n`;
+    let content = `🃏 **Blackjack** (Bet: 50 UC)\n\nYour hand: ${game.playerDisplay} (${game.playerValue})\nDealer: ${result.dealerDisplay} (${result.dealerValue})\n\n`;
     
     if (result.result === 'win') {
-      content += '🎉 **You win! +100 UV**';
-      await games.sendReward(user.id, 100, 'blackjack', 'Blackjack win', webhookSecret);
+      content += `🎉 **You win! +${result.payout} UC**`;
+      await games.sendReward(user.id, result.payout, 'blackjack', 'Blackjack win', webhookSecret);
     } else if (result.result === 'lose') {
       content += '❌ **Dealer wins!**';
     } else {
@@ -268,7 +321,7 @@ async function handleSelectMenu(interaction, webhookSecret) {
   let content = `🎯 **Trivia**\n\n${trivia.question}\n\n`;
   
   if (result.correct) {
-    content += `✅ **Correct!** +${result.reward} UV`;
+    content += `✅ **Correct!** +${result.reward} UC`;
     await games.sendReward(user.id, result.reward, 'trivia', 'Trivia correct', webhookSecret);
   } else {
     content += `❌ Wrong! The answer was: **${result.correctAnswer}**`;
@@ -279,14 +332,27 @@ async function handleSelectMenu(interaction, webhookSecret) {
   return true;
 }
 
+// ============ GAME LIST HELPER ============
+
+function getGameCommandNames() {
+  return ['trivia', 'slots', 'coin', 'rps', 'blackjack', 'guess', 'balance', 'daily'];
+}
+
 // ============ EXPORTS ============
 
 module.exports = {
-  commands,
+  // Command building
+  getCommands,
+  buildCommands,
+  getStaticCommands,
+  getGameCommandNames,
+  
+  // Handlers
   handleCommand,
   handleButton,
   handleSelectMenu,
-  // Expose active games if needed
+  
+  // Active game states
   activeTrivia,
   activeBlackjack,
   activeGuess,

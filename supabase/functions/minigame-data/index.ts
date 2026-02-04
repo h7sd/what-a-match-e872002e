@@ -5,28 +5,122 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-signature, x-webhook-timestamp",
 };
 
+// ============ GAME DEFINITIONS (Dynamic) ============
+
+interface GameDefinition {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  type: "instant" | "interactive" | "multi-round";
+  options?: { name: string; value: string }[];
+  rewards: {
+    min: number;
+    max: number;
+    currency: string;
+  };
+}
+
+const gameDefinitions: GameDefinition[] = [
+  {
+    id: "trivia",
+    name: "Trivia",
+    description: "Answer questions and win UC!",
+    emoji: "🎯",
+    type: "interactive",
+    rewards: { min: 10, max: 30, currency: "UC" }
+  },
+  {
+    id: "slots",
+    name: "Slots",
+    description: "Spin the slot machine!",
+    emoji: "🎰",
+    type: "instant",
+    rewards: { min: 10, max: 500, currency: "UC" }
+  },
+  {
+    id: "coin",
+    name: "Coinflip",
+    description: "Flip a coin - heads or tails?",
+    emoji: "🪙",
+    type: "instant",
+    options: [
+      { name: "Heads", value: "heads" },
+      { name: "Tails", value: "tails" }
+    ],
+    rewards: { min: 10, max: 10, currency: "UC" }
+  },
+  {
+    id: "rps",
+    name: "Rock Paper Scissors",
+    description: "Classic RPS game!",
+    emoji: "✂️",
+    type: "instant",
+    options: [
+      { name: "🪨 Rock", value: "rock" },
+      { name: "📄 Paper", value: "paper" },
+      { name: "✂️ Scissors", value: "scissors" }
+    ],
+    rewards: { min: 15, max: 15, currency: "UC" }
+  },
+  {
+    id: "blackjack",
+    name: "Blackjack",
+    description: "Play 21 against the dealer!",
+    emoji: "🃏",
+    type: "multi-round",
+    rewards: { min: 50, max: 100, currency: "UC" }
+  },
+  {
+    id: "guess",
+    name: "Number Guess",
+    description: "Guess the number (1-100)!",
+    emoji: "🔢",
+    type: "multi-round",
+    rewards: { min: 25, max: 50, currency: "UC" }
+  },
+  {
+    id: "balance",
+    name: "Balance",
+    description: "Check your UC balance",
+    emoji: "💰",
+    type: "instant",
+    rewards: { min: 0, max: 0, currency: "UC" }
+  },
+  {
+    id: "daily",
+    name: "Daily Reward",
+    description: "Claim your daily UC reward",
+    emoji: "📅",
+    type: "instant",
+    rewards: { min: 25, max: 100, currency: "UC" }
+  }
+];
+
+// ============ GAME CONFIGURATIONS ============
+
 // Trivia Questions
 const triviaQuestions = [
-  { q: "What is the capital of France?", a: ["paris"], reward: 25 },
-  { q: "How many planets are in our solar system?", a: ["8", "eight"], reward: 20 },
-  { q: "What year did the Titanic sink?", a: ["1912"], reward: 30 },
-  { q: "What is the chemical symbol for gold?", a: ["au"], reward: 25 },
-  { q: "Who painted the Mona Lisa?", a: ["leonardo da vinci", "da vinci", "leonardo"], reward: 30 },
-  { q: "What is the largest ocean on Earth?", a: ["pacific", "pacific ocean"], reward: 20 },
-  { q: "In what year did World War II end?", a: ["1945"], reward: 25 },
-  { q: "What is the square root of 144?", a: ["12", "twelve"], reward: 20 },
-  { q: "Who wrote Romeo and Juliet?", a: ["shakespeare", "william shakespeare"], reward: 25 },
-  { q: "What is the capital of Japan?", a: ["tokyo"], reward: 20 },
-  { q: "How many continents are there?", a: ["7", "seven"], reward: 15 },
-  { q: "What is the largest mammal?", a: ["blue whale", "whale"], reward: 25 },
-  { q: "What color do you get mixing blue and yellow?", a: ["green"], reward: 15 },
-  { q: "What is H2O commonly known as?", a: ["water"], reward: 10 },
-  { q: "How many sides does a hexagon have?", a: ["6", "six"], reward: 15 },
-  { q: "What planet is known as the Red Planet?", a: ["mars"], reward: 20 },
-  { q: "What is the tallest mountain in the world?", a: ["mount everest", "everest"], reward: 25 },
-  { q: "How many hours are in a day?", a: ["24", "twenty four", "twentyfour"], reward: 10 },
-  { q: "What is the currency of Japan?", a: ["yen"], reward: 20 },
-  { q: "Who discovered gravity?", a: ["newton", "isaac newton"], reward: 25 },
+  { q: "What is the capital of France?", a: ["paris"], category: "Geography", reward: 25 },
+  { q: "How many planets are in our solar system?", a: ["8", "eight"], category: "Science", reward: 20 },
+  { q: "What year did the Titanic sink?", a: ["1912"], category: "History", reward: 30 },
+  { q: "What is the chemical symbol for gold?", a: ["au"], category: "Science", reward: 25 },
+  { q: "Who painted the Mona Lisa?", a: ["leonardo da vinci", "da vinci", "leonardo"], category: "Art", reward: 30 },
+  { q: "What is the largest ocean on Earth?", a: ["pacific", "pacific ocean"], category: "Geography", reward: 20 },
+  { q: "In what year did World War II end?", a: ["1945"], category: "History", reward: 25 },
+  { q: "What is the square root of 144?", a: ["12", "twelve"], category: "Math", reward: 20 },
+  { q: "Who wrote Romeo and Juliet?", a: ["shakespeare", "william shakespeare"], category: "Literature", reward: 25 },
+  { q: "What is the capital of Japan?", a: ["tokyo"], category: "Geography", reward: 20 },
+  { q: "How many continents are there?", a: ["7", "seven"], category: "Geography", reward: 15 },
+  { q: "What is the largest mammal?", a: ["blue whale", "whale"], category: "Science", reward: 25 },
+  { q: "What color do you get mixing blue and yellow?", a: ["green"], category: "General", reward: 15 },
+  { q: "What is H2O commonly known as?", a: ["water"], category: "Science", reward: 10 },
+  { q: "How many sides does a hexagon have?", a: ["6", "six"], category: "Math", reward: 15 },
+  { q: "What planet is known as the Red Planet?", a: ["mars"], category: "Science", reward: 20 },
+  { q: "What is the tallest mountain in the world?", a: ["mount everest", "everest"], category: "Geography", reward: 25 },
+  { q: "How many hours are in a day?", a: ["24", "twenty four", "twentyfour"], category: "General", reward: 10 },
+  { q: "What is the currency of Japan?", a: ["yen"], category: "Geography", reward: 20 },
+  { q: "Who discovered gravity?", a: ["newton", "isaac newton"], category: "Science", reward: 25 },
 ];
 
 // Slots configuration
@@ -45,22 +139,53 @@ const slotPayouts: Record<string, number> = {
 const rpsChoices = ["rock", "paper", "scissors"];
 const rpsEmojis: Record<string, string> = { rock: "🪨", paper: "📄", scissors: "✂️" };
 
-// Helper functions
+// Reward amounts
+const rewards = {
+  coinflip: 10,
+  rps: 15,
+  numberGuessBase: 50,
+  numberGuessBonus: 5, // per remaining attempt
+  blackjackWin: 100,
+  blackjackBlackjack: 75,
+  dailyBase: 25,
+  dailyStreakBonus: 5, // per day streak
+  dailyMaxStreak: 50,
+};
+
+// ============ HELPER FUNCTIONS ============
+
 function getRandomTrivia() {
   const question = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
+  // Generate wrong answers for multiple choice
+  const wrongAnswers = triviaQuestions
+    .filter(q => q.q !== question.q)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+    .map(q => q.a[0]);
+  
+  const correctAnswer = question.a[0];
+  const options = [correctAnswer, ...wrongAnswers].sort(() => Math.random() - 0.5);
+  
   return {
     question: question.q,
+    category: question.category,
+    options,
+    correctAnswer,
     reward: question.reward,
     id: Math.random().toString(36).substring(7),
   };
 }
 
-function checkTriviaAnswer(questionText: string, answer: string): { correct: boolean; reward: number } {
+function checkTriviaAnswer(questionText: string, answer: string): { correct: boolean; reward: number; correctAnswer: string } {
   const question = triviaQuestions.find(q => q.q === questionText);
-  if (!question) return { correct: false, reward: 0 };
+  if (!question) return { correct: false, reward: 0, correctAnswer: "" };
   
   const isCorrect = question.a.some(a => a.toLowerCase() === answer.toLowerCase().trim());
-  return { correct: isCorrect, reward: isCorrect ? question.reward : 0 };
+  return { 
+    correct: isCorrect, 
+    reward: isCorrect ? question.reward : 0,
+    correctAnswer: question.a[0].charAt(0).toUpperCase() + question.a[0].slice(1)
+  };
 }
 
 function spinSlots(): { result: string[]; display: string; payout: number } {
@@ -87,7 +212,7 @@ function coinFlip(): { result: "heads" | "tails"; emoji: string } {
   return { result, emoji: result === "heads" ? "🪙" : "💿" };
 }
 
-function playRPS(playerChoice: string): { playerChoice: string; botChoice: string; result: "win" | "lose" | "tie"; playerEmoji: string; botEmoji: string } {
+function playRPS(playerChoice: string): { playerChoice: string; botChoice: string; result: "win" | "lose" | "tie"; playerEmoji: string; botEmoji: string; reward: number } {
   const botChoice = rpsChoices[Math.floor(Math.random() * rpsChoices.length)];
   
   let result: "win" | "lose" | "tie";
@@ -109,6 +234,7 @@ function playRPS(playerChoice: string): { playerChoice: string; botChoice: strin
     result,
     playerEmoji: rpsEmojis[playerChoice],
     botEmoji: rpsEmojis[botChoice],
+    reward: result === "win" ? rewards.rps : 0,
   };
 }
 
@@ -116,10 +242,16 @@ function generateSecretNumber(): number {
   return Math.floor(Math.random() * 100) + 1;
 }
 
-function checkGuess(secret: number, guess: number): { result: "correct" | "higher" | "lower"; reward: number } {
-  if (guess === secret) return { result: "correct", reward: 50 };
-  if (guess < secret) return { result: "higher", reward: 0 };
-  return { result: "lower", reward: 0 };
+function checkGuess(secret: number, guess: number, attemptsLeft?: number): { correct: boolean; hint: string; reward: number; answer: number } {
+  const isCorrect = guess === secret;
+  const bonus = attemptsLeft ? attemptsLeft * rewards.numberGuessBonus : 0;
+  
+  return { 
+    correct: isCorrect, 
+    hint: guess < secret ? "📈 Higher!" : "📉 Lower!",
+    reward: isCorrect ? rewards.numberGuessBase + bonus : 0,
+    answer: secret
+  };
 }
 
 // Blackjack helpers
@@ -205,6 +337,8 @@ function startBlackjack(bet: number): {
   };
 }
 
+// ============ REQUEST HANDLER ============
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -218,6 +352,16 @@ serve(async (req) => {
     let responseData: unknown;
 
     switch (action) {
+      // ============ NEW: Get available games ============
+      case "get_games":
+        responseData = {
+          games: gameDefinitions,
+          currency: "UC",
+          version: "2.0"
+        };
+        break;
+
+      // ============ Trivia ============
       case "get_trivia":
         responseData = getRandomTrivia();
         break;
@@ -226,14 +370,17 @@ serve(async (req) => {
         responseData = checkTriviaAnswer(params.question, params.answer);
         break;
 
+      // ============ Slots ============
       case "spin_slots":
         responseData = spinSlots();
         break;
 
+      // ============ Coinflip ============
       case "coin_flip":
         responseData = coinFlip();
         break;
 
+      // ============ RPS ============
       case "play_rps":
         if (!rpsChoices.includes(params.choice)) {
           responseData = { error: "Invalid choice. Use: rock, paper, scissors" };
@@ -242,20 +389,21 @@ serve(async (req) => {
         }
         break;
 
+      // ============ Number Guess ============
       case "generate_number":
         responseData = { secret: generateSecretNumber() };
         break;
 
       case "check_guess":
-        responseData = checkGuess(params.secret, params.guess);
+        responseData = checkGuess(params.secret, params.guess, params.attemptsLeft);
         break;
 
+      // ============ Blackjack ============
       case "start_blackjack":
         responseData = startBlackjack(params.bet || 50);
         break;
 
-      case "blackjack_hit":
-        // Client sends current game state, we add a card
+      case "blackjack_hit": {
         const hitDeck = params.deck as Card[];
         const hitHand = params.playerHand as Card[];
         hitHand.push(hitDeck.pop()!);
@@ -267,9 +415,9 @@ serve(async (req) => {
           busted: handValue(hitHand) > 21,
         };
         break;
+      }
 
-      case "blackjack_stand":
-        // Dealer plays out
+      case "blackjack_stand": {
         const standDeck = params.deck as Card[];
         const dealerHand = params.dealerHand as Card[];
         const playerValue = params.playerValue as number;
@@ -280,20 +428,20 @@ serve(async (req) => {
         
         const dealerFinalValue = handValue(dealerHand);
         let result: "win" | "lose" | "push";
-        let multiplier = 0;
+        let payout = 0;
         
         if (dealerFinalValue > 21) {
           result = "win";
-          multiplier = 2;
+          payout = rewards.blackjackWin;
         } else if (dealerFinalValue > playerValue) {
           result = "lose";
-          multiplier = 0;
+          payout = 0;
         } else if (dealerFinalValue < playerValue) {
           result = "win";
-          multiplier = 2;
+          payout = rewards.blackjackWin;
         } else {
           result = "push";
-          multiplier = 1;
+          payout = 0;
         }
         
         responseData = {
@@ -301,21 +449,19 @@ serve(async (req) => {
           dealerDisplay: formatHand(dealerHand),
           dealerValue: dealerFinalValue,
           result,
-          multiplier,
+          payout,
         };
         break;
+      }
 
+      // ============ Config ============
       case "get_config":
-        // Return all game configurations
         responseData = {
+          games: gameDefinitions,
+          currency: "UC",
           slots: { symbols: slotSymbols, payouts: slotPayouts },
           rps: { choices: rpsChoices, emojis: rpsEmojis },
-          rewards: {
-            coinflip: 50,
-            rps: 40,
-            numberGuess: 50,
-            blackjackMultiplier: 2,
-          },
+          rewards,
         };
         break;
 
