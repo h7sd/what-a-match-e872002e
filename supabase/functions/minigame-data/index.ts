@@ -97,6 +97,43 @@ const gameDefinitions: GameDefinition[] = [
   }
 ];
 
+// ============ UTILITY COMMANDS (Non-Game) ============
+
+interface UtilityCommand {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  options?: { name: string; value: string; description?: string }[];
+}
+
+const utilityCommands: UtilityCommand[] = [
+  {
+    id: "link",
+    name: "Link Account",
+    description: "Link your Discord to your UserVault account",
+    emoji: "🔗",
+  },
+  {
+    id: "unlink",
+    name: "Unlink Account",
+    description: "Unlink your Discord from UserVault",
+    emoji: "🔓",
+  },
+  {
+    id: "profile",
+    name: "Profile",
+    description: "View your UserVault profile",
+    emoji: "👤",
+  },
+  {
+    id: "apistats",
+    name: "API Stats",
+    description: "Show API request statistics",
+    emoji: "📊",
+  },
+];
+
 // ============ GAME CONFIGURATIONS ============
 
 // Trivia Questions
@@ -358,6 +395,16 @@ serve(async (req) => {
           games: gameDefinitions,
           currency: "UC",
           version: "2.0"
+        };
+        break;
+
+      // ============ NEW: Get all commands (games + utilities) ============
+      case "get_commands":
+        responseData = {
+          games: gameDefinitions,
+          utilities: utilityCommands,
+          currency: "UC",
+          version: "2.1"
         };
         break;
 

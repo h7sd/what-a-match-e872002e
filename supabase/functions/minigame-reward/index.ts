@@ -56,7 +56,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, discordUserId, amount, gameType, description } = JSON.parse(body);
+    const { action, discordUserId, amount, gameType, description, username } = JSON.parse(body);
 
     console.log(`Minigame action: ${action} for Discord user ${discordUserId}`);
 
@@ -64,6 +64,121 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // ============ LINK ACCOUNT ============
+    if (action === "link_account") {
+      if (!username) {
+        return new Response(
+          JSON.stringify({ error: "Username is required" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Check if Discord is already linked
+      const { data: existingLink } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("discord_user_id", discordUserId)
+        .single();
+
+      if (existingLink) {
+        return new Response(
+          JSON.stringify({ error: `Already linked to ${existingLink.username}. Use /unlink first.` }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Find profile by username
+      const { data: targetProfile, error: profileErr } = await supabase
+        .from("profiles")
+        .select("user_id, username, discord_user_id")
+        .ilike("username", username)
+        .single();
+
+      if (profileErr || !targetProfile) {
+        return new Response(
+          JSON.stringify({ error: `User "${username}" not found on UserVault` }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      if (targetProfile.discord_user_id && targetProfile.discord_user_id !== discordUserId) {
+        return new Response(
+          JSON.stringify({ error: "This UserVault account is already linked to another Discord" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Link the account
+      await supabase
+        .from("profiles")
+        .update({ discord_user_id: discordUserId })
+        .eq("user_id", targetProfile.user_id);
+
+      return new Response(
+        JSON.stringify({ success: true, username: targetProfile.username }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ UNLINK ACCOUNT ============
+    if (action === "unlink_account") {
+      const { data: linkedProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("discord_user_id", discordUserId)
+        .single();
+
+      if (!linkedProfile) {
+        return new Response(
+          JSON.stringify({ error: "Your Discord is not linked to any UserVault account" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      await supabase
+        .from("profiles")
+        .update({ discord_user_id: null })
+        .eq("discord_user_id", discordUserId);
+
+      return new Response(
+        JSON.stringify({ success: true, message: `Unlinked from ${linkedProfile.username}` }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ GET PROFILE ============
+    if (action === "get_profile") {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .eq("discord_user_id", discordUserId)
+        .single();
+
+      if (!profile) {
+        return new Response(
+          JSON.stringify({ error: "Discord not linked. Use /link <username> first!" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const { data: balance } = await supabase
+        .from("user_balances")
+        .select("balance, total_earned")
+        .eq("user_id", profile.user_id)
+        .single();
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          username: profile.username,
+          balance: balance?.balance || 0,
+          totalEarned: balance?.total_earned || 0,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ REQUIRE LINKED ACCOUNT FOR OTHER ACTIONS ============
     // Find user by discord_user_id in profiles
     const { data: profile, error: profileError } = await supabase
       .from("profiles")

@@ -191,6 +191,22 @@ class UserVaultAPI:
         """Get list of available games from API."""
         return await self.game_api("get_games")
     
+    async def get_all_commands(self) -> dict:
+        """Get all available commands (games + utilities) from API."""
+        return await self.game_api("get_commands")
+    
+    async def link_account(self, discord_user_id: str, username: str) -> dict:
+        """Link Discord account to UserVault."""
+        return await self.reward_api("link_account", discord_user_id, username=username)
+    
+    async def unlink_account(self, discord_user_id: str) -> dict:
+        """Unlink Discord account from UserVault."""
+        return await self.reward_api("unlink_account", discord_user_id)
+    
+    async def get_profile(self, discord_user_id: str) -> dict:
+        """Get UserVault profile for Discord user."""
+        return await self.reward_api("get_profile", discord_user_id)
+    
     async def get_trivia(self) -> dict:
         """Get a trivia question."""
         return await self.game_api("get_trivia")
@@ -379,7 +395,18 @@ class UserVaultBot(commands.Bot):
     
     async def setup_hook(self):
         """Called when the bot is ready to set up commands."""
-        # Register all commands
+        # Fetch available commands from API
+        print("📡 Fetching commands from API...")
+        try:
+            cmd_data = await self.api.get_all_commands()
+            if cmd_data.get("games"):
+                print(f"✅ Loaded {len(cmd_data['games'])} games from API")
+            if cmd_data.get("utilities"):
+                print(f"✅ Loaded {len(cmd_data['utilities'])} utility commands from API")
+        except Exception as e:
+            print(f"⚠️ Could not fetch commands from API: {e}")
+        
+        # Register all commands (game commands)
         self.tree.add_command(trivia)
         self.tree.add_command(slots)
         self.tree.add_command(coin)
@@ -388,6 +415,11 @@ class UserVaultBot(commands.Bot):
         self.tree.add_command(guess)
         self.tree.add_command(balance)
         self.tree.add_command(daily)
+        
+        # Register utility commands
+        self.tree.add_command(link)
+        self.tree.add_command(unlink)
+        self.tree.add_command(profile)
         self.tree.add_command(apistats)
         
         # Sync commands
@@ -588,6 +620,80 @@ async def apistats(interaction: discord.Interaction):
         f"📈 Success Rate: **{success_rate:.1f}%**",
         ephemeral=True
     )
+
+
+# ============ UTILITY COMMANDS ============
+
+@app_commands.command(name="link", description="🔗 Link your Discord to your UserVault account")
+async def link(interaction: discord.Interaction, username: str):
+    """Link Discord account to UserVault."""
+    await interaction.response.defer(ephemeral=True)
+    
+    result = await bot.api.link_account(str(interaction.user.id), username)
+    
+    if result.get("error"):
+        await interaction.followup.send(f"❌ {result['error']}", ephemeral=True)
+    elif result.get("success"):
+        await interaction.followup.send(
+            f"🔗 **Account Linked!**\n\n"
+            f"✅ Your Discord is now linked to **{username}**\n"
+            f"💰 You can now earn UC from games!",
+            ephemeral=True
+        )
+    else:
+        await interaction.followup.send(
+            f"⏳ **Verification Required**\n\n"
+            f"Please verify on UserVault to complete the link.\n"
+            f"Check your UserVault dashboard for the verification code.",
+            ephemeral=True
+        )
+
+
+@app_commands.command(name="unlink", description="🔓 Unlink your Discord from UserVault")
+async def unlink(interaction: discord.Interaction):
+    """Unlink Discord account from UserVault."""
+    await interaction.response.defer(ephemeral=True)
+    
+    result = await bot.api.unlink_account(str(interaction.user.id))
+    
+    if result.get("error"):
+        await interaction.followup.send(f"❌ {result['error']}", ephemeral=True)
+    else:
+        await interaction.followup.send(
+            f"🔓 **Account Unlinked**\n\n"
+            f"Your Discord has been unlinked from UserVault.",
+            ephemeral=True
+        )
+
+
+@app_commands.command(name="profile", description="👤 View your UserVault profile")
+async def profile(interaction: discord.Interaction):
+    """View UserVault profile."""
+    await interaction.response.defer()
+    
+    result = await bot.api.get_profile(str(interaction.user.id))
+    
+    if result.get("error"):
+        if "not linked" in result.get("error", "").lower():
+            await interaction.followup.send(
+                f"❌ **Not Linked**\n\n"
+                f"Use `/link <username>` to link your Discord to UserVault first!",
+            )
+        else:
+            await interaction.followup.send(f"❌ {result['error']}")
+    else:
+        username = result.get("username", "Unknown")
+        balance = result.get("balance", 0)
+        total_earned = result.get("totalEarned", 0)
+        profile_url = f"https://uservault.cc/{username}"
+        
+        await interaction.followup.send(
+            f"👤 **UserVault Profile**\n\n"
+            f"**Username:** {username}\n"
+            f"💰 **Balance:** {balance} UC\n"
+            f"📈 **Total Earned:** {total_earned} UC\n"
+            f"🔗 **Profile:** {profile_url}"
+        )
 
 
 # ============ MESSAGE HANDLER FOR GUESS GAME ============
