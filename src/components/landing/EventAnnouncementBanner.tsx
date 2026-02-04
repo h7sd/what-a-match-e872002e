@@ -23,10 +23,10 @@ function HuntButton({ event }: { event: BadgeEvent }) {
     return (
       <Link 
         to="/" 
-        className="group relative overflow-hidden px-4 py-1.5 bg-black/30 hover:bg-black/40 backdrop-blur-sm rounded-full text-xs font-bold transition-all duration-300 border border-white/20 hover:border-white/40 hover:scale-105"
+        className="group relative overflow-hidden px-2.5 py-0.5 bg-black/30 hover:bg-black/40 backdrop-blur-sm rounded-full text-[11px] font-bold transition-all duration-300 border border-white/20 hover:border-white/40 hover:scale-105"
       >
-        <span className="relative z-10 flex items-center gap-1.5">
-          <Skull className="w-3.5 h-3.5" />
+        <span className="relative z-10 flex items-center gap-1">
+          <Skull className="w-3 h-3" />
           Steal
         </span>
       </Link>
@@ -35,13 +35,13 @@ function HuntButton({ event }: { event: BadgeEvent }) {
   
   if (isLoading) {
     return (
-      <span className="px-4 py-1.5 bg-black/30 backdrop-blur-sm rounded-full text-xs font-bold border border-white/20 opacity-60">
-        <span className="flex items-center gap-1.5">
+      <span className="px-2.5 py-0.5 bg-black/30 backdrop-blur-sm rounded-full text-[11px] font-bold border border-white/20 opacity-60">
+        <span className="flex items-center gap-1">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           >
-            <Crosshair className="w-3.5 h-3.5" />
+            <Crosshair className="w-3 h-3" />
           </motion.div>
           Loading...
         </span>
@@ -51,9 +51,9 @@ function HuntButton({ event }: { event: BadgeEvent }) {
   
   if (!holder?.username) {
     return (
-      <span className="px-4 py-1.5 bg-black/30 backdrop-blur-sm rounded-full text-xs font-bold border border-white/20 opacity-60">
-        <span className="flex items-center gap-1.5">
-          <Crosshair className="w-3.5 h-3.5" />
+      <span className="px-2.5 py-0.5 bg-black/30 backdrop-blur-sm rounded-full text-[11px] font-bold border border-white/20 opacity-60">
+        <span className="flex items-center gap-1">
+          <Crosshair className="w-3 h-3" />
           No holder
         </span>
       </span>
@@ -68,7 +68,7 @@ function HuntButton({ event }: { event: BadgeEvent }) {
   return (
     <motion.button 
       onClick={handleHuntClick}
-      className="group relative overflow-hidden px-4 py-1.5 bg-black/30 hover:bg-black/40 backdrop-blur-sm rounded-full text-xs font-bold transition-all duration-300 border border-white/20 hover:border-white/40 cursor-pointer"
+      className="group relative overflow-hidden px-2.5 py-0.5 bg-black/30 hover:bg-black/40 backdrop-blur-sm rounded-full text-[11px] font-bold transition-all duration-300 border border-white/20 hover:border-white/40 cursor-pointer"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.98 }}
     >
@@ -77,8 +77,8 @@ function HuntButton({ event }: { event: BadgeEvent }) {
         animate={{ x: ['-100%', '100%'] }}
         transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
       />
-      <span className="relative z-10 flex items-center gap-1.5">
-        <Crosshair className="w-3.5 h-3.5" />
+      <span className="relative z-10 flex items-center gap-1">
+        <Crosshair className="w-3 h-3" />
         Hunt @{holder.username}
       </span>
     </motion.button>
@@ -152,11 +152,11 @@ export function EventAnnouncementBanner() {
                 />
 
                 {/* Content */}
-                <div className="relative px-4 py-2.5 flex items-center justify-center gap-3">
+                <div className="relative px-3 py-1.5 flex items-center justify-center gap-2">
                   {/* Icon with pulse */}
                   <motion.div
                     animate={{ 
-                      scale: [1, 1.2, 1],
+                      scale: [1, 1.15, 1],
                       opacity: [0.8, 1, 0.8]
                     }}
                     transition={{ 
@@ -167,14 +167,14 @@ export function EventAnnouncementBanner() {
                     className="flex-shrink-0"
                   >
                     {event.event_type === 'steal' ? (
-                      <Target className="w-4 h-4 text-white drop-shadow-lg" />
+                      <Target className="w-3.5 h-3.5 text-white drop-shadow-lg" />
                     ) : (
-                      <Sparkles className="w-4 h-4 text-white drop-shadow-lg" />
+                      <Sparkles className="w-3.5 h-3.5 text-white drop-shadow-lg" />
                     )}
                   </motion.div>
                   
                   {/* Text content */}
-                  <div className="flex items-center gap-1.5 text-white text-sm font-medium">
+                  <div className="flex items-center gap-1 text-white text-xs font-medium">
                     <span className="font-bold tracking-wide">{event.name}</span>
                     <span className="hidden sm:inline text-white/80 font-normal">
                       —
@@ -190,13 +190,13 @@ export function EventAnnouncementBanner() {
                   {/* Close button */}
                   <motion.button
                     onClick={() => setDismissed(prev => [...prev, event.id])}
-                    className="ml-1 p-1.5 hover:bg-black/20 rounded-full transition-colors flex-shrink-0"
+                    className="p-1 hover:bg-black/20 rounded-full transition-colors flex-shrink-0"
                     aria-label="Close"
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   >
-                    <X className="w-4 h-4 text-white/80" />
+                    <X className="w-3.5 h-3.5 text-white/80" />
                   </motion.button>
                 </div>
 
