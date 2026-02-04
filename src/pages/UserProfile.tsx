@@ -406,7 +406,7 @@ export default function UserProfile() {
       />
 
       <div 
-        className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 py-12"
+        className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 pt-12 pb-44"
         style={{ opacity: transparency }}
       >
         <motion.div
