@@ -86,7 +86,8 @@ export function FriendBadgesManager() {
 
   // Search for users with button
   const handleSearch = async () => {
-    const query = searchUsername.trim();
+    // Accept inputs like "@username" as well
+    const query = searchUsername.trim().replace(/^@+/, '');
     if (query.length < 1) {
       setSearchResults([]);
       return;
@@ -231,21 +232,10 @@ export function FriendBadgesManager() {
         });
       
       if (recipientError) throw recipientError;
-      
-      // Insert badge for creator (themselves)
-      const { error: creatorError } = await supabase
-        .from('friend_badges')
-        .insert({
-          creator_id: user!.id,
-          recipient_id: user!.id,
-          ...badgeData,
-        });
-      
-      if (creatorError) throw creatorError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friendBadges'] });
-      toast({ title: 'Badge created! Both you and your friend received it.' });
+      toast({ title: 'Badge gesendet!' });
       setIsCreateOpen(false);
       setSelectedRecipient(null);
       setSearchUsername('');
