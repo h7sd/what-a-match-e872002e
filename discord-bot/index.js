@@ -474,6 +474,25 @@ client.once('ready', async () => {
   console.log(`║  Guilds: ${client.guilds.cache.size.toString().padEnd(33)}║`);
   console.log('╚════════════════════════════════════════════╝');
   console.log('');
+
+  // ========= REGISTER SLASH COMMANDS =========
+  if (CLIENT_ID) {
+    console.log('📝 Registering slash commands...');
+    try {
+      const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+      await rest.put(
+        Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+        { body: commands.map(c => c.toJSON()) }
+      );
+      console.log(`✅ Registered ${commands.length} slash commands!`);
+    } catch (err) {
+      console.error('❌ Failed to register commands:', err.message);
+    }
+  } else {
+    console.log('⚠️ DISCORD_CLIENT_ID not set - skipping command registration');
+  }
+  console.log('');
+
   console.log('📋 Badge Request Management: ENABLED');
   console.log(`🔗 Using secure edge function: ${BOT_BADGE_REQUESTS_URL}`);
   console.log(`📢 Badge Request Channel: ${BADGE_REQUEST_CHANNEL_ID}`);
@@ -515,6 +534,7 @@ client.once('ready', async () => {
   
   console.log('');
   console.log('👀 Watching for presence updates and badge requests...');
+  console.log('🎮 Minigame commands: /balance, /daily, /trivia, /coinflip, /slots, /rps, /blackjack, /link');
   console.log('');
 });
 
