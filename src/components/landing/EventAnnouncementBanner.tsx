@@ -47,13 +47,20 @@ function HuntButton({ event }: { event: BadgeEvent }) {
     );
   }
   
+  // Force page reload when navigating to hunt target to ensure fresh data
+  const handleHuntClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Navigate with state to force refetch
+    window.location.href = `/${holder.username}`;
+  };
+  
   return (
-    <Link 
-      to={`/${holder.username}`}
-      className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs font-bold transition-colors animate-pulse"
+    <button 
+      onClick={handleHuntClick}
+      className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs font-bold transition-colors animate-pulse cursor-pointer"
     >
-      🎯 Hunt
-    </Link>
+      🎯 Hunt @{holder.username}
+    </button>
   );
 }
 
