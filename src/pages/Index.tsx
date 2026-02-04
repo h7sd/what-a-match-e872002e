@@ -12,6 +12,7 @@ import { ModernFooter } from "@/components/landing/ModernFooter";
 import { PremiumDialog } from "@/components/landing/PremiumDialog";
 import { LiveChatWidget } from "@/components/chat/LiveChatWidget";
 import { LiquidEther } from "@/components/landing/LiquidEther";
+import { ProfileCardSwap } from "@/components/landing/ProfileCardSwap";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -61,6 +62,8 @@ export default function Index() {
           </div>
 
           <ClaimSection />
+
+          <ProfileCardSwap />
 
           <PricingSection />
 

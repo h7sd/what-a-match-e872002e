@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Mail, Shield } from 'lucide-react';
+import { Loader2, ArrowLeft, Mail, Shield, Check } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecure } from '@/lib/secureEdgeFunctions';
@@ -14,6 +14,76 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { LiquidEther } from '@/components/landing/LiquidEther';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
+
+// Visual Auth Stepper Component
+function AuthStepper({ currentStep }: { currentStep: 'signup' | 'verify' | 'complete' }) {
+  const steps = [
+    { key: 'signup', label: 'Account' },
+    { key: 'verify', label: 'Verify' },
+    { key: 'complete', label: 'Done' }
+  ];
+  
+  const currentIndex = steps.findIndex(s => s.key === currentStep);
+  
+  return (
+    <div className="flex items-center justify-center w-full mb-6">
+      {steps.map((step, index) => {
+        const isComplete = index < currentIndex;
+        const isActive = index === currentIndex;
+        const isLast = index === steps.length - 1;
+        
+        return (
+          <div key={step.key} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <motion.div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
+                  isComplete 
+                    ? 'bg-primary text-primary-foreground' 
+                    : isActive 
+                      ? 'bg-primary text-primary-foreground ring-4 ring-primary/30' 
+                      : 'bg-white/10 text-white/50'
+                }`}
+                initial={false}
+                animate={{
+                  scale: isActive ? 1.1 : 1,
+                }}
+                transition={{ duration: 0.2 }}
+              >
+                {isComplete ? (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                  >
+                    <Check className="w-5 h-5" />
+                  </motion.div>
+                ) : (
+                  <span>{index + 1}</span>
+                )}
+              </motion.div>
+              <span className={`text-xs mt-2 transition-colors ${
+                isComplete || isActive ? 'text-primary' : 'text-white/40'
+              }`}>
+                {step.label}
+              </span>
+            </div>
+            
+            {!isLast && (
+              <div className="relative w-12 md:w-16 h-0.5 mx-2 mt-[-1rem] bg-white/10 rounded-full overflow-hidden">
+                <motion.div
+                  className="absolute inset-y-0 left-0 bg-primary"
+                  initial={{ width: 0 }}
+                  animate={{ width: isComplete ? '100%' : '0%' }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACVEg1JAQ99IiFFG';
 
@@ -713,6 +783,18 @@ export default function Auth() {
             {/* Subtle spotlight effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
             
+            {/* Stepper for signup flow */}
+            {(step === 'signup' || step === 'verify') && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="relative z-10"
+              >
+                <AuthStepper currentStep={step === 'signup' ? 'signup' : 'verify'} />
+              </motion.div>
+            )}
+
             {/* Header */}
             <motion.div 
               className="text-center mb-8 relative z-10"
