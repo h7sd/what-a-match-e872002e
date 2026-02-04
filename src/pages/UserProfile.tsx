@@ -474,17 +474,19 @@ export default function UserProfile() {
           )}
         </motion.div>
 
-        {/* Bottom engagement area - stacked properly for mobile */}
+        {/* Volume control - fixed top right */}
+        {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
+          <div className="fixed top-4 right-4 z-50">
+            <SimpleVolumeBar
+              volume={volume}
+              onVolumeChange={setVolume}
+            />
+          </div>
+        )}
+
+        {/* Bottom engagement area - comments and likes only */}
         <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none safe-area-inset-bottom">
           <div className="flex flex-col items-center gap-2 p-4 pb-6 pointer-events-auto">
-            {/* Volume control at the top of the stack if enabled */}
-            {!showStartScreen && profile.music_url && (profile.show_volume_control ?? true) && (
-              <SimpleVolumeBar
-                volume={volume}
-                onVolumeChange={setVolume}
-              />
-            )}
-            
             {/* Comment input */}
             {((profile as any).show_comments ?? true) && (
               <ProfileCommentInput
