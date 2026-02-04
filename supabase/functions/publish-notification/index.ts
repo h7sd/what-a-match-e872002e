@@ -257,18 +257,18 @@ Deno.serve(async (req) => {
     })
 
     // Prepare payload with dynamic content based on type
-    // For announcements, include @everyone
+    // For announcements: only @everyone, no role tags
+    // For changelog: role tags only
     const contentMessage = isAnnouncement 
-      ? `@everyone ${roleMentions} **New Announcement!**`
+      ? `@everyone **New Announcement!**`
       : `${roleMentions} **Website Update Published!**`
     
     const payload = {
       content: contentMessage,
       embeds: [embed],
-      allowed_mentions: {
-        everyone: isAnnouncement, // Allow @everyone only for announcements
-        roles: rolesToMention
-      }
+      allowed_mentions: isAnnouncement 
+        ? { everyone: true }
+        : { roles: rolesToMention }
     }
 
     // Generate HMAC for payload integrity
