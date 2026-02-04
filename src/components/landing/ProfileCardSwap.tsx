@@ -227,7 +227,27 @@ export function ProfileCardSwap() {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
   const { data: profiles, isLoading } = useRandomProfilesWithBadges();
 
-  if (isLoading || !profiles || profiles.length < 3) {
+  // Show skeleton loading state instead of nothing
+  if (isLoading) {
+    return (
+      <section className="py-32 px-6 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="h-8 w-32 bg-muted/20 rounded-full mb-6 animate-pulse" />
+              <div className="h-12 w-3/4 bg-muted/20 rounded mb-4 animate-pulse" />
+              <div className="h-6 w-1/2 bg-muted/20 rounded animate-pulse" />
+            </div>
+            <div className="h-[600px] flex items-center justify-center">
+              <div className="w-[340px] h-[480px] bg-muted/10 rounded-2xl animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!profiles || profiles.length < 3) {
     return null;
   }
 
