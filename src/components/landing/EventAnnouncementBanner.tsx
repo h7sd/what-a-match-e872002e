@@ -85,66 +85,58 @@ export function EventAnnouncementBanner() {
 
   if (visibleEvents.length === 0) return null;
 
-  // Show only the first event to avoid overlap – user can dismiss to see next
-  const primaryEvent = visibleEvents[0];
-
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={primaryEvent.id}
-          initial={{ y: -60, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -60, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="pointer-events-auto"
-        >
-          <div 
-            className={`
-              w-full py-2.5 px-4 flex items-center justify-center gap-2 text-white font-medium text-sm
-              ${primaryEvent.event_type === 'steal' 
-                ? 'bg-gradient-to-r from-red-600 via-orange-500 to-red-600' 
-                : 'bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600'}
-            `}
-            style={{
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 3s ease-in-out infinite',
-            }}
+    <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none flex flex-col">
+      <AnimatePresence>
+        {visibleEvents.map((event, index) => (
+          <motion.div
+            key={event.id}
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 30 }}
+            className="pointer-events-auto"
           >
-            {primaryEvent.event_type === 'steal' ? (
-              <Target className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <Sparkles className="w-4 h-4 flex-shrink-0" />
-            )}
-            
-            <span className="truncate">
-              <strong>{primaryEvent.name}</strong>
-              <span className="hidden sm:inline">
-                {' - '}
-                {primaryEvent.event_type === 'steal' 
-                  ? 'Steal badges from other users!' 
-                  : 'Find the hidden badge!'}
-              </span>
-            </span>
-
-            <HuntButton event={primaryEvent} />
-
-            <button
-              onClick={() => setDismissed(prev => [...prev, primaryEvent.id])}
-              className="ml-1 p-1 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
-              aria-label="Close"
+            <div 
+              className={`
+                w-full py-2 px-4 flex items-center justify-center gap-2 text-white font-medium text-sm
+                ${event.event_type === 'steal' 
+                  ? 'bg-gradient-to-r from-red-600 via-orange-500 to-red-600' 
+                  : 'bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600'}
+              `}
+              style={{
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 3s ease-in-out infinite',
+              }}
             >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Indicator for more events */}
-            {visibleEvents.length > 1 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs flex-shrink-0">
-                +{visibleEvents.length - 1}
+              {event.event_type === 'steal' ? (
+                <Target className="w-4 h-4 flex-shrink-0" />
+              ) : (
+                <Sparkles className="w-4 h-4 flex-shrink-0" />
+              )}
+              
+              <span className="truncate">
+                <strong>{event.name}</strong>
+                <span className="hidden sm:inline">
+                  {' - '}
+                  {event.event_type === 'steal' 
+                    ? 'Steal badges from other users!' 
+                    : 'Find the hidden badge!'}
+                </span>
               </span>
-            )}
-          </div>
-        </motion.div>
+
+              <HuntButton event={event} />
+
+              <button
+                onClick={() => setDismissed(prev => [...prev, event.id])}
+                className="ml-1 p-1 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        ))}
       </AnimatePresence>
 
       <style>{`

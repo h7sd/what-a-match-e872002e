@@ -122,7 +122,11 @@ function SortableBadgeItem({
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-sm truncate">{badge.name}</h4>
           <p className="text-xs text-muted-foreground truncate">
-            {isEnabled ? 'Visible on profile' : 'Hidden'}
+            {isHuntTarget && isEnabled 
+              ? 'Hunt target – always visible' 
+              : isEnabled 
+                ? 'Visible on profile' 
+                : 'Hidden'}
           </p>
         </div>
 
