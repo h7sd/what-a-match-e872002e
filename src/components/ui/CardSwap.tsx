@@ -101,6 +101,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
   const refs = useMemo<CardRef[]>(() => childArr.map(() => React.createRef<HTMLDivElement>()), [childArr.length]);
   const order = useRef<number[]>(Array.from({ length: childArr.length }, (_, i) => i));
   const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const isSwappingRef = useRef(false);
   const intervalRef = useRef<number>(0);
   const container = useRef<HTMLDivElement>(null);
 
@@ -113,6 +114,9 @@ const CardSwap: React.FC<CardSwapProps> = ({
     });
 
     const swap = () => {
+      // Prevent overlapping timelines (e.g. when `delay` is shorter than the animation duration)
+      if (isSwappingRef.current) return;
+      if (tlRef.current?.isActive()) return;
       if (order.current.length < 2) return;
 
       const [front, ...rest] = order.current;
@@ -121,6 +125,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
 
       const tl = gsap.timeline();
       tlRef.current = tl;
+      isSwappingRef.current = true;
 
       tl.to(elFront, {
         y: '+=500',
@@ -174,6 +179,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
         order.current = [...rest, front];
         // Notify parent that front card swapped to the back
         onCardSwap?.(front);
+        isSwappingRef.current = false;
       });
     };
 
@@ -194,14 +200,18 @@ const CardSwap: React.FC<CardSwapProps> = ({
       node.addEventListener('mouseenter', pause);
       node.addEventListener('mouseleave', resume);
 
-      return () => {
+       return () => {
         node.removeEventListener('mouseenter', pause);
         node.removeEventListener('mouseleave', resume);
+         tlRef.current?.kill();
         clearInterval(intervalRef.current);
       };
     }
 
-    return () => clearInterval(intervalRef.current);
+    return () => {
+      tlRef.current?.kill();
+      clearInterval(intervalRef.current);
+    };
   }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing, refs, config]);
 
   const rendered = childArr.map((child, i) =>
