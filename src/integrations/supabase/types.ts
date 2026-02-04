@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_discord_roles: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          role_id?: string
+        }
+        Relationships: []
+      }
       admin_webhooks: {
         Row: {
           created_at: string
@@ -21,6 +48,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          notification_type: string
           updated_at: string
           webhook_url: string
         }
@@ -30,6 +58,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          notification_type?: string
           updated_at?: string
           webhook_url: string
         }
@@ -39,6 +68,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          notification_type?: string
           updated_at?: string
           webhook_url?: string
         }

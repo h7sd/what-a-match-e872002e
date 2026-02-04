@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Loader2, Copy, Check, Send, ArrowLeft, BookMarked, Rocket, 
-  Plus, Trash2, Webhook, Radio 
+  Plus, Trash2, Webhook, Radio, Users, Megaphone, FileText, AtSign
 } from 'lucide-react';
 import {
   Dialog,
@@ -26,11 +27,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface SavedWebhook {
   id: string;
   name: string;
   webhook_url: string;
+  description: string | null;
+  notification_type: string;
+  created_at: string;
+}
+
+interface DiscordRole {
+  id: string;
+  name: string;
+  role_id: string;
   description: string | null;
   created_at: string;
 }
@@ -46,17 +57,33 @@ export default function PublishBookmarklet() {
   const [changes, setChanges] = useState('');
   const [sending, setSending] = useState(false);
   
+  // Notification type
+  const [notificationType, setNotificationType] = useState<'changelog' | 'announce'>('changelog');
+  
   // Webhook management
   const [webhooks, setWebhooks] = useState<SavedWebhook[]>([]);
   const [selectedWebhookId, setSelectedWebhookId] = useState<string>('default');
   const [loadingWebhooks, setLoadingWebhooks] = useState(true);
   
+  // Discord roles management
+  const [discordRoles, setDiscordRoles] = useState<DiscordRole[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+  
   // Add webhook dialog
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addWebhookDialogOpen, setAddWebhookDialogOpen] = useState(false);
   const [newWebhookName, setNewWebhookName] = useState('');
   const [newWebhookUrl, setNewWebhookUrl] = useState('');
   const [newWebhookDescription, setNewWebhookDescription] = useState('');
+  const [newWebhookType, setNewWebhookType] = useState<'changelog' | 'announce'>('changelog');
   const [addingWebhook, setAddingWebhook] = useState(false);
+  
+  // Add role dialog
+  const [addRoleDialogOpen, setAddRoleDialogOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleId, setNewRoleId] = useState('');
+  const [newRoleDescription, setNewRoleDescription] = useState('');
+  const [addingRole, setAddingRole] = useState(false);
   
   // Redirect non-admins
   useEffect(() => {
@@ -94,6 +121,36 @@ export default function PublishBookmarklet() {
     }
   }, [isAdmin]);
   
+  // Fetch Discord roles
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (!isAdmin) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('admin_discord_roles')
+          .select('*')
+          .order('created_at', { ascending: true });
+        
+        if (error) throw error;
+        setDiscordRoles(data || []);
+        // Select all by default
+        setSelectedRoleIds((data || []).map(r => r.id));
+      } catch (err) {
+        console.error('Error fetching roles:', err);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+    
+    if (isAdmin) {
+      fetchRoles();
+    }
+  }, [isAdmin]);
+  
+  // Filter webhooks by type
+  const filteredWebhooks = webhooks.filter(w => w.notification_type === notificationType);
+  
   // Add new webhook
   const handleAddWebhook = async () => {
     if (!newWebhookName.trim() || !newWebhookUrl.trim()) {
@@ -105,7 +162,6 @@ export default function PublishBookmarklet() {
       return;
     }
     
-    // Validate URL format
     if (!newWebhookUrl.startsWith('https://discord.com/api/webhooks/')) {
       toast({
         title: 'Invalid Webhook URL',
@@ -123,6 +179,7 @@ export default function PublishBookmarklet() {
           name: newWebhookName.trim(),
           webhook_url: newWebhookUrl.trim(),
           description: newWebhookDescription.trim() || null,
+          notification_type: newWebhookType,
           created_by: user!.id,
         })
         .select()
@@ -134,7 +191,7 @@ export default function PublishBookmarklet() {
       setNewWebhookName('');
       setNewWebhookUrl('');
       setNewWebhookDescription('');
-      setAddDialogOpen(false);
+      setAddWebhookDialogOpen(false);
       
       toast({
         title: 'Webhook added',
@@ -168,10 +225,7 @@ export default function PublishBookmarklet() {
         setSelectedWebhookId('default');
       }
       
-      toast({
-        title: 'Deleted',
-        description: `"${name}" has been removed.`,
-      });
+      toast({ title: 'Deleted', description: `"${name}" has been removed.` });
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -179,6 +233,98 @@ export default function PublishBookmarklet() {
         variant: 'destructive',
       });
     }
+  };
+  
+  // Add new role
+  const handleAddRole = async () => {
+    if (!newRoleName.trim() || !newRoleId.trim()) {
+      toast({
+        title: 'Missing fields',
+        description: 'Name and Role ID are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Validate role ID format (should be numeric)
+    if (!/^\d+$/.test(newRoleId.trim())) {
+      toast({
+        title: 'Invalid Role ID',
+        description: 'Role ID should be a numeric Discord ID.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setAddingRole(true);
+    try {
+      const { data, error } = await supabase
+        .from('admin_discord_roles')
+        .insert({
+          name: newRoleName.trim(),
+          role_id: newRoleId.trim(),
+          description: newRoleDescription.trim() || null,
+          created_by: user!.id,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      setDiscordRoles(prev => [...prev, data]);
+      setSelectedRoleIds(prev => [...prev, data.id]);
+      setNewRoleName('');
+      setNewRoleId('');
+      setNewRoleDescription('');
+      setAddRoleDialogOpen(false);
+      
+      toast({
+        title: 'Role added',
+        description: `"${data.name}" has been saved.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Could not add role.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingRole(false);
+    }
+  };
+  
+  // Delete role
+  const handleDeleteRole = async (id: string, name: string) => {
+    if (!confirm(`Delete role "${name}"?`)) return;
+    
+    try {
+      const { error } = await supabase
+        .from('admin_discord_roles')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setDiscordRoles(prev => prev.filter(r => r.id !== id));
+      setSelectedRoleIds(prev => prev.filter(rid => rid !== id));
+      
+      toast({ title: 'Deleted', description: `"${name}" has been removed.` });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Could not delete role.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Toggle role selection
+  const toggleRoleSelection = (roleId: string) => {
+    setSelectedRoleIds(prev => 
+      prev.includes(roleId) 
+        ? prev.filter(id => id !== roleId)
+        : [...prev, roleId]
+    );
   };
   
   // Generate bookmarklet code
@@ -206,10 +352,7 @@ export default function PublishBookmarklet() {
   const copyBookmarklet = () => {
     navigator.clipboard.writeText(bookmarkletCode);
     setCopied(true);
-    toast({
-      title: 'Copied!',
-      description: 'Bookmarklet code copied to clipboard.',
-    });
+    toast({ title: 'Copied!', description: 'Bookmarklet code copied to clipboard.' });
     setTimeout(() => setCopied(false), 2000);
   };
   
@@ -232,12 +375,19 @@ export default function PublishBookmarklet() {
         customWebhookUrl = webhook?.webhook_url;
       }
       
+      // Get selected role IDs
+      const roleIdsToTag = discordRoles
+        .filter(r => selectedRoleIds.includes(r.id))
+        .map(r => r.role_id);
+      
       const { data, error } = await supabase.functions.invoke('publish-notification', {
         body: {
           version: version.trim(),
           changes: changes.trim() ? changes.split('\n').filter(c => c.trim()) : [],
           publishedAt: new Date().toISOString(),
           customWebhookUrl,
+          notificationType,
+          roleIds: roleIdsToTag,
         },
       });
       
@@ -250,7 +400,7 @@ export default function PublishBookmarklet() {
         
         toast({
           title: '✅ Notification sent!',
-          description: `Discord message sent via "${webhookName}".`,
+          description: `${notificationType === 'changelog' ? 'Changelog' : 'Announcement'} sent via "${webhookName}".`,
         });
         setVersion('');
         setChanges('');
@@ -283,7 +433,7 @@ export default function PublishBookmarklet() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white">
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Button
           variant="ghost"
           onClick={() => navigate('/dashboard#admin')}
@@ -299,152 +449,297 @@ export default function PublishBookmarklet() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-4">
               <Rocket className="w-8 h-8 text-purple-400" />
             </div>
-            <h1 className="text-3xl font-bold">Publish Notification</h1>
+            <h1 className="text-3xl font-bold">Discord Notifications</h1>
             <p className="text-gray-400">
-              Send a Discord notification when you publish the website.
+              Send changelog updates to admins or announcements to all users.
             </p>
           </div>
           
-          {/* Webhook Management */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Webhook className="w-5 h-5 text-blue-400" />
-                Webhooks
-              </h2>
-              
-              <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="border-white/20">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Webhook
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-gray-900 border-white/10">
-                  <DialogHeader>
-                    <DialogTitle>Add New Webhook</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-4">
-                    <div>
-                      <Label htmlFor="webhook-name">Name</Label>
-                      <Input
-                        id="webhook-name"
-                        value={newWebhookName}
-                        onChange={(e) => setNewWebhookName(e.target.value)}
-                        placeholder="e.g. Staff Updates"
-                        className="bg-white/5 border-white/10 mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="webhook-url">Discord Webhook URL</Label>
-                      <Input
-                        id="webhook-url"
-                        value={newWebhookUrl}
-                        onChange={(e) => setNewWebhookUrl(e.target.value)}
-                        placeholder="https://discord.com/api/webhooks/..."
-                        className="bg-white/5 border-white/10 mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="webhook-desc">Description (optional)</Label>
-                      <Input
-                        id="webhook-desc"
-                        value={newWebhookDescription}
-                        onChange={(e) => setNewWebhookDescription(e.target.value)}
-                        placeholder="What is this webhook for?"
-                        className="bg-white/5 border-white/10 mt-1"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleAddWebhook}
-                      disabled={addingWebhook}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      {addingWebhook ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Plus className="w-4 h-4 mr-2" />
-                      )}
-                      Save Webhook
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+          {/* Notification Type Tabs */}
+          <Tabs value={notificationType} onValueChange={(v) => {
+            setNotificationType(v as 'changelog' | 'announce');
+            setSelectedWebhookId('default');
+          }}>
+            <TabsList className="grid w-full grid-cols-2 bg-white/5">
+              <TabsTrigger value="changelog" className="data-[state=active]:bg-purple-600">
+                <FileText className="w-4 h-4 mr-2" />
+                Admin Changelog
+              </TabsTrigger>
+              <TabsTrigger value="announce" className="data-[state=active]:bg-emerald-600">
+                <Megaphone className="w-4 h-4 mr-2" />
+                Global Announce
+              </TabsTrigger>
+            </TabsList>
             
-            {/* Webhook List */}
-            {loadingWebhooks ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <TabsContent value="changelog" className="space-y-6">
+              <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <p className="text-sm text-purple-300">
+                  <strong>Admin Changelog:</strong> Internal updates for staff members. 
+                  Use this for technical changes, bug fixes, and internal documentation.
+                </p>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {/* Default Webhook */}
-                <div 
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
-                    selectedWebhookId === 'default' 
-                      ? 'border-purple-500 bg-purple-500/10' 
-                      : 'border-white/10 hover:border-white/20'
-                  }`}
-                  onClick={() => setSelectedWebhookId('default')}
-                >
-                  <div className="flex items-center gap-3">
-                    <Radio className={`w-4 h-4 ${selectedWebhookId === 'default' ? 'text-purple-400' : 'text-gray-500'}`} />
-                    <div>
-                      <p className="font-medium">Default Webhook</p>
-                      <p className="text-xs text-gray-500">Configured in environment variables</p>
-                    </div>
-                  </div>
-                </div>
+            </TabsContent>
+            
+            <TabsContent value="announce" className="space-y-6">
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <p className="text-sm text-emerald-300">
+                  <strong>Global Announce:</strong> Public announcements for all users. 
+                  Use this for new features, events, and important updates.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Webhook Management */}
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Webhook className="w-5 h-5 text-blue-400" />
+                  Webhooks
+                </h2>
                 
-                {/* Custom Webhooks */}
-                {webhooks.map((webhook) => (
+                <Dialog open={addWebhookDialogOpen} onOpenChange={setAddWebhookDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="border-white/20">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 border-white/10">
+                    <DialogHeader>
+                      <DialogTitle>Add New Webhook</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div>
+                        <Label>Name</Label>
+                        <Input
+                          value={newWebhookName}
+                          onChange={(e) => setNewWebhookName(e.target.value)}
+                          placeholder="e.g. Staff Updates"
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Discord Webhook URL</Label>
+                        <Input
+                          value={newWebhookUrl}
+                          onChange={(e) => setNewWebhookUrl(e.target.value)}
+                          placeholder="https://discord.com/api/webhooks/..."
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Type</Label>
+                        <Select value={newWebhookType} onValueChange={(v) => setNewWebhookType(v as any)}>
+                          <SelectTrigger className="bg-white/5 border-white/10 mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="changelog">Admin Changelog</SelectItem>
+                            <SelectItem value="announce">Global Announce</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Description (optional)</Label>
+                        <Input
+                          value={newWebhookDescription}
+                          onChange={(e) => setNewWebhookDescription(e.target.value)}
+                          placeholder="What is this webhook for?"
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleAddWebhook}
+                        disabled={addingWebhook}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        {addingWebhook ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                        Save Webhook
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              {loadingWebhooks ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {/* Default Webhook */}
                   <div 
-                    key={webhook.id}
                     className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
-                      selectedWebhookId === webhook.id 
+                      selectedWebhookId === 'default' 
                         ? 'border-purple-500 bg-purple-500/10' 
                         : 'border-white/10 hover:border-white/20'
                     }`}
-                    onClick={() => setSelectedWebhookId(webhook.id)}
+                    onClick={() => setSelectedWebhookId('default')}
                   >
                     <div className="flex items-center gap-3">
-                      <Radio className={`w-4 h-4 ${selectedWebhookId === webhook.id ? 'text-purple-400' : 'text-gray-500'}`} />
+                      <Radio className={`w-4 h-4 ${selectedWebhookId === 'default' ? 'text-purple-400' : 'text-gray-500'}`} />
                       <div>
-                        <p className="font-medium">{webhook.name}</p>
-                        {webhook.description && (
-                          <p className="text-xs text-gray-500">{webhook.description}</p>
-                        )}
+                        <p className="font-medium text-sm">Default Webhook</p>
+                        <p className="text-xs text-gray-500">Environment variable</p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteWebhook(webhook.id, webhook.name);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                   </div>
-                ))}
+                  
+                  {/* Custom Webhooks filtered by type */}
+                  {filteredWebhooks.map((webhook) => (
+                    <div 
+                      key={webhook.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
+                        selectedWebhookId === webhook.id 
+                          ? 'border-purple-500 bg-purple-500/10' 
+                          : 'border-white/10 hover:border-white/20'
+                      }`}
+                      onClick={() => setSelectedWebhookId(webhook.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Radio className={`w-4 h-4 ${selectedWebhookId === webhook.id ? 'text-purple-400' : 'text-gray-500'}`} />
+                        <div>
+                          <p className="font-medium text-sm">{webhook.name}</p>
+                          {webhook.description && (
+                            <p className="text-xs text-gray-500">{webhook.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteWebhook(webhook.id, webhook.name);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {filteredWebhooks.length === 0 && (
+                    <p className="text-xs text-gray-500 text-center py-2">
+                      No custom webhooks for this type.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Discord Roles Management */}
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <AtSign className="w-5 h-5 text-amber-400" />
+                  Tag Roles
+                </h2>
                 
-                {webhooks.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-2">
-                    No custom webhooks added yet.
-                  </p>
-                )}
+                <Dialog open={addRoleDialogOpen} onOpenChange={setAddRoleDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="border-white/20">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 border-white/10">
+                    <DialogHeader>
+                      <DialogTitle>Add Discord Role</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div>
+                        <Label>Role Name</Label>
+                        <Input
+                          value={newRoleName}
+                          onChange={(e) => setNewRoleName(e.target.value)}
+                          placeholder="e.g. Staff"
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Discord Role ID</Label>
+                        <Input
+                          value={newRoleId}
+                          onChange={(e) => setNewRoleId(e.target.value)}
+                          placeholder="e.g. 1234567890123456789"
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Enable Developer Mode in Discord, right-click a role → Copy Role ID
+                        </p>
+                      </div>
+                      <div>
+                        <Label>Description (optional)</Label>
+                        <Input
+                          value={newRoleDescription}
+                          onChange={(e) => setNewRoleDescription(e.target.value)}
+                          placeholder="What role is this?"
+                          className="bg-white/5 border-white/10 mt-1"
+                        />
+                      </div>
+                      <Button
+                        onClick={handleAddRole}
+                        disabled={addingRole}
+                        className="w-full bg-amber-600 hover:bg-amber-700"
+                      >
+                        {addingRole ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                        Save Role
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
-            )}
+              
+              {loadingRoles ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {discordRoles.map((role) => (
+                    <div 
+                      key={role.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-white/10 hover:border-white/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedRoleIds.includes(role.id)}
+                          onCheckedChange={() => toggleRoleSelection(role.id)}
+                        />
+                        <div>
+                          <p className="font-medium text-sm">{role.name}</p>
+                          <p className="text-xs text-gray-500 font-mono">{role.role_id}</p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        onClick={() => handleDeleteRole(role.id, role.name)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {discordRoles.length === 0 && (
+                    <p className="text-xs text-gray-500 text-center py-2">
+                      No roles added yet. Add roles to tag them in notifications.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           
-          {/* Manual Send Form */}
+          {/* Send Form */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-4">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Send className="w-5 h-5 text-purple-400" />
-              Send Notification
+              Send {notificationType === 'changelog' ? 'Changelog' : 'Announcement'}
             </h2>
             
             <div className="space-y-4">
@@ -454,35 +749,49 @@ export default function PublishBookmarklet() {
                   id="version"
                   value={version}
                   onChange={(e) => setVersion(e.target.value)}
-                  placeholder="e.g. 1.2.3"
+                  placeholder="e.g. 1.6.0"
                   className="bg-white/5 border-white/10 mt-1"
                 />
               </div>
               
               <div>
-                <Label htmlFor="changes">Changes (one per line)</Label>
+                <Label htmlFor="changes">
+                  {notificationType === 'changelog' ? 'Changes (one per line)' : 'Announcement Message'}
+                </Label>
                 <Textarea
                   id="changes"
                   value={changes}
                   onChange={(e) => setChanges(e.target.value)}
-                  placeholder="Added new feature X&#10;Fixed bug Y&#10;Improved performance"
+                  placeholder={notificationType === 'changelog' 
+                    ? "Added new feature X\nFixed bug Y\nImproved performance"
+                    : "🎉 Exciting new update!\n\nWe've added amazing new features..."}
                   className="bg-white/5 border-white/10 mt-1 min-h-[120px]"
                 />
               </div>
               
-              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                <p className="text-sm text-purple-300">
-                  <strong>Selected:</strong>{' '}
-                  {selectedWebhookId === 'default' 
-                    ? 'Default Webhook' 
-                    : webhooks.find(w => w.id === selectedWebhookId)?.name || 'Unknown'}
-                </p>
+              {/* Summary */}
+              <div className={`p-3 rounded-lg ${notificationType === 'changelog' ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className={notificationType === 'changelog' ? 'text-purple-300' : 'text-emerald-300'}>
+                    <strong>Webhook:</strong>{' '}
+                    {selectedWebhookId === 'default' 
+                      ? 'Default' 
+                      : webhooks.find(w => w.id === selectedWebhookId)?.name || 'Unknown'}
+                  </span>
+                  <span className="text-gray-500">•</span>
+                  <span className={notificationType === 'changelog' ? 'text-purple-300' : 'text-emerald-300'}>
+                    <strong>Tagging:</strong>{' '}
+                    {selectedRoleIds.length === 0 
+                      ? 'No roles' 
+                      : `${selectedRoleIds.length} role${selectedRoleIds.length > 1 ? 's' : ''}`}
+                  </span>
+                </div>
               </div>
               
               <Button
                 onClick={sendNotification}
                 disabled={sending}
-                className="w-full bg-purple-600 hover:bg-purple-700"
+                className={`w-full ${notificationType === 'changelog' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
               >
                 {sending ? (
                   <>
@@ -492,7 +801,7 @@ export default function PublishBookmarklet() {
                 ) : (
                   <>
                     <Send className="w-4 h-4 mr-2" />
-                    Send Discord Notification
+                    Send {notificationType === 'changelog' ? 'Changelog' : 'Announcement'}
                   </>
                 )}
               </Button>
@@ -501,62 +810,33 @@ export default function PublishBookmarklet() {
           
           {/* Bookmarklet Section */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
               <BookMarked className="w-5 h-5 text-blue-400" />
-              Bookmarklet (Alternative)
+              Bookmarklet (Quick Access)
             </h2>
             
             <p className="text-gray-400 text-sm">
-              Drag this button to your bookmarks bar. After publishing on Lovable, just click the bookmark.
-              <br />
-              <span className="text-yellow-500/80">Note: Bookmarklet only uses the default webhook.</span>
+              Drag to bookmarks bar. Uses default webhook only.
             </p>
             
-            <div className="flex flex-col gap-3">
-              {/* Draggable Bookmarklet Button */}
-              <div className="flex items-center gap-3">
-                <a
-                  href={bookmarkletCode}
-                  onClick={(e) => e.preventDefault()}
-                  draggable
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium text-white hover:from-purple-700 hover:to-pink-700 transition-all cursor-move"
-                >
-                  <Rocket className="w-4 h-4" />
-                  🚀 UV Publish
-                </a>
-                <span className="text-gray-500 text-sm">← Drag to your bookmarks</span>
-              </div>
-              
-              {/* Copy Button */}
+            <div className="flex items-center gap-3">
+              <a
+                href={bookmarkletCode}
+                onClick={(e) => e.preventDefault()}
+                draggable
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium text-white hover:from-purple-700 hover:to-pink-700 transition-all cursor-move"
+              >
+                <Rocket className="w-4 h-4" />
+                🚀 UV Publish
+              </a>
               <Button
                 variant="outline"
                 onClick={copyBookmarklet}
-                className="w-fit border-white/20 text-white hover:bg-white/10"
+                className="border-white/20 text-white hover:bg-white/10"
               >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4 mr-2 text-green-400" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Code
-                  </>
-                )}
+                {copied ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Copy className="w-4 h-4 mr-2" />}
+                {copied ? 'Copied!' : 'Copy'}
               </Button>
-            </div>
-            
-            {/* Instructions */}
-            <div className="mt-4 p-4 bg-black/30 rounded-lg">
-              <h3 className="font-medium text-sm text-gray-300 mb-2">Instructions:</h3>
-              <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
-                <li>Drag the "🚀 UV Publish" button to your bookmarks bar</li>
-                <li>Publish your website on Lovable</li>
-                <li>Click on the bookmark</li>
-                <li>Enter the version and changes</li>
-                <li>The Discord notification will be sent automatically!</li>
-              </ol>
             </div>
           </div>
         </div>
