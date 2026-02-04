@@ -106,10 +106,18 @@ export function EventAnnouncementBanner() {
 
   if (visibleEvents.length === 0) return null;
 
+  // Height per banner (approx 36px each)
+  const spacerHeight = visibleEvents.length * 36;
+
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none">
-      <div className="flex flex-col">
-        <AnimatePresence mode="popLayout">
+    <>
+      {/* Spacer to push content down */}
+      <div style={{ height: spacerHeight }} />
+      
+      {/* Fixed banners */}
+      <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none">
+        <div className="flex flex-col">
+          <AnimatePresence mode="popLayout">
           {visibleEvents.map((event, index) => (
             <motion.div
               key={event.id}
@@ -214,5 +222,6 @@ export function EventAnnouncementBanner() {
         </AnimatePresence>
       </div>
     </div>
+    </>
   );
 }
