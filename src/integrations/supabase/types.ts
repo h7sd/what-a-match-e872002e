@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_webhooks: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       alias_requests: {
         Row: {
           created_at: string
