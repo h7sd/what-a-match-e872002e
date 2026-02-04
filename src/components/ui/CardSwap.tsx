@@ -102,6 +102,7 @@ const CardSwap: React.FC<CardSwapProps> = ({
   const order = useRef<number[]>(Array.from({ length: childArr.length }, (_, i) => i));
   const tlRef = useRef<gsap.core.Timeline | null>(null);
   const isSwappingRef = useRef(false);
+  const safetyTimeoutRef = useRef<number>(0);
   const intervalRef = useRef<number>(0);
   const container = useRef<HTMLDivElement>(null);
 
@@ -123,7 +124,19 @@ const CardSwap: React.FC<CardSwapProps> = ({
       const elFront = refs[front].current;
       if (!elFront) return;
 
-      const tl = gsap.timeline();
+      // Safety timeout: force reset swapping state after max animation time
+      window.clearTimeout(safetyTimeoutRef.current);
+      const maxAnimDuration = (config.durDrop + config.durMove + config.durReturn) * 1000 + 500;
+      safetyTimeoutRef.current = window.setTimeout(() => {
+        isSwappingRef.current = false;
+      }, maxAnimDuration);
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          isSwappingRef.current = false;
+          window.clearTimeout(safetyTimeoutRef.current);
+        }
+      });
       tlRef.current = tl;
       isSwappingRef.current = true;
 
@@ -179,7 +192,6 @@ const CardSwap: React.FC<CardSwapProps> = ({
         order.current = [...rest, front];
         // Notify parent that front card swapped to the back
         onCardSwap?.(front);
-        isSwappingRef.current = false;
       });
     };
 
@@ -200,16 +212,18 @@ const CardSwap: React.FC<CardSwapProps> = ({
       node.addEventListener('mouseenter', pause);
       node.addEventListener('mouseleave', resume);
 
-       return () => {
+      return () => {
         node.removeEventListener('mouseenter', pause);
         node.removeEventListener('mouseleave', resume);
-         tlRef.current?.kill();
+        tlRef.current?.kill();
+        window.clearTimeout(safetyTimeoutRef.current);
         clearInterval(intervalRef.current);
       };
     }
 
     return () => {
       tlRef.current?.kill();
+      window.clearTimeout(safetyTimeoutRef.current);
       clearInterval(intervalRef.current);
     };
   }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing, refs, config]);
