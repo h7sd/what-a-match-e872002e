@@ -10,8 +10,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-signature, x-webhook-timestamp",
 };
 
+let loggedWebhookFingerprint = false;
+let webhookFingerprintCache: string | null = null;
+
+function toHex(bytes: ArrayBuffer): string {
+  return Array.from(new Uint8Array(bytes))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function getWebhookSecretFingerprint(): Promise<string> {
+  if (webhookFingerprintCache) return webhookFingerprintCache;
+  const encoder = new TextEncoder();
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(webhookSecret));
+  // Only log a short fingerprint (non-reversible) to help debug secret mismatches safely.
+  webhookFingerprintCache = toHex(digest).slice(0, 12);
+  return webhookFingerprintCache;
+}
+
 // Verify HMAC signature from Discord bot
-async function verifySignature(payload: string, signature: string, timestamp: string): Promise<boolean> {
+async function verifySignature(
+  payload: string,
+  signatureHeader: string,
+  timestamp: string,
+): Promise<{ ok: boolean; expected: string }> {
   const message = `${timestamp}.${payload}`;
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -23,9 +45,12 @@ async function verifySignature(payload: string, signature: string, timestamp: st
   );
   const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
   const expectedSignature = Array.from(new Uint8Array(sig))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-  return signature === expectedSignature;
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .toLowerCase();
+
+  const provided = signatureHeader.trim().toLowerCase();
+  return { ok: provided === expectedSignature, expected: expectedSignature };
 }
 
 serve(async (req) => {
@@ -38,9 +63,38 @@ serve(async (req) => {
     const timestamp = req.headers.get("x-webhook-timestamp");
     const body = await req.text();
 
+     // Log a safe fingerprint of the configured secret once per instance.
+     if (!loggedWebhookFingerprint) {
+       try {
+         const fp = await getWebhookSecretFingerprint();
+         console.log(`[minigame-reward] webhook secret fingerprint sha256:${fp}`);
+       } catch (e) {
+         console.warn("[minigame-reward] could not compute webhook fingerprint", e);
+       }
+       loggedWebhookFingerprint = true;
+     }
+
     // Verify signature
-    if (!signature || !timestamp || !(await verifySignature(body, signature, timestamp))) {
-      console.error("Invalid signature");
+    if (!signature || !timestamp) {
+      console.error("Invalid signature (missing headers)", {
+        hasSignature: Boolean(signature),
+        hasTimestamp: Boolean(timestamp),
+      });
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const verification = await verifySignature(body, signature, timestamp);
+    if (!verification.ok) {
+      console.error("Invalid signature", {
+        timestamp,
+        receivedSigPrefix: signature.trim().slice(0, 12),
+        expectedSigPrefix: verification.expected.slice(0, 12),
+        bodyPrefix: body.slice(0, 160),
+        bodyLength: body.length,
+      });
       return new Response(JSON.stringify({ error: "Invalid signature" }), {
         status: 401,
         headers: { "Content-Type": "application/json", ...corsHeaders },
