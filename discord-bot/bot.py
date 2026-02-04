@@ -531,6 +531,32 @@ async def on_message(message: discord.Message):
     await bot.process_commands(message)
 
 
+# ============ SETUP FUNCTION FOR COG/EXTENSION LOADING ============
+
+async def setup(client: commands.Bot):
+    """
+    Setup function for loading as a discord.py extension/cog.
+    Required when using bot.load_extension('bot') or similar.
+    """
+    # Register all commands to the client's command tree
+    client.tree.add_command(trivia)
+    client.tree.add_command(slots)
+    client.tree.add_command(coin)
+    client.tree.add_command(rps)
+    client.tree.add_command(blackjack)
+    client.tree.add_command(guess)
+    client.tree.add_command(balance)
+    client.tree.add_command(daily)
+    
+    # If the client has an API attribute, use it; otherwise create one
+    if not hasattr(client, 'api'):
+        client.api = UserVaultAPI(WEBHOOK_SECRET)
+    if not hasattr(client, 'active_guess_games'):
+        client.active_guess_games = {}
+    
+    print("✅ UserVault API Bot extension loaded!")
+
+
 # ============ RUN BOT ============
 
 if __name__ == "__main__":
