@@ -22,6 +22,7 @@ import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup"
 import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
 import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
 import { GlobalAdminNotification } from "@/components/notifications/GlobalAdminNotification";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,44 @@ function GlobalPopups() {
   return <ClaimedUsernamePopup />;
 }
 
+function EventBannerGate() {
+  const location = useLocation();
+  const isMobile = useIsMobile();
+
+  // On landing page, events should only appear via the header dropdown.
+  const isLanding = location.pathname === "/";
+  if (isLanding) return null;
+
+  const isDashboard = location.pathname.startsWith("/dashboard");
+  const isProfilePage =
+    location.pathname.match(/^\/[^\/]+$/) &&
+    ![
+      "/",
+      "/auth",
+      "/dashboard",
+      "/terms",
+      "/privacy",
+      "/imprint",
+      "/status",
+      "/alias-respond",
+      "/premium",
+    ].includes(location.pathname) &&
+    !location.pathname.startsWith("/s/");
+
+  // Reserve space below fixed/sticky headers so banners never overlap UI.
+  const top = (() => {
+    if (isDashboard) return isMobile ? "56px" : "72px";
+    if (isProfilePage) return "0px";
+    return "80px";
+  })();
+
+  return (
+    <div style={{ ["--event-banner-top" as any]: top }}>
+      <EventAnnouncementBanner />
+    </div>
+  );
+}
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -53,7 +92,7 @@ const App = () => {
             <GlobalPopups />
             <GlobalAdminNotification />
             {/* Global Event Banner (also visible on profile pages) */}
-            <EventAnnouncementBanner />
+            <EventBannerGate />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />

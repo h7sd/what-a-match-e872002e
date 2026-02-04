@@ -107,7 +107,7 @@ export function EventAnnouncementBanner() {
   if (visibleEvents.length === 0) return null;
 
   return (
-    <div className="fixed top-[80px] left-0 right-0 z-[100] pointer-events-none">
+    <div className="fixed left-0 right-0 z-[100] pointer-events-none top-[var(--event-banner-top,80px)]">
       <div className="flex flex-col">
         <AnimatePresence mode="popLayout">
           {visibleEvents.map((event, index) => (
