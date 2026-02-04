@@ -117,14 +117,19 @@ class UserVaultAPI:
         if self.session and not self.session.closed:
             await self.session.close()
     
-    def _generate_signature(self, payload: dict) -> tuple[str, str]:
-        """Generate HMAC signature for reward API calls."""
+    def _generate_signature(self, payload_json: str) -> tuple[str, str]:
+        """Generate HMAC signature for reward API calls.
+
+        IMPORTANT: The signature must be created from the exact raw JSON string
+        that is sent as the HTTP request body. Otherwise the backend will reject
+        with "Invalid signature".
+        """
         timestamp = str(int(time.time() * 1000))
-        message = f"{timestamp}.{json.dumps(payload, separators=(',', ':'))}"
+        message = f"{timestamp}.{payload_json}"
         signature = hmac.new(
-            self.webhook_secret.encode(),
-            message.encode(),
-            hashlib.sha256
+            self.webhook_secret.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
         ).hexdigest()
         return signature, timestamp
     
@@ -157,7 +162,8 @@ class UserVaultAPI:
         """Call the reward API (needs webhook secret)."""
         session = await self._get_session()
         payload = {"action": action, "discordUserId": discord_user_id, **extra}
-        signature, timestamp = self._generate_signature(payload)
+        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        signature, timestamp = self._generate_signature(payload_json)
         
         headers = {
             "Content-Type": "application/json",
@@ -169,7 +175,11 @@ class UserVaultAPI:
         start_time = time.time()
         
         try:
-            async with session.post(REWARD_API, json=payload, headers=headers) as response:
+            async with session.post(
+                REWARD_API,
+                data=payload_json.encode("utf-8"),
+                headers=headers,
+            ) as response:
                 duration_ms = (time.time() - start_time) * 1000
                 result = await response.json()
                 
