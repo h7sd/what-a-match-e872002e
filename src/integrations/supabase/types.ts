@@ -369,6 +369,48 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_commands: {
+        Row: {
+          category: string | null
+          cooldown_seconds: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_enabled: boolean | null
+          name: string
+          required_role: string | null
+          updated_at: string | null
+          usage: string | null
+        }
+        Insert: {
+          category?: string | null
+          cooldown_seconds?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name: string
+          required_role?: string | null
+          updated_at?: string | null
+          usage?: string | null
+        }
+        Update: {
+          category?: string | null
+          cooldown_seconds?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name?: string
+          required_role?: string | null
+          updated_at?: string | null
+          usage?: string | null
+        }
+        Relationships: []
+      }
       daily_rewards: {
         Row: {
           created_at: string
