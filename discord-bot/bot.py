@@ -42,10 +42,34 @@ print(f"📁 .env exists: {env_path.exists()}")
 # Configuration
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
-API_URL = "https://api.uservault.cc/functions/v1"
-GAME_API = f"{API_URL}/minigame-data"
-REWARD_API = f"{API_URL}/minigame-reward"
-NOTIFICATIONS_API = f"{API_URL}/bot-command-notifications"
+
+# IMPORTANT:
+# If you run this bot against a different backend (e.g. Lovable Cloud),
+# set one of these in your .env:
+# - USERVAULT_FUNCTIONS_URL=https://<your-backend>/functions/v1
+#   (or API_URL=..., FUNCTIONS_URL=...)
+# Or set full URLs per function:
+# - MINIGAME_DATA_URL=...
+# - MINIGAME_REWARD_URL=...
+# - BOT_COMMAND_NOTIFICATIONS_URL=...
+
+FUNCTIONS_BASE_URL = (
+    os.getenv("USERVAULT_FUNCTIONS_URL")
+    or os.getenv("FUNCTIONS_URL")
+    or os.getenv("API_URL")
+    or "https://api.uservault.cc/functions/v1"
+).rstrip("/")
+
+GAME_API = os.getenv("MINIGAME_DATA_URL") or f"{FUNCTIONS_BASE_URL}/minigame-data"
+REWARD_API = os.getenv("MINIGAME_REWARD_URL") or f"{FUNCTIONS_BASE_URL}/minigame-reward"
+NOTIFICATIONS_API = (
+    os.getenv("BOT_COMMAND_NOTIFICATIONS_URL")
+    or f"{FUNCTIONS_BASE_URL}/bot-command-notifications"
+)
+
+print(f"📡 Using minigame-data: {GAME_API}")
+print(f"📡 Using minigame-reward: {REWARD_API}")
+print(f"📡 Using bot-command-notifications: {NOTIFICATIONS_API}")
 
 # Channel for command update notifications
 COMMAND_UPDATES_CHANNEL_ID = int(os.getenv("COMMAND_UPDATES_CHANNEL_ID", "1468730139012628622"))
