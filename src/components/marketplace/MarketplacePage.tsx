@@ -145,13 +145,13 @@
          </div>
  
          {/* Search */}
-         <div className="relative">
+        <div className="relative flex-shrink-0">
            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
            <Input
              placeholder="Search..."
              value={searchQuery}
              onChange={(e) => setSearchQuery(e.target.value)}
-             className="pl-8 h-8 w-48 text-xs bg-muted/50"
+            className="pl-8 h-8 w-36 text-xs bg-muted/50"
            />
          </div>
        </div>
@@ -218,13 +218,13 @@
      return (
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
          <div className="space-y-2">
-           <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-6 w-24" />
            {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
          </div>
          <div className="space-y-2">
-           <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-6 w-28" />
            <div className="grid grid-cols-2 gap-2">
-             {[1, 2].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
+            {[1, 2].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
            </div>
          </div>
        </div>
@@ -255,10 +255,12 @@
      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
        {/* Badges Column */}
        <div className="space-y-3">
-         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground sticky top-0 bg-background/80 backdrop-blur-sm py-1 z-10">
+        <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10 border-b border-border/30">
            <Sparkles className="w-4 h-4" />
-           <span>Badges</span>
-           <span className="text-xs text-muted-foreground/60">({badges.length})</span>
+          <span className="font-semibold text-foreground">Badges</span>
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+            {badges.length}
+          </span>
          </div>
          
          {badges.length === 0 ? (
@@ -292,10 +294,12 @@
  
        {/* Templates Column */}
        <div className="space-y-3">
-         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground sticky top-0 bg-background/80 backdrop-blur-sm py-1 z-10">
+        <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10 border-b border-border/30">
            <Package className="w-4 h-4" />
-           <span>Templates</span>
-           <span className="text-xs text-muted-foreground/60">({templates.length})</span>
+          <span className="font-semibold text-foreground">Templates</span>
+          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+            {templates.length}
+          </span>
          </div>
          
          {templates.length === 0 ? (
@@ -305,7 +309,7 @@
          ) : (
            <ScrollArea className="max-h-[400px] pr-2">
              <motion.div 
-               className="grid grid-cols-2 gap-2"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                initial="hidden"
                animate="visible"
                variants={{
