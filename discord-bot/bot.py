@@ -1208,14 +1208,14 @@ async def guess(interaction: discord.Interaction):
     api = interaction.client.api  # type: ignore[attr-defined]
     active_guess_games = interaction.client.active_guess_games  # type: ignore[attr-defined]
     await interaction.response.defer()
-    
+
     result = await api.generate_number()
     active_guess_games[interaction.user.id] = {
         "secret": result.get("secret"),
         "attempts": 5,
         "channel_id": interaction.channel.id
     }
-    
+
     await interaction.followup.send(
         "🔢 **Guess the Number**\n\n"
         "I'm thinking of a number between 1 and 100.\n"
