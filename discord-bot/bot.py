@@ -250,9 +250,35 @@ class UserVaultAPI:
         """Get all available commands (games + utilities) from API."""
         return await self.game_api("get_commands")
     
-    async def link_account(self, discord_user_id: str, username: str) -> dict:
-        """Link Discord account to UserVault."""
-        return await self.reward_api("link_account", discord_user_id, username=username)
+    async def link_account(self, discord_user_id: str, code: str) -> dict:
+        """Link Discord account to UserVault using verification code."""
+        # Use the new bot-verify-code endpoint for secure linking
+        verify_url = os.getenv("BOT_VERIFY_CODE_URL") or f"{FUNCTIONS_BASE_URL}/bot-verify-code"
+        payload = {
+            "action": "verify",
+            "code": code.upper().strip(),
+            "discordUserId": discord_user_id
+        }
+        timestamp = str(int(time.time() * 1000))
+        body_str = json.dumps(payload)
+        signature = hmac.new(
+            WEBHOOK_SECRET.encode(),
+            f"{timestamp}.{body_str}".encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-webhook-signature": signature,
+            "x-webhook-timestamp": timestamp,
+        }
+        
+        start = time.time()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(verify_url, json=payload, headers=headers) as resp:
+                data = await resp.json()
+                RequestLogger.log_request("POST", verify_url, resp.status, time.time() - start, payload, data)
+                return data
     
     async def unlink_account(self, discord_user_id: str) -> dict:
         """Unlink Discord account from UserVault."""
@@ -1500,17 +1526,22 @@ class UserVaultPrefixCommands(commands.Cog):
             await ctx.send("⏱️ Timeout – keine Antwort erhalten.")
 
     @commands.command(name="link")
-    async def link_prefix(self, ctx: commands.Context, username: str = None):
-        if not username:
-            await ctx.send("❌ Usage: `?link <username>`\nBeispiel: `?link MeinName`")
+    async def link_prefix(self, ctx: commands.Context, code: str = None):
+        if not code:
+            await ctx.send(
+                "🔗 **Account Linking**\n\n"
+                "1️⃣ Geh zu deinem UserVault Dashboard → Overview\n"
+                "2️⃣ Klick auf 'Generate Verification Code'\n"
+                "3️⃣ Nutze: `?link <CODE>`\n\n"
+                "Beispiel: `?link ABC123`"
+            )
             return
-        result = await ctx.bot.api.link_account(str(ctx.author.id), username)  # type: ignore[attr-defined]
+        result = await ctx.bot.api.link_account(str(ctx.author.id), code)  # type: ignore[attr-defined]
         if result.get("error"):
             await ctx.send(f"❌ {result['error']}")
         elif result.get("success"):
-            await ctx.send(f"🔗 **Account Linked!** ✅ Discord ist jetzt linked zu **{username}**")
-        else:
-            await ctx.send("⏳ **Verification Required** – schau in dein Dashboard für den Code.")
+            username = result.get("username", "your account")
+            await ctx.send(f"🔗 **Account Linked!** ✅\n\nDein Discord ist jetzt mit **{username}** verlinkt! 💰")
 
     @commands.command(name="unlink")
     async def unlink_prefix(self, ctx: commands.Context):
@@ -2117,15 +2148,17 @@ class UserVaultPrefixCommands(commands.Cog):
 # ============ UTILITY COMMANDS ============
 
 @app_commands.command(name="link", description="🔗 Link your Discord to your UserVault account")
-async def link(interaction: discord.Interaction, username: str):
-    """Link Discord account to UserVault."""
+@app_commands.describe(code="The 6-character verification code from your UserVault dashboard")
+async def link(interaction: discord.Interaction, code: str):
+    """Link Discord account to UserVault using verification code."""
     await interaction.response.defer(ephemeral=True)
     
-    result = await bot.api.link_account(str(interaction.user.id), username)
+    result = await bot.api.link_account(str(interaction.user.id), code)
     
     if result.get("error"):
         await interaction.followup.send(f"❌ {result['error']}", ephemeral=True)
     elif result.get("success"):
+        username = result.get("username", "your account")
         await interaction.followup.send(
             f"🔗 **Account Linked!**\n\n"
             f"✅ Your Discord is now linked to **{username}**\n"
@@ -2134,9 +2167,8 @@ async def link(interaction: discord.Interaction, username: str):
         )
     else:
         await interaction.followup.send(
-            f"⏳ **Verification Required**\n\n"
-            f"Please verify on UserVault to complete the link.\n"
-            f"Check your UserVault dashboard for the verification code.",
+            f"❌ **Linking Failed**\n\n"
+            f"The code may be invalid or expired. Please generate a new code in your UserVault dashboard.",
             ephemeral=True
         )
 

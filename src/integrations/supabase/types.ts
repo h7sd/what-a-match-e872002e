@@ -468,6 +468,36 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_bot_verification: {
+        Row: {
+          code: string
+          created_at: string
+          discord_user_id: string | null
+          expires_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discord_user_id?: string | null
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discord_user_id?: string | null
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       discord_integrations: {
         Row: {
           avatar: string | null
@@ -1789,6 +1819,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_comments: { Args: never; Returns: undefined }
+      cleanup_expired_discord_bot_codes: { Args: never; Returns: undefined }
       cleanup_expired_verification_codes: { Args: never; Returns: number }
       create_visitor_conversation: {
         Args: { p_visitor_id: string }
