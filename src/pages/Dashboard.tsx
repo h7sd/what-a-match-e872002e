@@ -63,6 +63,7 @@ import { DisplayNameAnimationSettings } from '@/components/dashboard/DisplayName
 import { AdminBadgeManager } from '@/components/admin/AdminBadgeManager';
 import { AdminUserManager } from '@/components/admin/AdminUserManager';
 import { AdminPremiumManager } from '@/components/admin/AdminPremiumManager';
+ import { AdminBotNotificationTester } from '@/components/admin/AdminBotNotificationTester';
 import { BadgesGrid } from '@/components/dashboard/BadgesGrid';
 import { UserBadgesList } from '@/components/dashboard/UserBadgesList';
 import { LimitedBadgeAssigner } from '@/components/admin/LimitedBadgeAssigner';
@@ -1469,6 +1470,11 @@ export default function Dashboard() {
                   <div className="glass-card p-5">
                     <AdminBadgeManager />
                   </div>
+                </div>
+
+                {/* Bot Notification Tester */}
+                <div className="glass-card p-5">
+                  <AdminBotNotificationTester />
                 </div>
               </div>
             )}
