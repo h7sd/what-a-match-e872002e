@@ -2525,6 +2525,78 @@ class UserVaultPrefixCommands(commands.Cog):
             await message.reply(embed=embed)
             return
 
+        # ── ?dice ── Dice Duel game
+        if lowered.startswith("?dice"):
+            parts = content.split()
+            if len(parts) < 2:
+                await message.reply(
+                    "🎲 **Dice Duel**\n"
+                    "Roll dice against the bot - highest roll wins!\n\n"
+                    "Usage: `?dice <bet>`\n"
+                    "Example: `?dice 100`\n\n"
+                    "• Win: **2x** your bet\n"
+                    "• Tie: Bet returned"
+                )
+                return
+            
+            bet_str = parts[1].replace(",", "")
+            if not bet_str.isdigit() or int(bet_str) < 10:
+                await message.reply("❌ Minimum bet is 10 UC!")
+                return
+            
+            bet = int(bet_str)
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
+            if current_balance < bet:
+                await message.reply(f"❌ Not enough UC! You have **{current_balance:,} UC**.")
+                return
+            
+            # Roll dice (2d6 each)
+            import random
+            player_d1 = random.randint(1, 6)
+            player_d2 = random.randint(1, 6)
+            bot_d1 = random.randint(1, 6)
+            bot_d2 = random.randint(1, 6)
+            
+            player_total = player_d1 + player_d2
+            bot_total = bot_d1 + bot_d2
+            
+            # Dice emojis
+            dice_emoji = {1: "⚀", 2: "⚁", 3: "⚂", 4: "⚃", 5: "⚄", 6: "⚅"}
+            
+            player_display = f"{dice_emoji[player_d1]} {dice_emoji[player_d2]} = **{player_total}**"
+            bot_display = f"{dice_emoji[bot_d1]} {dice_emoji[bot_d2]} = **{bot_total}**"
+            
+            # Determine winner
+            if player_total > bot_total:
+                result_text = f"🎉 **YOU WIN!** +{bet:,} UC"
+                color = discord.Color.green()
+                # Award winnings (net profit = bet)
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), bet, "dice", "Dice Duel win"
+                )
+            elif player_total < bot_total:
+                result_text = f"💀 **Bot wins!** -{bet:,} UC"
+                color = discord.Color.red()
+                # Deduct bet
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), -bet, "dice", "Dice Duel loss"
+                )
+            else:
+                result_text = "🤝 **It's a tie!** Bet returned."
+                color = discord.Color.gold()
+            
+            embed = discord.Embed(title="🎲 Dice Duel", color=color)
+            embed.add_field(name="Your Roll", value=player_display, inline=True)
+            embed.add_field(name="Bot Roll", value=bot_display, inline=True)
+            embed.add_field(name="Result", value=result_text, inline=False)
+            embed.set_footer(text=f"Bet: {bet:,} UC • {BOT_CODE_VERSION}")
+            
+            await message.reply(embed=embed)
+            return
+
         if lowered.startswith("?lookup"):
             parts = content.split(maxsplit=1)
             if len(parts) < 2 or not parts[1].strip():
