@@ -1105,11 +1105,15 @@ class UserVaultPrefixCommands(commands.Cog):
         if message.author.bot:
             return
 
+        # DEBUG: Log all ? messages to verify the listener is active
+        content = (message.content or "").strip()
+        if content.startswith("?"):
+            print(f"📥 [UserVault] Received command: {content[:50]} from {message.author}")
+
         # ===== Manual prefix handling (works even if host bot doesn't call process_commands) =====
         # Some host bots override on_message without calling bot.process_commands().
         # In that case, @commands.command prefix commands won't fire. We handle critical
         # prefix commands here so they still work in extension mode.
-        content = (message.content or "").strip()
         lowered = content.lower()
 
         # ===== ?helping - List all commands =====
