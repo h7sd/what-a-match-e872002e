@@ -1,35 +1,36 @@
- import { useState } from 'react';
- import { motion } from 'framer-motion';
- import { Coins, ShoppingCart, Check, Clock, Package, Eye, Wand2 } from 'lucide-react';
- import { Button } from '@/components/ui/button';
- import { Badge } from '@/components/ui/badge';
- import {
-   Dialog,
-   DialogContent,
-   DialogHeader,
-   DialogTitle,
- } from '@/components/ui/dialog';
- import {
-   AlertDialog,
-   AlertDialogAction,
-   AlertDialogCancel,
-   AlertDialogContent,
-   AlertDialogDescription,
-   AlertDialogFooter,
-   AlertDialogHeader,
-   AlertDialogTitle,
- } from '@/components/ui/alert-dialog';
- import { MarketplaceItem, usePurchaseItem, useApplyTemplate } from '@/hooks/useMarketplace';
- import { cn } from '@/lib/utils';
- import { formatUC } from '@/lib/uc';
- import { TemplatePreview } from './TemplatePreview';
- 
- interface MarketplaceTemplateCardProps {
-   item: MarketplaceItem;
-   userBalance: bigint;
-   isOwner?: boolean;
-   isPurchased?: boolean;
- }
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Coins, ShoppingCart, Check, Clock, Package, Eye, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { MarketplaceItem, usePurchaseItem, useApplyTemplate } from '@/hooks/useMarketplace';
+import { cn } from '@/lib/utils';
+import { formatUC } from '@/lib/uc';
+import { TemplatePreview } from './TemplatePreview';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+interface MarketplaceTemplateCardProps {
+  item: MarketplaceItem;
+  userBalance: bigint;
+  isOwner?: boolean;
+  isPurchased?: boolean;
+}
  
  export function MarketplaceTemplateCard({ 
    item, 
@@ -38,10 +39,11 @@
    isPurchased 
  }: MarketplaceTemplateCardProps) {
    const [showConfirm, setShowConfirm] = useState(false);
-   const [showApplyConfirm, setShowApplyConfirm] = useState(false);
-   const [showPreview, setShowPreview] = useState(false);
-   const purchaseMutation = usePurchaseItem();
-   const applyTemplateMutation = useApplyTemplate();
+  const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const purchaseMutation = usePurchaseItem();
+  const applyTemplateMutation = useApplyTemplate();
+  const isMobile = useIsMobile();
  
    const priceBI = BigInt(item.price);
    const canAfford = userBalance >= priceBI;
@@ -65,39 +67,42 @@
    const templateData = item.template_data as Record<string, unknown> | null;
  
    return (
-     <>
-       <motion.div
-         initial={{ opacity: 0, scale: 0.95 }}
-         animate={{ opacity: 1, scale: 1 }}
-         whileHover={{ scale: 1.02 }}
-         transition={{ duration: 0.2 }}
-         className={cn(
-           "group relative rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm overflow-hidden",
-           "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200",
-           item.status === 'denied' && "opacity-50",
-           isSoldOut && !isPurchased && "opacity-60"
-         )}
-       >
-         {/* Profile Preview Thumbnail - STATIC snapshot */}
-         <div 
-           className="relative aspect-[3/4] bg-gradient-to-br from-muted/60 to-muted/30 overflow-hidden cursor-pointer"
-           onClick={() => hasTemplateData && setShowPreview(true)}
-         >
-           {hasTemplateData ? (
-             <div className="w-full h-full">
-               <TemplatePreview templateData={templateData} mini />
-             </div>
-           ) : item.template_preview_url ? (
-             <img
-               src={item.template_preview_url}
-               alt={item.template_name || 'Template'}
-               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-             />
-           ) : (
-             <div className="w-full h-full flex items-center justify-center">
-               <Package className="w-10 h-10 text-muted-foreground/30" />
-             </div>
-           )}
+    <>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        whileHover={isMobile ? undefined : { scale: 1.02 }}
+        transition={{ duration: 0.2 }}
+        className={cn(
+          "group relative rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm overflow-hidden",
+          "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200",
+          item.status === 'denied' && "opacity-50",
+          isSoldOut && !isPurchased && "opacity-60"
+        )}
+      >
+        {/* Profile Preview Thumbnail - smaller aspect ratio on mobile */}
+        <div 
+          className={cn(
+            "relative bg-gradient-to-br from-muted/60 to-muted/30 overflow-hidden cursor-pointer",
+            isMobile ? "aspect-square" : "aspect-[3/4]"
+          )}
+          onClick={() => hasTemplateData && setShowPreview(true)}
+        >
+          {hasTemplateData ? (
+            <div className="w-full h-full">
+              <TemplatePreview templateData={templateData} mini />
+            </div>
+          ) : item.template_preview_url ? (
+            <img
+              src={item.template_preview_url}
+              alt={item.template_name || 'Template'}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Package className="w-8 h-8 text-muted-foreground/30" />
+            </div>
+          )}
  
            {/* Hover overlay */}
            {hasTemplateData && (

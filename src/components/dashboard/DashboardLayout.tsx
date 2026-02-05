@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   User, 
@@ -24,6 +24,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, ReactNode, lazy, Suspense } from 'react';
 import { AliasRequestsBell } from './AliasRequestsBell';
 import { AdminChatNotificationBell } from '@/components/admin/AdminChatNotificationBell';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Lazy load heavy components
 const FaultyTerminal = lazy(() => import('@/components/ui/FaultyTerminal'));
@@ -65,6 +66,7 @@ export function DashboardLayout({
   isSaving
 }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const navItems = [
     ...baseNavItems,
@@ -234,8 +236,8 @@ export function DashboardLayout({
         </Suspense>
       )}
 
-      {/* Admin Terminal Background */}
-      {activeTab === 'admin' && (
+      {/* Admin Terminal Background - optimized for mobile */}
+      {activeTab === 'admin' && !isMobile && (
         <Suspense fallback={null}>
           <div className="fixed inset-0 z-0">
             <FaultyTerminal
@@ -259,6 +261,16 @@ export function DashboardLayout({
             />
           </div>
         </Suspense>
+      )}
+      
+      {/* Mobile admin background - simple gradient instead of heavy terminal */}
+      {activeTab === 'admin' && isMobile && (
+        <div className="fixed inset-0 z-0 bg-gradient-to-br from-[#0a0a0b] via-[#0d1a15] to-[#0a0a0b]">
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(0deg,transparent_24%,rgba(0,217,165,0.03)_25%,rgba(0,217,165,0.03)_26%,transparent_27%,transparent_74%,rgba(0,217,165,0.03)_75%,rgba(0,217,165,0.03)_76%,transparent_77%)] bg-[length:50px_50px]" />
+            <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(90deg,transparent_24%,rgba(0,217,165,0.03)_25%,rgba(0,217,165,0.03)_26%,transparent_27%,transparent_74%,rgba(0,217,165,0.03)_75%,rgba(0,217,165,0.03)_76%,transparent_77%)] bg-[length:50px_50px]" />
+          </div>
+        </div>
       )}
       
       {/* Subtle background gradient overlay */}
@@ -363,19 +375,11 @@ export function DashboardLayout({
           </div>
         </header>
 
-        {/* Page Content */}
+        {/* Page Content - simplified animations */}
         <div className="p-4 sm:p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.2 }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div className="animate-fade-in">
+            {children}
+          </div>
         </div>
       </main>
     </div>

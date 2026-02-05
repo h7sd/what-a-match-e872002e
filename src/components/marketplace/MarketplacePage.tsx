@@ -3,32 +3,36 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
- import { 
-   Coins, 
-   Search, 
-   ShoppingBag, 
-   Tag, 
-   Plus, 
-   History, 
-   TrendingUp,
-   ExternalLink,
-   Package,
-   Sparkles
- } from 'lucide-react';
- import { 
-   useUserBalance, 
-   useMarketplaceItems, 
-   useMyMarketplaceItems, 
-   useMyPurchases, 
-   useUCTransactions,
-   MarketplaceItem
- } from '@/hooks/useMarketplace';
- import { MarketplaceBadgeCard } from './MarketplaceBadgeCard';
- import { MarketplaceTemplateCard } from './MarketplaceTemplateCard';
- import { CreateListingDialog } from './CreateListingDialog';
- import { TransactionHistory } from './TransactionHistory';
- import { cn } from '@/lib/utils';
- import { formatUC } from '@/lib/uc';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { 
+  Coins, 
+  Search, 
+  ShoppingBag, 
+  Tag, 
+  Plus, 
+  History, 
+  TrendingUp,
+  ExternalLink,
+  Package,
+  Sparkles,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
+import { 
+  useUserBalance, 
+  useMarketplaceItems, 
+  useMyMarketplaceItems, 
+  useMyPurchases, 
+  useUCTransactions,
+  MarketplaceItem
+} from '@/hooks/useMarketplace';
+import { MarketplaceBadgeCard } from './MarketplaceBadgeCard';
+import { MarketplaceTemplateCard } from './MarketplaceTemplateCard';
+import { CreateListingDialog } from './CreateListingDialog';
+import { TransactionHistory } from './TransactionHistory';
+import { cn } from '@/lib/utils';
+import { formatUC } from '@/lib/uc';
+import { useIsMobile } from '@/hooks/use-mobile';
  
  type TabValue = 'browse' | 'my-items' | 'purchases' | 'history';
  
@@ -186,15 +190,17 @@ import { Skeleton } from '@/components/ui/skeleton';
    onCreateListing: () => void;
  }
  
- function TwoColumnLayout({ 
-   badges, 
-   templates, 
-   userBalance, 
-   isLoading, 
-   isOwner, 
-   isPurchased,
-   onCreateListing 
- }: TwoColumnLayoutProps) {
+function TwoColumnLayout({ 
+  badges, 
+  templates, 
+  userBalance, 
+  isLoading, 
+  isOwner, 
+  isPurchased,
+  onCreateListing 
+}: TwoColumnLayoutProps) {
+  const isMobile = useIsMobile();
+  const [templatesExpanded, setTemplatesExpanded] = useState(!isMobile);
    if (isLoading) {
      return (
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -264,39 +270,55 @@ import { Skeleton } from '@/components/ui/skeleton';
           )}
         </div>
 
-        {/* Templates Section */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 py-2 border-b border-border/30">
-            <Package className="w-4 h-4" />
-            <span className="font-semibold text-sm text-foreground">Templates</span>
-            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-              {templates.length}
-            </span>
-          </div>
-          
-          {templates.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground/60">
-              No templates available
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {templates.slice(0, 6).map((item) => (
-                <MarketplaceTemplateCard
-                  key={item.id}
-                  item={item}
-                  userBalance={userBalance}
-                  isOwner={isOwner}
-                  isPurchased={isPurchased}
-                />
-              ))}
-              {templates.length > 6 && (
-                <div className="col-span-full text-xs text-muted-foreground text-center py-2">
-                  +{templates.length - 6} more templates
-                </div>
+        {/* Templates Section - Collapsible on mobile */}
+        <Collapsible open={templatesExpanded} onOpenChange={setTemplatesExpanded}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between gap-2 py-2 border-b border-border/30 hover:bg-muted/30 transition-colors rounded-t-lg px-2 -mx-2">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                <span className="font-semibold text-sm text-foreground">Templates</span>
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                  {templates.length}
+                </span>
+              </div>
+              {isMobile && (
+                templatesExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )
               )}
-            </div>
-          )}
-        </div>
+            </button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            {templates.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground/60">
+                No templates available
+              </div>
+            ) : (
+              <div className={cn(
+                "grid gap-2 pt-2",
+                isMobile ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-3 gap-3"
+              )}>
+                {templates.slice(0, isMobile ? 4 : 6).map((item) => (
+                  <MarketplaceTemplateCard
+                    key={item.id}
+                    item={item}
+                    userBalance={userBalance}
+                    isOwner={isOwner}
+                    isPurchased={isPurchased}
+                  />
+                ))}
+                {templates.length > (isMobile ? 4 : 6) && (
+                  <div className="col-span-full text-xs text-muted-foreground text-center py-2">
+                    +{templates.length - (isMobile ? 4 : 6)} more templates
+                  </div>
+                )}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     );
   }
