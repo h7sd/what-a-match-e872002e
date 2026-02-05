@@ -526,9 +526,17 @@ class MinesButton(discord.ui.Button):
             await interaction.response.send_message("❌ Das ist nicht dein Spiel!", ephemeral=True)
             return
         
+        # Prevent double-click race conditions
+        if self.mines_view.game_over or self.mines_view.processing:
+            await interaction.response.defer()
+            return
+        
         if self.revealed:
             await interaction.response.send_message("❌ Dieses Feld ist bereits aufgedeckt!", ephemeral=True)
             return
+        
+        # Set processing lock
+        self.mines_view.processing = True
         
         self.revealed = True
         self.disabled = True
@@ -582,6 +590,8 @@ class MinesButton(discord.ui.Button):
             else:
                 embed = self.mines_view.create_embed()
                 await interaction.response.edit_message(embed=embed, view=self.mines_view)
+                # Release lock for next click
+                self.mines_view.processing = False
 
 
 class MinesCashoutButton(discord.ui.Button):
@@ -600,9 +610,17 @@ class MinesCashoutButton(discord.ui.Button):
             await interaction.response.send_message("❌ Das ist nicht dein Spiel!", ephemeral=True)
             return
         
+        # Prevent double-click race conditions
+        if self.mines_view.game_over or self.mines_view.processing:
+            await interaction.response.defer()
+            return
+        
         if self.mines_view.revealed_count == 0:
             await interaction.response.send_message("❌ Du musst mindestens ein Feld aufdecken!", ephemeral=True)
             return
+        
+        # Set processing lock
+        self.mines_view.processing = True
         
         self.mines_view.game_over = True
         self.mines_view.won = True
@@ -646,6 +664,7 @@ class MinesView(discord.ui.View):
         self.game_over = False
         self.won = False
         self.cashed_out = False
+        self.processing = False  # Lock to prevent double-click race conditions
         
         # Generate mine positions (5x5 grid = 25 cells)
         all_positions = [(x, y) for x in range(5) for y in range(4)]  # Only 4 rows for buttons (row 4 = cashout)
