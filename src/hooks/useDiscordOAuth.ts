@@ -22,9 +22,9 @@ export function useDiscordOAuth() {
   const { toast } = useToast();
 
   const getRedirectUri = useCallback(() => {
-    // Use an SPA route as redirect_uri so Discord lands back in the app (works for preview + production).
-    // This route is registered in App.tsx and forwards the params to /auth.
-    return `${window.location.origin}/functions/v1/discord-oauth-callback`;
+    // IMPORTANT: This must be a backend callback URL that Discord can reach.
+    // Using the API proxy keeps the backend project URL hidden and is whitelisted in Discord.
+    return `https://api.uservault.cc/functions/v1/discord-oauth-callback`;
   }, []);
 
   const initiateDiscordLogin = useCallback(async () => {
