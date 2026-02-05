@@ -86,6 +86,7 @@ import { AliasRequestsSection } from '@/components/dashboard/AliasRequestsSectio
 import { AliasRequestsBell } from '@/components/dashboard/AliasRequestsBell';
 import { DashboardLayout, type TabType } from '@/components/dashboard/DashboardLayout';
 import { ProfileCommentsViewer } from '@/components/dashboard/ProfileCommentsViewer';
+import { DiscordBotVerification } from '@/components/dashboard/DiscordBotVerification';
 import { FriendBadgesManager } from '@/components/dashboard/FriendBadgesManager';
 import { AdminEventController } from '@/components/admin/AdminEventController';
 import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
@@ -922,7 +923,11 @@ export default function Dashboard() {
                 description: ub.badge?.description,
               }))} totalBadges={globalBadges.length || 10} />
             </div>
-            <div>
+            <div className="space-y-4">
+              <DiscordBotVerification 
+                userId={user?.id} 
+                discordUserId={discordUserId} 
+              />
               <DiscordCard isConnected={!!discordUserId} />
             </div>
           </div>
