@@ -514,8 +514,8 @@ serve(async (req) => {
 
       // ============ Profile Lookup ============
       case "lookup_profile": {
-        const username = params.username?.toLowerCase?.()?.trim?.();
-        if (!username) {
+        const query = params.username?.toString?.()?.trim?.();
+        if (!query) {
           responseData = { error: "Username is required" };
           break;
         }
@@ -526,16 +526,71 @@ serve(async (req) => {
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseKey);
         
-        // Look up profile by username or alias
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("username, display_name, bio, views_count, likes_count, dislikes_count, is_premium, avatar_url, created_at")
-          .or(`username.eq.${username},alias_username.eq.${username}`)
-          .single();
+        // Support UID lookup (e.g., #1234) or username/alias lookup
+        let profile = null;
+        let profileError = null;
+        
+        if (query.startsWith("#")) {
+          // UID lookup
+          const uidStr = query.slice(1);
+          const uid = parseInt(uidStr, 10);
+          if (isNaN(uid)) {
+            responseData = { error: `Invalid UID: ${query}` };
+            break;
+          }
+          const res = await supabase
+            .from("profiles")
+            .select("id, username, display_name, bio, views_count, likes_count, dislikes_count, is_premium, avatar_url, created_at, uid_number")
+            .eq("uid_number", uid)
+            .single();
+          profile = res.data;
+          profileError = res.error;
+        } else {
+          // Username or alias lookup
+          const username = query.toLowerCase();
+          const res = await supabase
+            .from("profiles")
+            .select("id, username, display_name, bio, views_count, likes_count, dislikes_count, is_premium, avatar_url, created_at, uid_number")
+            .or(`username.eq.${username},alias_username.eq.${username}`)
+            .single();
+          profile = res.data;
+          profileError = res.error;
+        }
         
         if (profileError || !profile) {
-          responseData = { error: `Profile '${username}' not found` };
+          responseData = { error: `Profile '${query}' not found` };
         } else {
+          // Fetch badges for this profile
+          let badges: { name: string; color: string | null; icon_url: string | null }[] = [];
+          try {
+            const { data: userBadges } = await supabase
+              .from("user_badges")
+              .select("badge_id, custom_color, is_enabled, display_order")
+              .eq("user_id", profile.id)
+              .eq("is_enabled", true)
+              .order("display_order", { ascending: true })
+              .limit(10);
+            
+            if (userBadges && userBadges.length > 0) {
+              const badgeIds = userBadges.map((ub: { badge_id: string }) => ub.badge_id);
+              const { data: globalBadges } = await supabase
+                .from("global_badges")
+                .select("id, name, color, icon_url")
+                .in("id", badgeIds);
+              
+              if (globalBadges) {
+                // Map with custom colors
+                const badgeMap = new Map(globalBadges.map((b: { id: string; name: string; color: string | null; icon_url: string | null }) => [b.id, b]));
+                badges = userBadges.map((ub: { badge_id: string; custom_color: string | null }) => {
+                  const gb = badgeMap.get(ub.badge_id) as { name: string; color: string | null; icon_url: string | null } | undefined;
+                  return gb ? { name: gb.name, color: ub.custom_color || gb.color, icon_url: gb.icon_url } : null;
+                }).filter(Boolean) as { name: string; color: string | null; icon_url: string | null }[];
+              }
+            }
+          } catch {
+            // Ignore badge fetch errors
+          }
+          
           responseData = {
             username: profile.username,
             display_name: profile.display_name,
@@ -546,7 +601,31 @@ serve(async (req) => {
             is_premium: profile.is_premium || false,
             avatar_url: profile.avatar_url,
             created_at: profile.created_at,
+            uid: profile.uid_number,
+            badges,
           };
+        }
+        break;
+      }
+
+      // ============ Get Commands for Help ============
+      case "get_bot_commands": {
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        const { data: cmds, error: cmdError } = await supabase
+          .from("bot_commands")
+          .select("name, description, category, usage, is_enabled")
+          .eq("is_enabled", true)
+          .order("category", { ascending: true })
+          .order("name", { ascending: true });
+        
+        if (cmdError) {
+          responseData = { error: cmdError.message };
+        } else {
+          responseData = { commands: cmds || [] };
         }
         break;
       }

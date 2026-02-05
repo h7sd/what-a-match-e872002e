@@ -260,8 +260,12 @@ class UserVaultAPI:
         return await self.reward_api("get_profile", discord_user_id)
     
     async def lookup_profile(self, username: str) -> dict:
-        """Look up any UserVault profile by username (public info only)."""
+        """Look up any UserVault profile by username or UID (public info only)."""
         return await self.game_api("lookup_profile", username=username)
+    
+    async def get_bot_commands(self) -> dict:
+        """Get all enabled bot commands from database."""
+        return await self.game_api("get_bot_commands")
     
     async def get_trivia(self) -> dict:
         """Get a trivia question."""
@@ -1108,15 +1112,110 @@ class UserVaultPrefixCommands(commands.Cog):
         content = (message.content or "").strip()
         lowered = content.lower()
 
+        # ===== ?help - List all commands =====
+        if lowered == "?help" or lowered == "?commands":
+            try:
+                result = await self.client.api.get_bot_commands()  # type: ignore[attr-defined]
+            except Exception as e:
+                await message.reply(f"❌ Failed to load commands: {e}")
+                return
+            
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+                return
+            
+            cmds = result.get("commands", [])
+            if not cmds:
+                await message.reply("📋 No commands available.")
+                return
+            
+            # Group by category
+            categories: Dict[str, List[dict]] = {}
+            for cmd in cmds:
+                cat = cmd.get("category") or "other"
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append(cmd)
+            
+            embed = discord.Embed(
+                title="📋 UserVault Bot Commands",
+                description="All available prefix commands:",
+                color=discord.Color.blurple(),
+            )
+            
+            cat_emojis = {
+                "games": "🎮",
+                "utility": "🔧",
+                "admin": "👮",
+                "other": "📦",
+            }
+            
+            for cat, cat_cmds in categories.items():
+                emoji = cat_emojis.get(cat, "📦")
+                lines = []
+                for c in cat_cmds:
+                    usage = c.get("usage") or f"?{c.get('name', '???')}"
+                    desc = c.get("description") or ""
+                    lines.append(f"`{usage}` – {desc[:50]}")
+                embed.add_field(
+                    name=f"{emoji} {cat.capitalize()}",
+                    value="\n".join(lines) or "–",
+                    inline=False,
+                )
+            
+            embed.set_footer(text="uservault.cc")
+            
+            try:
+                await message.reply(embed=embed)
+            except discord.Forbidden:
+                # Fallback to text
+                text_lines = ["**📋 UserVault Bot Commands**\n"]
+                for cat, cat_cmds in categories.items():
+                    text_lines.append(f"**{cat.capitalize()}:**")
+                    for c in cat_cmds:
+                        usage = c.get("usage") or f"?{c.get('name', '???')}"
+                        text_lines.append(f"  {usage}")
+                await message.reply("\n".join(text_lines))
+            return
+
+        # ===== ?reload - Admin only extension reload =====
+        if lowered == "?reload":
+            # Check if user is bot owner or in admin list
+            admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
+            admin_ids = {int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()}
+            
+            app_info = getattr(self.client, "application", None)
+            owner_id = getattr(app_info, "owner", None)
+            owner_id = getattr(owner_id, "id", None) if owner_id else None
+            
+            is_admin = message.author.id in admin_ids or message.author.id == owner_id
+            
+            if not is_admin:
+                await message.reply("❌ Admin only command.")
+                return
+            
+            try:
+                # Attempt to reload the extension
+                ext_name = __name__
+                if ext_name == "__main__":
+                    await message.reply("⚠️ Cannot reload in standalone mode. Restart the bot instead.")
+                    return
+                
+                await self.client.reload_extension(ext_name)
+                await message.reply("✅ Extension reloaded!")
+            except Exception as e:
+                await message.reply(f"❌ Reload failed: {e}")
+            return
+
         if lowered.startswith("?lookup"):
             parts = content.split(maxsplit=1)
             if len(parts) < 2 or not parts[1].strip():
-                await message.reply("❌ Usage: `?lookup <username>`")
+                await message.reply("❌ Usage: `?lookup <username>` or `?lookup #UID`")
                 return
 
-            username = parts[1].strip().lower()
+            query = parts[1].strip()
             try:
-                result = await self.client.api.lookup_profile(username)  # type: ignore[attr-defined]
+                result = await self.client.api.lookup_profile(query)  # type: ignore[attr-defined]
             except Exception as e:
                 await message.reply(f"❌ Lookup failed: {e}")
                 return
@@ -1125,12 +1224,16 @@ class UserVaultPrefixCommands(commands.Cog):
                 await message.reply(f"❌ {result['error']}")
                 return
 
-            display_name = result.get("display_name") or result.get("username", username)
+            username = result.get("username", query)
+            display_name = result.get("display_name") or username
             bio = result.get("bio") or ""
             views = result.get("views_count", 0)
             likes = result.get("likes_count", 0)
             is_premium = result.get("is_premium", False)
-            profile_url = f"https://uservault.cc/{result.get('username', username)}"
+            uid = result.get("uid")
+            avatar_url = result.get("avatar_url")
+            badges = result.get("badges") or []
+            profile_url = f"https://uservault.cc/{username}"
 
             premium_badge = "⭐ " if is_premium else ""
             embed = discord.Embed(
@@ -1139,18 +1242,62 @@ class UserVaultPrefixCommands(commands.Cog):
                 description=bio[:200] if bio else "(no bio)",
                 color=discord.Color.blurple(),
             )
+            
+            # Add avatar as thumbnail
+            if avatar_url:
+                embed.set_thumbnail(url=avatar_url)
+            
             embed.add_field(name="👁️ Views", value=str(views), inline=True)
             embed.add_field(name="❤️ Likes", value=str(likes), inline=True)
-            embed.set_footer(text=profile_url.replace("https://", ""))
+            
+            if uid:
+                embed.add_field(name="🆔 UID", value=f"#{uid}", inline=True)
+            
+            # Show badges
+            if badges:
+                badge_names = [b.get("name", "?") for b in badges[:8]]
+                embed.add_field(
+                    name=f"🏅 Badges ({len(badges)})",
+                    value=", ".join(badge_names) + ("..." if len(badges) > 8 else ""),
+                    inline=False,
+                )
+            
+            embed.set_footer(text=f"uservault.cc/{username}")
 
             try:
                 await message.reply(embed=embed)
             except discord.Forbidden:
                 # No Embed Links permission → fallback to plain text
+                badge_text = f" | 🏅 {len(badges)} badges" if badges else ""
                 await message.reply(
-                    f"👤 {display_name}\n{profile_url}\n👁️ Views: {views} | ❤️ Likes: {likes}"
+                    f"👤 {display_name} (#{uid})\n{profile_url}\n👁️ Views: {views} | ❤️ Likes: {likes}{badge_text}"
                 )
             return
+
+        # ===== Unknown command detection =====
+        if lowered.startswith("?") and len(lowered) > 1:
+            # Extract command name
+            cmd_part = lowered[1:].split()[0] if lowered[1:] else ""
+            if cmd_part:
+                # Known built-in commands (don't warn for these)
+                known_cmds = {
+                    "help", "commands", "reload", "lookup", "apistats",
+                    "balance", "daily", "slots", "coin", "rps", "blackjack",
+                    "guess", "trivia", "link", "unlink", "profile"
+                }
+                if cmd_part not in known_cmds:
+                    # Check if it's in the database
+                    try:
+                        result = await self.client.api.get_bot_commands()  # type: ignore[attr-defined]
+                        db_cmds = {c.get("name", "").lower() for c in result.get("commands", [])}
+                        if cmd_part in db_cmds:
+                            await message.reply(
+                                f"⚠️ `?{cmd_part}` is registered but not yet implemented.\n"
+                                f"Use `?help` to see available commands."
+                            )
+                            return
+                    except:
+                        pass
 
         active_guess_games = getattr(self.client, "active_guess_games", {})
         game = active_guess_games.get(message.author.id)
