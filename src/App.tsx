@@ -19,6 +19,7 @@ import Premium from "./pages/Premium";
 import Marketplace from "./pages/Marketplace";
 import PublishBookmarklet from "./pages/PublishBookmarklet";
 import SecretDatabaseViewer from "./pages/SecretDatabaseViewer";
+import DiscordOAuthCallback from "./pages/DiscordOAuthCallback";
 import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
 import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
 import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
@@ -97,6 +98,11 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              {/* Fallback: if the Discord redirect hits the SPA instead of the backend proxy */}
+              <Route
+                path="/functions/v1/discord-oauth-callback"
+                element={<DiscordOAuthCallback />}
+              />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/premium" element={<Premium />} />
