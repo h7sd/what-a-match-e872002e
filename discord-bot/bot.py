@@ -1790,7 +1790,7 @@ class UserVaultPrefixCommands(commands.Cog):
 
         # ===== ?reload - Admin only extension reload =====
         if lowered == "?reload":
-            # Check if user is bot owner, in env admin list, or a UserVault admin
+            # Check if user is bot owner, in env admin list, or a UserVault admin/supporter
             admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
             admin_ids = {int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()}
             
@@ -1798,21 +1798,23 @@ class UserVaultPrefixCommands(commands.Cog):
             owner_id = getattr(app_info, "owner", None)
             owner_id = getattr(owner_id, "id", None) if owner_id else None
             
-            is_admin = message.author.id in admin_ids or message.author.id == owner_id
+            is_authorized = message.author.id in admin_ids or message.author.id == owner_id
             
-            # Also check UserVault admin role if not already admin
-            if not is_admin:
+            # Also check UserVault admin or supporter role if not already authorized
+            if not is_authorized:
                 api = getattr(self.client, "api", None)
                 if api:
                     try:
                         result = await api.check_admin(str(message.author.id))
-                        if result.get("is_admin"):
-                            is_admin = True
+                        if result.get("is_admin") or result.get("is_supporter"):
+                            is_authorized = True
+                        # Debug logging
+                        print(f"🔍 [reload] Admin check for {message.author.id}: {result}")
                     except Exception as e:
                         print(f"⚠️ Could not check UserVault admin status: {e}")
             
-            if not is_admin:
-                await message.reply("❌ Admin only command. You need to be a UserVault admin.")
+            if not is_authorized:
+                await message.reply("❌ Admin only command. You need to be a UserVault admin or supporter.")
                 return
             
             try:

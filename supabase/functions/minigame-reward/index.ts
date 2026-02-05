@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
 
     // ============ CHECK ADMIN ============
     if (action === "check_admin") {
-      // Check if Discord user is admin on UserVault
+      // Check if Discord user is admin or supporter on UserVault
       const { data: profile } = await supabase
         .from("profiles")
         .select("user_id, username")
@@ -279,29 +279,41 @@ Deno.serve(async (req) => {
         .single();
 
       if (!profile) {
+        console.log(`[check_admin] Discord user ${discordUserId} not linked to any profile`);
         return new Response(
-          JSON.stringify({ is_admin: false, error: "Discord not linked" }),
+          JSON.stringify({ is_admin: false, is_supporter: false, error: "Discord not linked" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
+      console.log(`[check_admin] Found profile: ${profile.username} (${profile.user_id})`);
+
       // Check if user has admin role using the has_role RPC function
-      const { data: hasAdminRole, error: roleError } = await supabase.rpc("has_role", {
+      const { data: hasAdminRole, error: adminError } = await supabase.rpc("has_role", {
         _user_id: profile.user_id,
         _role: "admin",
       });
 
-      if (roleError) {
-        console.error("Error checking admin role:", roleError);
+      // Also check supporter role
+      const { data: hasSupporterRole, error: supporterError } = await supabase.rpc("has_role", {
+        _user_id: profile.user_id,
+        _role: "supporter",
+      });
+
+      if (adminError || supporterError) {
+        console.error("Error checking roles:", adminError || supporterError);
         return new Response(
-          JSON.stringify({ is_admin: false, error: "Failed to check role" }),
+          JSON.stringify({ is_admin: false, is_supporter: false, error: "Failed to check role" }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
+      console.log(`[check_admin] User ${profile.username}: admin=${hasAdminRole}, supporter=${hasSupporterRole}`);
+
       return new Response(
         JSON.stringify({ 
           is_admin: hasAdminRole === true,
+          is_supporter: hasSupporterRole === true,
           username: profile.username 
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
