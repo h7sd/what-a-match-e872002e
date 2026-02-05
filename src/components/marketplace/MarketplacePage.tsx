@@ -1,10 +1,8 @@
- import { useState, useMemo } from 'react';
- import { Link } from 'react-router-dom';
- import { motion, AnimatePresence } from 'framer-motion';
- import { Button } from '@/components/ui/button';
- import { Input } from '@/components/ui/input';
- import { ScrollArea } from '@/components/ui/scroll-area';
- import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
  import { 
    Coins, 
    Search, 
@@ -79,116 +77,101 @@
    const isOwner = activeTab === 'my-items';
    const isPurchased = activeTab === 'purchases';
  
-   return (
-     <div className="space-y-4">
-       {/* Compact Header */}
-       <div className="flex items-center justify-between">
-         <div className="flex items-center gap-3">
-           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-             <ShoppingBag className="w-4.5 h-4.5 text-primary" />
-           </div>
-           <div>
-             <h1 className="text-lg font-semibold">Marketplace</h1>
-             <p className="text-xs text-muted-foreground">
-               {items?.filter(i => i.item_type === 'badge').length || 0} badges · {items?.filter(i => i.item_type === 'template').length || 0} templates
-             </p>
-           </div>
-         </div>
-         
-         <div className="flex items-center gap-2">
-           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-             <Coins className="w-4 h-4 text-amber-500" />
-             <span className="font-semibold text-amber-500 text-sm">
-               {formatUC(balance?.balance)}
-             </span>
-           </div>
-           <Button size="sm" onClick={() => setShowCreateDialog(true)} className="h-8 gap-1.5">
-             <Plus className="w-3.5 h-3.5" />
-             <span className="hidden sm:inline">Sell</span>
-           </Button>
-           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-             <Link to="/marketplace">
-               <ExternalLink className="w-3.5 h-3.5" />
-             </Link>
-           </Button>
-         </div>
-       </div>
+  return (
+    <div className="space-y-3 sm:space-y-4">
+      {/* Compact Header - Mobile optimized */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <ShoppingBag className="w-4 h-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold truncate">Marketplace</h1>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
+              {items?.filter(i => i.item_type === 'badge').length || 0} badges · {items?.filter(i => i.item_type === 'template').length || 0} templates
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
+            <span className="font-semibold text-amber-500 text-xs sm:text-sm">
+              {formatUC(balance?.balance)}
+            </span>
+          </div>
+          <Button size="sm" onClick={() => setShowCreateDialog(true)} className="h-7 sm:h-8 px-2 sm:px-3 gap-1 sm:gap-1.5 text-xs">
+            <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden xs:inline">Sell</span>
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" asChild>
+            <Link to="/marketplace">
+              <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs + Search Row - Mobile optimized */}
+      <div className="flex flex-col gap-2 sm:gap-3">
+        {/* Tab Pills - Scrollable on mobile */}
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/50 overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={cn(
+                "relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-medium rounded-md transition-colors whitespace-nowrap min-h-[36px] min-w-[44px] justify-center",
+                activeTab === tab.value
+                  ? "text-foreground bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground active:bg-background/50"
+              )}
+            >
+              <span className="flex items-center gap-1 sm:gap-1.5">
+                {tab.icon}
+                <span className="hidden xs:inline sm:inline">{tab.label}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search - Full width on mobile */}
+        <div className="relative w-full sm:w-auto sm:max-w-[160px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-9 sm:h-8 w-full text-xs bg-muted/50"
+          />
+        </div>
+      </div>
  
-       {/* Tabs + Search Row */}
-       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-         {/* Tab Pills */}
-         <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/50">
-           {tabs.map((tab) => (
-             <button
-               key={tab.value}
-               onClick={() => setActiveTab(tab.value)}
-               className={cn(
-                 "relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200",
-                 activeTab === tab.value
-                   ? "text-foreground"
-                   : "text-muted-foreground hover:text-foreground"
-               )}
-             >
-               {activeTab === tab.value && (
-                 <motion.div
-                   layoutId="activeTab"
-                   className="absolute inset-0 bg-background shadow-sm rounded-md"
-                   transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
-                 />
-               )}
-               <span className="relative z-10 flex items-center gap-1.5">
-                 {tab.icon}
-                 {tab.label}
-               </span>
-             </button>
-           ))}
-         </div>
- 
-         {/* Search */}
-        <div className="relative flex-shrink-0">
-           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-           <Input
-             placeholder="Search..."
-             value={searchQuery}
-             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 w-36 text-xs bg-muted/50"
-           />
-         </div>
-       </div>
- 
-       {/* Content */}
-       <AnimatePresence mode="wait">
-         <motion.div
-           key={activeTab}
-           initial={{ opacity: 0, y: 8 }}
-           animate={{ opacity: 1, y: 0 }}
-           exit={{ opacity: 0, y: -8 }}
-           transition={{ duration: 0.15 }}
-         >
-           {activeTab === 'history' ? (
-             <div className="space-y-3">
-               <div className="flex items-center justify-between text-sm">
-                 <span className="text-muted-foreground">Transaction History</span>
-                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                   <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                   <span>Earned: <span className="text-emerald-500 font-medium">{formatUC(balance?.total_earned)}</span></span>
-                 </div>
-               </div>
-               <TransactionHistory transactions={transactions || []} />
-             </div>
-           ) : (
-             <TwoColumnLayout
-               badges={badges}
-               templates={templates}
-               userBalance={userBalance}
-               isLoading={itemsLoading && activeTab === 'browse'}
-               isOwner={isOwner}
-               isPurchased={isPurchased}
-               onCreateListing={() => setShowCreateDialog(true)}
-             />
-           )}
-         </motion.div>
-       </AnimatePresence>
+      {/* Content */}
+      <div className="animate-fade-in">
+        {activeTab === 'history' ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Transaction History</span>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Earned: <span className="text-emerald-500 font-medium">{formatUC(balance?.total_earned)}</span></span>
+              </div>
+            </div>
+            <TransactionHistory transactions={transactions || []} />
+          </div>
+        ) : (
+          <TwoColumnLayout
+            badges={badges}
+            templates={templates}
+            userBalance={userBalance}
+            isLoading={itemsLoading && activeTab === 'browse'}
+            isOwner={isOwner}
+            isPurchased={isPurchased}
+            onCreateListing={() => setShowCreateDialog(true)}
+          />
+        )}
+      </div>
  
        <CreateListingDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
      </div>
@@ -233,103 +216,89 @@
  
    const isEmpty = badges.length === 0 && templates.length === 0;
  
-   if (isEmpty) {
-     return (
-       <motion.div 
-         initial={{ opacity: 0, y: 10 }}
-         animate={{ opacity: 1, y: 0 }}
-         className="flex flex-col items-center justify-center py-16 text-center"
-       >
-         <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
-           <ShoppingBag className="w-6 h-6 text-muted-foreground" />
-         </div>
-         <p className="text-sm text-muted-foreground mb-3">No items found</p>
-         <Button variant="outline" size="sm" onClick={onCreateListing}>
-           List first item
-         </Button>
-       </motion.div>
-     );
-   }
+    if (isEmpty) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center animate-fade-in">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
+            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
+          </div>
+          <p className="text-xs sm:text-sm text-muted-foreground mb-3">No items found</p>
+          <Button variant="outline" size="sm" onClick={onCreateListing} className="h-8 text-xs">
+            List first item
+          </Button>
+        </div>
+      );
+    }
  
-   return (
-     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-       {/* Badges Column */}
-       <div className="space-y-3">
-        <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10 border-b border-border/30">
-           <Sparkles className="w-4 h-4" />
-          <span className="font-semibold text-foreground">Badges</span>
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-            {badges.length}
-          </span>
-         </div>
-         
-         {badges.length === 0 ? (
-           <div className="py-8 text-center text-xs text-muted-foreground/60">
-             No badges available
-           </div>
-         ) : (
-           <ScrollArea className="max-h-[400px] pr-2">
-             <motion.div 
-               className="space-y-2"
-               initial="hidden"
-               animate="visible"
-               variants={{
-                 hidden: {},
-                 visible: { transition: { staggerChildren: 0.03 } }
-               }}
-             >
-               {badges.map((item) => (
-                 <MarketplaceBadgeCard
-                   key={item.id}
-                   item={item}
-                   userBalance={userBalance}
-                   isOwner={isOwner}
-                   isPurchased={isPurchased}
-                 />
-               ))}
-             </motion.div>
-           </ScrollArea>
-         )}
-       </div>
- 
-       {/* Templates Column */}
-       <div className="space-y-3">
-        <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-2 z-10 border-b border-border/30">
-           <Package className="w-4 h-4" />
-          <span className="font-semibold text-foreground">Templates</span>
-          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-            {templates.length}
-          </span>
-         </div>
-         
-         {templates.length === 0 ? (
-           <div className="py-8 text-center text-xs text-muted-foreground/60">
-             No templates available
-           </div>
-         ) : (
-           <ScrollArea className="max-h-[400px] pr-2">
-             <motion.div 
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-               initial="hidden"
-               animate="visible"
-               variants={{
-                 hidden: {},
-                 visible: { transition: { staggerChildren: 0.05 } }
-               }}
-             >
-               {templates.map((item) => (
-                 <MarketplaceTemplateCard
-                   key={item.id}
-                   item={item}
-                   userBalance={userBalance}
-                   isOwner={isOwner}
-                   isPurchased={isPurchased}
-                 />
-               ))}
-             </motion.div>
-           </ScrollArea>
-         )}
-       </div>
-     </div>
-   );
- }
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        {/* Badges Section */}
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2 py-1.5 border-b border-border/30">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="font-semibold text-sm sm:text-base text-foreground">Badges</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+              {badges.length}
+            </span>
+          </div>
+          
+          {badges.length === 0 ? (
+            <div className="py-6 sm:py-8 text-center text-xs text-muted-foreground/60">
+              No badges available
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {badges.slice(0, 10).map((item) => (
+                <MarketplaceBadgeCard
+                  key={item.id}
+                  item={item}
+                  userBalance={userBalance}
+                  isOwner={isOwner}
+                  isPurchased={isPurchased}
+                />
+              ))}
+              {badges.length > 10 && (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  +{badges.length - 10} more badges
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Templates Section */}
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2 py-1.5 border-b border-border/30">
+            <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="font-semibold text-sm sm:text-base text-foreground">Templates</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+              {templates.length}
+            </span>
+          </div>
+          
+          {templates.length === 0 ? (
+            <div className="py-6 sm:py-8 text-center text-xs text-muted-foreground/60">
+              No templates available
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+              {templates.slice(0, 9).map((item) => (
+                <MarketplaceTemplateCard
+                  key={item.id}
+                  item={item}
+                  userBalance={userBalance}
+                  isOwner={isOwner}
+                  isPurchased={isPurchased}
+                />
+              ))}
+              {templates.length > 9 && (
+                <div className="col-span-full text-xs text-muted-foreground text-center py-2">
+                  +{templates.length - 9} more templates
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }

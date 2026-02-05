@@ -1,18 +1,14 @@
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, memo } from 'react';
 import { Eye, MapPin, Briefcase, AtSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { OrbitingAvatar } from '@/components/profile/OrbitingAvatar';
-import { AnimatedUsername } from '@/components/profile/AnimatedUsername';
-import { AnimatedDisplayName, type TextAnimationType } from '@/components/profile/TextAnimations';
-import { SparkleEffect } from '@/components/profile/SparkleEffect';
 
 interface TemplatePreviewProps {
   templateData: Record<string, unknown> | null;
   mini?: boolean;
 }
 
-export function TemplatePreview({ templateData, mini = false }: TemplatePreviewProps) {
+// Memoized component for performance - NO heavy animations on mobile
+export const TemplatePreview = memo(function TemplatePreview({ templateData, mini = false }: TemplatePreviewProps) {
   // Extract style properties from template data - this is a STATIC snapshot
   const styles = useMemo(() => {
     if (!templateData) return {};
@@ -28,9 +24,6 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
       avatarUrl: templateData.avatar_url as string | undefined,
       displayName: templateData.display_name as string || 'Display Name',
       username: templateData.username as string || 'username',
-      cardStyle: templateData.card_style as string || 'glass',
-      profileOpacity: (templateData.profile_opacity as number) ?? 100,
-      profileBlur: (templateData.profile_blur as number) ?? 0,
       cardBorderEnabled: templateData.card_border_enabled as boolean ?? true,
       cardBorderColor: templateData.card_border_color as string || '#ffffff',
       cardBorderWidth: (templateData.card_border_width as number) ?? 1,
@@ -40,21 +33,25 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
       nameFont: templateData.name_font as string || 'Inter',
       textFont: templateData.text_font as string || 'Inter',
       enableGradient: templateData.enable_profile_gradient as boolean || false,
-      iconColor: templateData.icon_color as string | undefined,
-      monochrome: templateData.monochrome_icons as boolean || false,
       bio: templateData.bio as string | undefined,
       location: templateData.location as string | undefined,
       occupation: templateData.occupation as string | undefined,
-      displayNameAnimation: templateData.display_name_animation as string | undefined,
-      asciiSize: (templateData.ascii_size as number) ?? 8,
-      asciiWaves: (templateData.ascii_waves as boolean) ?? true,
-      effectsConfig: templateData.effects_config as Record<string, boolean> | undefined,
     };
   }, [templateData]);
 
   const accentColor = styles.accentColor || '#8b5cf6';
 
-  // Mini thumbnail version for card grid
+  const avatarShapeClass = useMemo(() => {
+    const classes: Record<string, string> = {
+      circle: 'rounded-full',
+      square: 'rounded-none',
+      soft: 'rounded-lg',
+      rounded: 'rounded-2xl',
+    };
+    return classes[styles.avatarShape || 'circle'] || 'rounded-full';
+  }, [styles.avatarShape]);
+
+  // Mini thumbnail version - simplified for performance
   if (mini) {
     return (
       <div 
@@ -66,28 +63,18 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
           backgroundPosition: 'center',
         }}
       >
-        {styles.backgroundVideoUrl && (
-          <video
-            src={styles.backgroundVideoUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
         <div className="absolute inset-0 flex items-center justify-center p-2">
-          <div className="relative w-[90%]">
+          <div className="relative w-[85%]">
             {styles.cardBorderEnabled && (
               <div
                 className="absolute -inset-0.5 rounded-xl opacity-40 blur-md"
                 style={{
-                  background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
+                  background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80)`,
                 }}
               />
             )}
             <div 
-              className="relative p-3 rounded-xl backdrop-blur-xl overflow-hidden"
+              className="relative p-3 rounded-xl backdrop-blur-sm overflow-hidden"
               style={{
                 backgroundColor: styles.cardColor || 'rgba(0,0,0,0.6)',
                 border: styles.cardBorderEnabled 
@@ -96,43 +83,21 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
               }}
             >
               <div className="flex flex-col items-center gap-1.5">
-                {/* Mini avatar with orbit effect */}
-                <div className="relative">
-                  <motion.div
-                    className="absolute inset-[-2px] pointer-events-none"
-                    style={{
-                      borderRadius: styles.avatarShape === 'circle' ? '50%' : '8px',
-                      background: `conic-gradient(from 0deg, ${accentColor}40, transparent, ${accentColor}40)`,
-                    }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                {/* Avatar */}
+                {styles.avatarUrl ? (
+                  <img 
+                    src={styles.avatarUrl} 
+                    alt=""
+                    loading="lazy"
+                    className={cn("w-8 h-8 object-cover", avatarShapeClass)}
                   />
-                  {styles.avatarUrl ? (
-                    <img 
-                      src={styles.avatarUrl} 
-                      alt=""
-                      className={cn(
-                        "w-8 h-8 object-cover relative z-10",
-                        styles.avatarShape === 'circle' && 'rounded-full',
-                        styles.avatarShape === 'square' && 'rounded-none',
-                        styles.avatarShape === 'soft' && 'rounded-lg',
-                        styles.avatarShape === 'rounded' && 'rounded-2xl'
-                      )}
-                    />
-                  ) : (
-                    <div 
-                      className={cn(
-                        "w-8 h-8 flex items-center justify-center relative z-10 bg-muted",
-                        styles.avatarShape === 'circle' && 'rounded-full',
-                        styles.avatarShape === 'square' && 'rounded-none',
-                        styles.avatarShape === 'soft' && 'rounded-lg',
-                        styles.avatarShape === 'rounded' && 'rounded-2xl'
-                      )}
-                      style={{ backgroundColor: `${accentColor}20` }}
-                    />
-                  )}
-                </div>
-                {/* Name placeholder */}
+                ) : (
+                  <div 
+                    className={cn("w-8 h-8 bg-muted", avatarShapeClass)}
+                    style={{ backgroundColor: `${accentColor}20` }}
+                  />
+                )}
+                {/* Name */}
                 <div 
                   className="text-[8px] font-bold truncate max-w-full"
                   style={{ 
@@ -149,8 +114,8 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
                       key={i}
                       className="w-2 h-2 rounded-full"
                       style={{ 
-                        backgroundColor: `${accentColor}30`,
-                        border: `1px solid ${accentColor}50`,
+                        backgroundColor: `${accentColor}40`,
+                        border: `1px solid ${accentColor}60`,
                       }}
                     />
                   ))}
@@ -163,7 +128,7 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
     );
   }
 
-  // Full realistic profile preview - uses EXACT same components as ProfileCard
+  // Full preview - optimized, no heavy framer-motion animations
   return (
     <div 
       className="w-full h-full relative overflow-hidden"
@@ -174,7 +139,7 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
         backgroundPosition: 'center',
       }}
     >
-      {/* Background video if present */}
+      {/* Background video - only in full preview */}
       {styles.backgroundVideoUrl && (
         <video
           src={styles.backgroundVideoUrl}
@@ -186,27 +151,19 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
         />
       )}
 
-      <div className="absolute inset-0 flex items-center justify-center p-6">
-        {/* Card container - matches ProfileCard max-w-sm */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative w-full max-w-sm mx-auto"
-        >
-          {/* Animated glow effect behind card - exact match */}
-          <motion.div
-            className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
+      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+        <div className="relative w-full max-w-sm mx-auto animate-fade-in">
+          {/* Glow effect - CSS only, no JS animation */}
+          <div
+            className="absolute -inset-1 rounded-2xl opacity-50 blur-xl"
             style={{
               background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
             }}
-            animate={{ opacity: [0.4, 0.6, 0.4] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           />
 
-          {/* Main card - exact styling from ProfileCard */}
+          {/* Main card */}
           <div
-            className="relative rounded-2xl p-8 backdrop-blur-xl overflow-hidden"
+            className="relative rounded-2xl p-6 sm:p-8 backdrop-blur-xl overflow-hidden"
             style={{
               backgroundColor: styles.cardColor || 'rgba(0,0,0,0.6)',
               border: styles.cardBorderEnabled 
@@ -214,28 +171,11 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
                 : undefined,
             }}
           >
-            {/* Sparkle effects - same as ProfileCard */}
-            {styles.effectsConfig?.sparkles && <SparkleEffect />}
+            {/* Corner decorations - static */}
+            <div className="absolute top-4 right-4 text-lg opacity-60" style={{ color: accentColor }}>✦</div>
+            <div className="absolute bottom-4 right-4 text-lg opacity-60" style={{ color: accentColor }}>✦</div>
 
-            {/* Corner sparkle decorations - exact match */}
-            <motion.div
-              className="absolute top-4 right-4 text-lg"
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              style={{ color: accentColor }}
-            >
-              ✦
-            </motion.div>
-            <motion.div
-              className="absolute bottom-4 right-4 text-lg"
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
-              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-              style={{ color: accentColor }}
-            >
-              ✦
-            </motion.div>
-
-            {/* Gradient border glow overlay - exact match */}
+            {/* Gradient overlay */}
             <div
               className="absolute inset-0 rounded-2xl opacity-30 pointer-events-none"
               style={{
@@ -244,118 +184,116 @@ export function TemplatePreview({ templateData, mini = false }: TemplatePreviewP
             />
 
             <div className="relative z-10 flex flex-col items-center text-center">
-              {/* OrbitingAvatar - REAL component */}
+              {/* Avatar with simple glow ring */}
               {styles.avatarUrl && (
-                <div className="mb-6">
-                  <OrbitingAvatar
-                    avatarUrl={styles.avatarUrl}
-                    displayName={styles.displayName || 'User'}
-                    size={120}
-                    accentColor={accentColor}
-                    shape={styles.avatarShape as 'circle' | 'rounded' | 'soft' | 'square'}
+                <div className="mb-4 sm:mb-6 relative" style={{ width: 100, height: 100 }}>
+                  {/* Glow ring - CSS animation only */}
+                  <div
+                    className="absolute inset-[-4px] animate-spin pointer-events-none"
+                    style={{
+                      borderRadius: styles.avatarShape === 'circle' ? '50%' : '24px',
+                      background: `conic-gradient(from 0deg, ${accentColor}40, transparent, ${accentColor}40)`,
+                      animationDuration: '8s',
+                    }}
+                  />
+                  <img
+                    src={styles.avatarUrl}
+                    alt={styles.displayName || 'Avatar'}
+                    loading="lazy"
+                    className={cn("w-full h-full object-cover relative z-10", avatarShapeClass)}
+                  />
+                  {/* Inner glow */}
+                  <div
+                    className={cn("absolute inset-0 pointer-events-none", avatarShapeClass)}
+                    style={{ boxShadow: `inset 0 0 20px ${accentColor}20` }}
                   />
                 </div>
               )}
 
-              {/* Display Name with animations - REAL components */}
-              <div 
-                className="text-2xl font-bold mb-1"
-                style={{ fontFamily: styles.nameFont || 'Inter' }}
+              {/* Display Name */}
+              <h2 
+                className="text-xl sm:text-2xl font-bold mb-1"
+                style={{ 
+                  fontFamily: styles.nameFont || 'Inter',
+                  textShadow: styles.glowUsername ? `0 0 20px ${accentColor}` : undefined,
+                  background: styles.enableGradient 
+                    ? `linear-gradient(90deg, ${accentColor}, #fff, ${accentColor})` 
+                    : undefined,
+                  WebkitBackgroundClip: styles.enableGradient ? 'text' : undefined,
+                  WebkitTextFillColor: styles.enableGradient ? 'transparent' : undefined,
+                }}
               >
-                {styles.displayNameAnimation && styles.displayNameAnimation !== 'none' ? (
-                  <AnimatedDisplayName
-                    text={styles.displayName || 'Display Name'}
-                    animation={styles.displayNameAnimation as TextAnimationType}
-                    style={{ fontFamily: styles.nameFont || 'Inter' }}
-                    asciiSize={styles.asciiSize}
-                    asciiWaves={styles.asciiWaves}
-                  />
-                ) : (
-                  <AnimatedUsername
-                    text={styles.displayName || 'Display Name'}
-                    fontFamily={styles.nameFont || 'Inter'}
-                    accentColor={accentColor}
-                    enableRainbow={styles.enableGradient}
-                    enableGlow={styles.glowUsername}
-                    enableTypewriter={styles.effectsConfig?.typewriter}
-                    enableGlitch={styles.effectsConfig?.glow}
-                    enableSparkles={styles.effectsConfig?.sparkles}
-                  />
-                )}
-              </div>
+                {styles.displayName || 'Display Name'}
+              </h2>
 
-              {/* Username - exact styling */}
+              {/* Username */}
               <p className="text-muted-foreground text-sm mb-3 flex items-center gap-0.5">
                 <AtSign className="w-3.5 h-3.5" />
                 {styles.username || 'username'}
               </p>
 
-              {/* Badges placeholder container - exact styling */}
+              {/* Badges placeholder */}
               <div 
                 className={cn(
-                  "flex flex-wrap justify-center gap-2 mb-4 px-4 py-2 rounded-full",
+                  "flex flex-wrap justify-center gap-2 mb-4 px-3 py-1.5 rounded-full",
                   !styles.transparentBadges && "bg-black/20 backdrop-blur-sm"
                 )}
               >
                 {[1, 2, 3].map(i => (
-                  <motion.div 
+                  <div 
                     key={i}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110"
                     style={{ 
                       backgroundColor: `${accentColor}20`,
                       border: `1px solid ${accentColor}40`,
                       boxShadow: styles.glowBadges ? `0 0 10px ${accentColor}40` : undefined
                     }}
-                    whileHover={{ scale: 1.1 }}
                   >
                     <div 
-                      className="w-4 h-4 rounded-full"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full"
                       style={{ backgroundColor: accentColor }}
                     />
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
-              {/* Bio - exact styling */}
+              {/* Bio */}
               {styles.bio && (
                 <p 
-                  className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-4"
+                  className="text-muted-foreground text-xs sm:text-sm max-w-xs leading-relaxed mb-4"
                   style={{ fontFamily: styles.textFont || 'Inter' }}
                 >
                   {styles.bio}
                 </p>
               )}
 
-              {/* Location & Occupation - exact styling */}
-              <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground mb-4">
-                {styles.occupation && (
-                  <div className="flex items-center gap-1">
-                    <Briefcase className="w-3 h-3" />
-                    <span>{styles.occupation}</span>
-                  </div>
-                )}
-                {styles.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    <span>{styles.location}</span>
-                  </div>
-                )}
-              </div>
+              {/* Location & Occupation */}
+              {(styles.occupation || styles.location) && (
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs text-muted-foreground mb-4">
+                  {styles.occupation && (
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" />
+                      <span>{styles.occupation}</span>
+                    </div>
+                  )}
+                  {styles.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      <span>{styles.location}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {/* Views - exact styling */}
+              {/* Views */}
               <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                 <Eye className="w-3.5 h-3.5" />
-                <motion.span
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  1,234 views
-                </motion.span>
+                <span>1,234 views</span>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
-}
+});
