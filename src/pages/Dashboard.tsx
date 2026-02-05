@@ -328,27 +328,49 @@ export default function Dashboard() {
         return;
       }
 
-      // If we just came from MFA verification, give the client a moment to settle tokens.
-      // This prevents a redirect loop (/dashboard -> /auth?mfa=required) while the session is upgrading.
-      const cameFromMfa = (location.state as any)?.mfaJustVerified === true;
-      if (cameFromMfa) {
-        return;
-      }
+      // If we just completed MFA, we may still be in a short token propagation window.
+      // Use BOTH navigation state and a sessionStorage fallback (state can be lost on reloads).
+      const cameFromMfaState = (location.state as any)?.mfaJustVerified === true;
+      const mfaJustVerifiedAt = Number(sessionStorage.getItem('uv_mfa_just_verified') || 0);
+      const isRecentMfa = cameFromMfaState || (mfaJustVerifiedAt > 0 && Date.now() - mfaJustVerifiedAt < 30_000);
 
       const needsMfa = async () => {
         const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         return !!aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1';
       };
 
+      if (isRecentMfa) {
+        // Try harder to settle into the AAL2 session before enforcing a redirect.
+        for (let i = 0; i < 6; i++) {
+          if (!(await needsMfa())) {
+            try {
+              sessionStorage.removeItem('uv_mfa_just_verified');
+            } catch {
+              // ignore
+            }
+            return;
+          }
+
+          if (i === 0) {
+            await supabase.auth.refreshSession();
+          }
+          await new Promise((r) => setTimeout(r, 250));
+        }
+
+        // Still not AAL2 after settling attempts → require MFA again.
+        navigate('/auth?mfa=required', { replace: true });
+        return;
+      }
+
       // First check
       if (!(await needsMfa())) return;
 
-      // Retry once after a refresh (covers the "verified but not applied yet" race)
+      // Retry once after a refresh (covers transient races)
       await supabase.auth.refreshSession();
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, 200));
 
       if (await needsMfa()) {
-        navigate('/auth?mfa=required');
+        navigate('/auth?mfa=required', { replace: true });
       }
     };
 

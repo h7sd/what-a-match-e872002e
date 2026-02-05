@@ -720,6 +720,13 @@ export default function Auth() {
         // Mark MFA as completed to prevent AAL check loop
         setMfaJustCompleted(true);
         toast({ title: 'Successfully logged in!' });
+
+        // Persist a short-lived flag across navigation/reloads so /dashboard can avoid bouncing back immediately.
+        try {
+          sessionStorage.setItem('uv_mfa_just_verified', String(Date.now()));
+        } catch {
+          // ignore
+        }
         
         // Small delay to let state update, then redirect
         await new Promise(resolve => setTimeout(resolve, 100));

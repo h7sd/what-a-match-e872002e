@@ -241,6 +241,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(sessionData.session.user);
       }
 
+      // Persist a short-lived flag across navigation/reloads so guards can avoid an immediate bounce.
+      try {
+        sessionStorage.setItem('uv_mfa_just_verified', String(Date.now()));
+      } catch {
+        // ignore
+      }
+
       return { error: null };
     } catch (error: any) {
       return { error };
