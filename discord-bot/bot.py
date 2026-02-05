@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-05-plinko-v1"
+BOT_CODE_VERSION = "2026-02-05-plinko-v2"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -2851,8 +2851,17 @@ class UserVaultPrefixCommands(commands.Cog):
                 # Patterns we support:
                 #   lowered.startswith("?foo")
                 #   lowered == "?foo"
+                #
+                # NOTE: `inspect.getsource()` can fail in some reload/extension scenarios.
+                # To avoid false positives ("registered but not yet implemented"), prefer
+                # reading the module source from disk and only fall back to inspect.
                 try:
-                    src = inspect.getsource(self.__class__.on_message)
+                    src = ""
+                    try:
+                        src = Path(__file__).read_text(encoding="utf-8", errors="ignore")
+                    except Exception:
+                        src = inspect.getsource(self.__class__.on_message)
+
                     for pat in (
                         r"lowered\\.startswith\\(\\s*['\"]\\?([a-z0-9]+)",
                         r"lowered\\s*==\\s*['\"]\\?([a-z0-9]+)",
