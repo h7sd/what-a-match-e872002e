@@ -299,7 +299,7 @@ export function AnimatedDisplayName({
 
 // Lazy-loaded ASCII 3D wrapper to avoid loading Three.js for all users
 import { lazy, Suspense } from 'react';
-const ASCIITextEffect = lazy(() => import('./ASCIITextEffect'));
+const ASCIITextEffect = lazy(() => import('@/components/profile/ASCIITextEffect'));
 
 interface ASCII3DWrapperProps {
   text: string;
