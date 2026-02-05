@@ -200,6 +200,54 @@ serve(async (req) => {
       );
     }
 
+    // ============ DELETE ACCOUNT ============
+    if (action === "delete_account") {
+      // Find linked profile
+      const { data: linkedProfile } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .eq("discord_user_id", discordUserId)
+        .single();
+
+      if (!linkedProfile) {
+        return new Response(
+          JSON.stringify({ error: "Your Discord is not linked to any UserVault account" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const userId = linkedProfile.user_id;
+      console.log(`[delete_account] Deleting data for user ${userId} (${linkedProfile.username})`);
+
+      // Delete user balances
+      await supabase.from("user_balances").delete().eq("user_id", userId);
+
+      // Delete transactions
+      await supabase.from("uv_transactions").delete().eq("user_id", userId);
+
+      // Delete minigame stats
+      await supabase.from("minigame_stats").delete().eq("user_id", userId);
+
+      // Delete daily rewards
+      await supabase.from("daily_rewards").delete().eq("user_id", userId);
+
+      // Unlink Discord from profile (don't delete the profile itself)
+      await supabase
+        .from("profiles")
+        .update({ discord_user_id: null })
+        .eq("user_id", userId);
+
+      console.log(`[delete_account] Successfully deleted data for ${linkedProfile.username}`);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Account data for ${linkedProfile.username} has been deleted` 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     // ============ GET PROFILE ============
     if (action === "get_profile") {
       const { data: profile } = await supabase

@@ -263,7 +263,11 @@ class UserVaultAPI:
     async def lookup_profile(self, username: str) -> dict:
         """Look up any UserVault profile by username or UID (public info only)."""
         return await self.game_api("lookup_profile", username=username)
-    
+
+    async def delete_account(self, discord_user_id: str) -> dict:
+        """Delete a user's linked UserVault account data."""
+        return await self.reward_api("delete_account", discord_user_id)
+
     async def get_bot_commands(self) -> dict:
         """Get all enabled bot commands from database."""
         return await self.game_api("get_bot_commands")
@@ -1489,6 +1493,48 @@ class UserVaultPrefixCommands(commands.Cog):
         else:
             await ctx.send("🔓 **Account Unlinked**")
 
+    @commands.command(name="delete")
+    async def delete_prefix(self, ctx: commands.Context):
+        """Delete your linked UserVault account data."""
+        # Ask for confirmation first
+        confirm_msg = await ctx.send(
+            "⚠️ **Account Deletion**\n\n"
+            "Dies wird **alle deine UserVault-Daten löschen**:\n"
+            "• Balance & Transaktionen\n"
+            "• Minigame-Statistiken\n"
+            "• Discord-Verknüpfung\n\n"
+            "Reagiere mit ✅ innerhalb von 30 Sekunden um zu bestätigen."
+        )
+        await confirm_msg.add_reaction("✅")
+        await confirm_msg.add_reaction("❌")
+
+        def check(reaction, user):
+            return (
+                user.id == ctx.author.id
+                and reaction.message.id == confirm_msg.id
+                and str(reaction.emoji) in ["✅", "❌"]
+            )
+
+        try:
+            reaction, _ = await ctx.bot.wait_for("reaction_add", timeout=30.0, check=check)
+            if str(reaction.emoji) == "❌":
+                await ctx.send("❌ Account-Löschung abgebrochen.")
+                return
+        except asyncio.TimeoutError:
+            await ctx.send("⏱️ Timeout – Account-Löschung abgebrochen.")
+            return
+
+        # Proceed with deletion
+        result = await ctx.bot.api.delete_account(str(ctx.author.id))  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ {result['error']}")
+        else:
+            await ctx.send(
+                "🗑️ **Account Gelöscht**\n\n"
+                "Alle deine UserVault-Daten wurden entfernt.\n"
+                "Du kannst jederzeit mit `?link <username>` einen neuen Account verknüpfen."
+            )
+
     @commands.command(name="profile")
     async def profile_prefix(self, ctx: commands.Context):
         result = await ctx.bot.api.get_profile(str(ctx.author.id))  # type: ignore[attr-defined]
@@ -1818,7 +1864,7 @@ class UserVaultPrefixCommands(commands.Cog):
                     "helping", "commands", "reload", "lookup", "apistats",
                     "balance", "daily", "slots", "coin", "rps", "blackjack",
                     "guess", "trivia", "link", "unlink", "profile", "mines", "ping",
-                    "higherlower", "hl"
+                    "higherlower", "hl", "delete"
                 }
                 if cmd_part not in known_cmds:
                     # Check if it's in the database
