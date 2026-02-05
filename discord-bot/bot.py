@@ -558,6 +558,10 @@ class UserVaultBot(commands.Bot):
     async def on_ready(self):
         print(f"🤖 Bot ready: {self.user}")
         print(f"📊 Connected to {len(self.guilds)} guilds")
+        print(f"✅ Message Content Intent: {self.intents.message_content}")
+        print(f"✅ Prefix Cog loaded: {hasattr(self, '_uservault_prefix_cog_loaded')}")
+        print(f"📋 Registered cogs: {list(self.cogs.keys())}")
+        print(f"🔧 Command prefix: {self.command_prefix}")
         
         # Start notification polling
         if self.notification_task is None or self.notification_task.done():
