@@ -364,6 +364,15 @@ class UserVaultAPI:
             return {"error": str(e)}
 
 
+def _ensure_uservault_client_state(client: commands.Bot):
+    """Ensure the running discord.py client has the attributes our commands rely on."""
+    if not hasattr(client, "api"):
+        client.api = UserVaultAPI(WEBHOOK_SECRET)
+    if not hasattr(client, "active_guess_games"):
+        client.active_guess_games = {}
+    return client
+
+
 class TriviaView(discord.ui.View):
     """View for trivia answers."""
     
@@ -480,7 +489,9 @@ class UserVaultBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(command_prefix="!", intents=intents)
+        # Prefix commands are optional, but requested by admins.
+        # Note: when loaded as an extension, the host bot's prefix configuration is used.
+        super().__init__(command_prefix=commands.when_mentioned_or("?"), intents=intents)
         
         self.api = UserVaultAPI(WEBHOOK_SECRET)
         self.active_guess_games: Dict[int, dict] = {}
@@ -488,6 +499,12 @@ class UserVaultBot(commands.Bot):
     
     async def setup_hook(self):
         """Called when the bot is ready to set up commands."""
+        _ensure_uservault_client_state(self)
+
+        # Prefix commands (standalone mode)
+        if not hasattr(self, "_uservault_prefix_cog_loaded"):
+            await self.add_cog(UserVaultPrefixCommands(self))
+            self._uservault_prefix_cog_loaded = True
         # Fetch available commands from API
         print("📡 Fetching commands from API...")
         try:
@@ -616,10 +633,12 @@ bot = UserVaultBot()
 
 @app_commands.command(name="trivia", description="🎯 Answer questions and win UC!")
 async def trivia(interaction: discord.Interaction):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    trivia_data = await bot.api.get_trivia()
-    view = TriviaView(bot, trivia_data, interaction.user.id)
+    trivia_data = await api.get_trivia()
+    view = TriviaView(interaction.client, trivia_data, interaction.user.id)  # type: ignore[arg-type]
     
     content = (
         f"🎯 **Trivia**\n\n"
@@ -632,9 +651,11 @@ async def trivia(interaction: discord.Interaction):
 
 @app_commands.command(name="slots", description="🎰 Spin the slot machine!")
 async def slots(interaction: discord.Interaction):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    result = await bot.api.spin_slots()
+    result = await api.spin_slots()
     payout = result.get("payout", 0)
     display = result.get("display", "🎰 🎰 🎰")
     
@@ -643,7 +664,7 @@ async def slots(interaction: discord.Interaction):
     await interaction.followup.send(f"🎰 **Slots**\n\n{display}\n\n{result_text}")
     
     if payout > 0:
-        await bot.api.send_reward(str(interaction.user.id), payout, "slots", "Slots win")
+        await api.send_reward(str(interaction.user.id), payout, "slots", "Slots win")
 
 
 @app_commands.command(name="coin", description="🪙 Flip a coin - heads or tails?")
@@ -652,9 +673,11 @@ async def slots(interaction: discord.Interaction):
     app_commands.Choice(name="Tails", value="tails"),
 ])
 async def coin(interaction: discord.Interaction, choice: app_commands.Choice[str]):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    result = await bot.api.flip_coin()
+    result = await api.flip_coin()
     won = result.get("result") == choice.value
     emoji = result.get("emoji", "🪙")
     
@@ -665,7 +688,7 @@ async def coin(interaction: discord.Interaction, choice: app_commands.Choice[str
     
     if won:
         content += "🎉 **You won! +10 UC**"
-        await bot.api.send_reward(str(interaction.user.id), 10, "coinflip", "Coinflip win")
+        await api.send_reward(str(interaction.user.id), 10, "coinflip", "Coinflip win")
     else:
         content += "❌ Better luck next time!"
     
@@ -679,9 +702,11 @@ async def coin(interaction: discord.Interaction, choice: app_commands.Choice[str
     app_commands.Choice(name="✂️ Scissors", value="scissors"),
 ])
 async def rps(interaction: discord.Interaction, choice: app_commands.Choice[str]):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    result = await bot.api.play_rps(choice.value)
+    result = await api.play_rps(choice.value)
     
     if result.get("error"):
         await interaction.followup.send(f"❌ Error: {result['error']}")
@@ -696,7 +721,7 @@ async def rps(interaction: discord.Interaction, choice: app_commands.Choice[str]
     if game_result == "win":
         reward = result.get("reward", 15)
         content += f"🎉 **You won! +{reward} UC**"
-        await bot.api.send_reward(str(interaction.user.id), reward, "rps", "RPS win")
+        await api.send_reward(str(interaction.user.id), reward, "rps", "RPS win")
     elif game_result == "lose":
         content += "❌ You lost!"
     else:
@@ -707,9 +732,11 @@ async def rps(interaction: discord.Interaction, choice: app_commands.Choice[str]
 
 @app_commands.command(name="blackjack", description="🃏 Play 21 against the dealer!")
 async def blackjack(interaction: discord.Interaction):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    game_data = await bot.api.start_blackjack(50)
+    game_data = await api.start_blackjack(50)
     
     content = (
         f"🃏 **Blackjack** (Bet: 50 UC)\n\n"
@@ -719,19 +746,22 @@ async def blackjack(interaction: discord.Interaction):
     
     if game_data.get("playerValue") == 21:
         content += "\n\n🎉 **BLACKJACK! +75 UC**"
-        await bot.api.send_reward(str(interaction.user.id), 75, "blackjack", "Blackjack!")
+        await api.send_reward(str(interaction.user.id), 75, "blackjack", "Blackjack!")
         await interaction.followup.send(content)
     else:
-        view = BlackjackView(bot, game_data, interaction.user.id)
+        view = BlackjackView(interaction.client, game_data, interaction.user.id)  # type: ignore[arg-type]
         await interaction.followup.send(content, view=view)
 
 
 @app_commands.command(name="guess", description="🔢 Guess the number (1-100)!")
 async def guess(interaction: discord.Interaction):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
+    active_guess_games = interaction.client.active_guess_games  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    result = await bot.api.generate_number()
-    bot.active_guess_games[interaction.user.id] = {
+    result = await api.generate_number()
+    active_guess_games[interaction.user.id] = {
         "secret": result.get("secret"),
         "attempts": 5,
         "channel_id": interaction.channel.id
@@ -747,9 +777,11 @@ async def guess(interaction: discord.Interaction):
 
 @app_commands.command(name="balance", description="💰 Check your UC balance")
 async def balance(interaction: discord.Interaction):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    result = await bot.api.get_balance(str(interaction.user.id))
+    result = await api.get_balance(str(interaction.user.id))
     
     if result.get("error"):
         await interaction.followup.send(f"❌ Error: {result['error']}")
@@ -763,9 +795,11 @@ async def balance(interaction: discord.Interaction):
 
 @app_commands.command(name="daily", description="📅 Claim your daily UC reward")
 async def daily(interaction: discord.Interaction):
+    _ensure_uservault_client_state(interaction.client)  # type: ignore[arg-type]
+    api = interaction.client.api  # type: ignore[attr-defined]
     await interaction.response.defer()
     
-    result = await bot.api.claim_daily(str(interaction.user.id))
+    result = await api.claim_daily(str(interaction.user.id))
     
     if result.get("error"):
         await interaction.followup.send(f"❌ {result['error']}")
@@ -793,6 +827,253 @@ async def apistats(interaction: discord.Interaction):
         f"📈 Success Rate: **{success_rate:.1f}%**",
         ephemeral=True
     )
+
+
+class UserVaultPrefixCommands(commands.Cog):
+    """Prefix commands (e.g. ?trivia) for admins/servers that prefer text commands."""
+
+    def __init__(self, client: commands.Bot):
+        self.client = _ensure_uservault_client_state(client)
+
+    @commands.command(name="apistats")
+    async def apistats_prefix(self, ctx: commands.Context):
+        logger = request_logger
+        total = logger.request_count
+        success_rate = (logger.success_count / total * 100) if total > 0 else 0
+        await ctx.send(
+            "📊 **API Request Statistics**\n\n"
+            f"📡 Total Requests: **{total}**\n"
+            f"✅ Successful: **{logger.success_count}**\n"
+            f"❌ Errors: **{logger.error_count}**\n"
+            f"📈 Success Rate: **{success_rate:.1f}%**"
+        )
+
+    @commands.command(name="balance")
+    async def balance_prefix(self, ctx: commands.Context):
+        result = await ctx.bot.api.get_balance(str(ctx.author.id))  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ Error: {result['error']}")
+            return
+        await ctx.send(
+            "💰 **Your Balance**\n\n"
+            f"Balance: **{result.get('balance', 0)} UC**\n"
+            f"Total Earned: {result.get('totalEarned', 0)} UC"
+        )
+
+    @commands.command(name="daily")
+    async def daily_prefix(self, ctx: commands.Context):
+        result = await ctx.bot.api.claim_daily(str(ctx.author.id))  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ {result['error']}")
+            return
+        await ctx.send(
+            "📅 **Daily Reward**\n\n"
+            f"🎉 Claimed **{result.get('reward', 50)} UC**!\n"
+            f"🔥 Streak: {result.get('streak', 1)} days\n"
+            f"💰 New Balance: {result.get('newBalance', 0)} UC"
+        )
+
+    @commands.command(name="slots")
+    async def slots_prefix(self, ctx: commands.Context):
+        result = await ctx.bot.api.spin_slots()  # type: ignore[attr-defined]
+        payout = result.get("payout", 0)
+        display = result.get("display", "🎰 🎰 🎰")
+        result_text = f"🎉 **WIN! +{payout} UC**" if payout > 0 else "❌ No match"
+        await ctx.send(f"🎰 **Slots**\n\n{display}\n\n{result_text}")
+        if payout > 0:
+            await ctx.bot.api.send_reward(str(ctx.author.id), payout, "slots", "Slots win")  # type: ignore[attr-defined]
+
+    @commands.command(name="coin")
+    async def coin_prefix(self, ctx: commands.Context, choice: str):
+        choice = choice.lower().strip()
+        if choice not in {"heads", "tails"}:
+            await ctx.send("❌ Usage: `?coin heads` oder `?coin tails`")
+            return
+        result = await ctx.bot.api.flip_coin()  # type: ignore[attr-defined]
+        won = result.get("result") == choice
+        emoji = result.get("emoji", "🪙")
+        content = (
+            "🪙 **Coinflip**\n\n"
+            f"{emoji} The coin landed on **{result.get('result', 'unknown')}**!\n\n"
+        )
+        if won:
+            content += "🎉 **You won! +10 UC**"
+            await ctx.bot.api.send_reward(str(ctx.author.id), 10, "coinflip", "Coinflip win")  # type: ignore[attr-defined]
+        else:
+            content += "❌ Better luck next time!"
+        await ctx.send(content)
+
+    @commands.command(name="rps")
+    async def rps_prefix(self, ctx: commands.Context, choice: str):
+        choice = choice.lower().strip()
+        if choice not in {"rock", "paper", "scissors"}:
+            await ctx.send("❌ Usage: `?rps rock|paper|scissors`")
+            return
+        result = await ctx.bot.api.play_rps(choice)  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ Error: {result['error']}")
+            return
+        game_result = result.get("result", "tie")
+        player_emoji = result.get("playerEmoji", "❓")
+        bot_emoji = result.get("botEmoji", "❓")
+        content = f"✂️ **Rock Paper Scissors**\n\nYou: {player_emoji}  vs  Bot: {bot_emoji}\n\n"
+        if game_result == "win":
+            reward = result.get("reward", 15)
+            content += f"🎉 **You won! +{reward} UC**"
+            await ctx.bot.api.send_reward(str(ctx.author.id), reward, "rps", "RPS win")  # type: ignore[attr-defined]
+        elif game_result == "lose":
+            content += "❌ You lost!"
+        else:
+            content += "🤝 It's a tie!"
+        await ctx.send(content)
+
+    @commands.command(name="blackjack")
+    async def blackjack_prefix(self, ctx: commands.Context):
+        game_data = await ctx.bot.api.start_blackjack(50)  # type: ignore[attr-defined]
+        content = (
+            "🃏 **Blackjack** (Bet: 50 UC)\n\n"
+            f"Your hand: {game_data.get('playerDisplay', '??')} ({game_data.get('playerValue', 0)})\n"
+            f"Dealer: {game_data.get('dealerDisplay', '??')}"
+        )
+        if game_data.get("playerValue") == 21:
+            content += "\n\n🎉 **BLACKJACK! +75 UC**"
+            await ctx.bot.api.send_reward(str(ctx.author.id), 75, "blackjack", "Blackjack!")  # type: ignore[attr-defined]
+            await ctx.send(content)
+            return
+        view = BlackjackView(ctx.bot, game_data, ctx.author.id)
+        await ctx.send(content, view=view)
+
+    @commands.command(name="guess")
+    async def guess_prefix(self, ctx: commands.Context):
+        result = await ctx.bot.api.generate_number()  # type: ignore[attr-defined]
+        ctx.bot.active_guess_games[ctx.author.id] = {  # type: ignore[attr-defined]
+            "secret": result.get("secret"),
+            "attempts": 5,
+            "channel_id": ctx.channel.id,
+        }
+        await ctx.send(
+            "🔢 **Guess the Number**\n\n"
+            "I'm thinking of a number between 1 and 100.\n"
+            "You have 5 attempts!\n\n"
+            "Type a number in chat to guess."
+        )
+
+    @commands.command(name="trivia")
+    async def trivia_prefix(self, ctx: commands.Context):
+        trivia_data = await ctx.bot.api.get_trivia()  # type: ignore[attr-defined]
+        options = trivia_data.get("options", [])
+        question = trivia_data.get("question", "Trivia")
+        category = trivia_data.get("category", "General")
+        if not options:
+            await ctx.send("❌ Trivia konnte nicht geladen werden.")
+            return
+
+        options_text = "\n".join([f"{i+1}. {opt}" for i, opt in enumerate(options)])
+        await ctx.send(
+            "🎯 **Trivia**\n\n"
+            f"{question}\n\n"
+            f"*Category: {category}*\n\n"
+            f"{options_text}\n\n"
+            "Antworte mit der Zahl (1-4) innerhalb von 60s."
+        )
+
+        def check(m: discord.Message):
+            return (
+                m.author.id == ctx.author.id
+                and m.channel.id == ctx.channel.id
+                and m.content.strip().isdigit()
+            )
+
+        try:
+            msg = await self.client.wait_for("message", check=check, timeout=60)
+            idx = int(msg.content.strip()) - 1
+            if idx < 0 or idx >= len(options):
+                await ctx.send("❌ Ungültige Auswahl.")
+                return
+            selected_answer = options[idx]
+            result = await ctx.bot.api.check_trivia(question, selected_answer)  # type: ignore[attr-defined]
+            if result.get("correct"):
+                reward = result.get("reward", 25)
+                await ctx.bot.api.send_reward(str(ctx.author.id), reward, "trivia", "Trivia correct")  # type: ignore[attr-defined]
+                await ctx.send(f"✅ **Correct!** +{reward} UC")
+            else:
+                await ctx.send(f"❌ Wrong! The answer was: **{result.get('correctAnswer', 'Unknown')}**")
+        except asyncio.TimeoutError:
+            await ctx.send("⏱️ Timeout – keine Antwort erhalten.")
+
+    @commands.command(name="link")
+    async def link_prefix(self, ctx: commands.Context, username: str):
+        result = await ctx.bot.api.link_account(str(ctx.author.id), username)  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ {result['error']}")
+        elif result.get("success"):
+            await ctx.send(f"🔗 **Account Linked!** ✅ Discord ist jetzt linked zu **{username}**")
+        else:
+            await ctx.send("⏳ **Verification Required** – schau in dein Dashboard für den Code.")
+
+    @commands.command(name="unlink")
+    async def unlink_prefix(self, ctx: commands.Context):
+        result = await ctx.bot.api.unlink_account(str(ctx.author.id))  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ {result['error']}")
+        else:
+            await ctx.send("🔓 **Account Unlinked**")
+
+    @commands.command(name="profile")
+    async def profile_prefix(self, ctx: commands.Context):
+        result = await ctx.bot.api.get_profile(str(ctx.author.id))  # type: ignore[attr-defined]
+        if result.get("error"):
+            await ctx.send(f"❌ {result['error']}")
+            return
+        username = result.get("username", "Unknown")
+        balance = result.get("balance", 0)
+        total_earned = result.get("totalEarned", 0)
+        profile_url = f"https://uservault.cc/{username}"
+        await ctx.send(
+            "👤 **UserVault Profile**\n\n"
+            f"**Username:** {username}\n"
+            f"💰 **Balance:** {balance} UC\n"
+            f"📈 **Total Earned:** {total_earned} UC\n"
+            f"🔗 **Profile:** {profile_url}"
+        )
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot:
+            return
+
+        active_guess_games = getattr(self.client, "active_guess_games", {})
+        game = active_guess_games.get(message.author.id)
+        if game and message.channel.id == game.get("channel_id"):
+            try:
+                guess_num = int(message.content)
+                if 1 <= guess_num <= 100:
+                    game["attempts"] -= 1
+                    result = await self.client.api.check_guess(  # type: ignore[attr-defined]
+                        game["secret"],
+                        guess_num,
+                        game["attempts"],
+                    )
+
+                    if result.get("correct"):
+                        reward = result.get("reward", 50)
+                        await message.reply(f"🎉 **Correct!** The number was {guess_num}! **+{reward} UC**")
+                        await self.client.api.send_reward(  # type: ignore[attr-defined]
+                            str(message.author.id),
+                            reward,
+                            "guess",
+                            "Number guess",
+                        )
+                        del active_guess_games[message.author.id]
+                    elif game["attempts"] == 0:
+                        await message.reply(f"❌ Out of attempts! The number was {result.get('answer', '???')}.")
+                        del active_guess_games[message.author.id]
+                    else:
+                        hint = result.get("hint", "Try again!")
+                        await message.reply(f"{hint} ({game['attempts']} attempts left)")
+            except ValueError:
+                pass
+
 
 
 # ============ UTILITY COMMANDS ============
@@ -938,10 +1219,12 @@ async def setup(client: commands.Bot):
     client.tree.add_command(apistats)
     
     # If the client has an API attribute, use it; otherwise create one
-    if not hasattr(client, 'api'):
-        client.api = UserVaultAPI(WEBHOOK_SECRET)
-    if not hasattr(client, 'active_guess_games'):
-        client.active_guess_games = {}
+    _ensure_uservault_client_state(client)
+
+    # Prefix commands + message listener (needed for '?guess')
+    if not hasattr(client, "_uservault_prefix_cog_loaded"):
+        await client.add_cog(UserVaultPrefixCommands(client))
+        client._uservault_prefix_cog_loaded = True
     
     # Start notification polling if not already running
     if not hasattr(client, '_uservault_notification_task') or client._uservault_notification_task is None or client._uservault_notification_task.done():
