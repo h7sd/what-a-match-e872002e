@@ -154,6 +154,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const verifyMfa = async (factorId: string, code: string) => {
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    const ensureAal2 = async (): Promise<boolean> => {
+      // If user doesn't have MFA enabled, don't block.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (!aalData) return true;
+
+        // If current is already AAL2 OR MFA isn't required, we're good.
+        if (aalData.currentLevel === 'aal2' || aalData.nextLevel !== 'aal2') return true;
+
+        // First retry: force-refresh tokens, then wait a bit.
+        if (attempt === 0) {
+          await supabase.auth.refreshSession();
+        }
+        await sleep(150);
+      }
+
+      return false;
+    };
+
     try {
       // Validate inputs client-side first
       if (!factorId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(factorId)) {
@@ -164,10 +185,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Use secure edge function for MFA verification (rate-limited, validated)
-      const { data, error } = await invokeSecure<{ 
-        success?: boolean; 
-        lockoutMinutes?: number; 
-        message?: string; 
+      const { data, error } = await invokeSecure<{
+        success?: boolean;
+        lockoutMinutes?: number;
+        message?: string;
         error?: string;
         access_token?: string;
         refresh_token?: string;
@@ -196,38 +217,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           access_token: data.access_token,
           refresh_token: data.refresh_token,
         });
-        
+
         if (sessionError) {
           console.error('Failed to set AAL2 session:', sessionError);
-          // Fallback to refresh
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          if (refreshData.session) {
-            setSession(refreshData.session);
-            setUser(refreshData.session.user);
-          }
-        } else {
-          // Session was set, get the updated session
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session) {
-            setSession(sessionData.session);
-            setUser(sessionData.session.user);
-          }
+          await supabase.auth.refreshSession();
         }
       } else {
         // Fallback: refresh session to get AAL2 token
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        
-        if (refreshError) {
-          console.error('Session refresh error:', refreshError);
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session) {
-            setSession(sessionData.session);
-            setUser(sessionData.session.user);
-          }
-        } else if (refreshData.session) {
-          setSession(refreshData.session);
-          setUser(refreshData.session.user);
-        }
+        await supabase.auth.refreshSession();
+      }
+
+      // IMPORTANT: Wait until the client actually reports AAL2 before returning.
+      // Otherwise Dashboard can immediately redirect back to /auth?mfa=required.
+      const ok = await ensureAal2();
+      if (!ok) {
+        throw new Error('2FA session upgrade failed. Please try again.');
+      }
+
+      // Sync latest session into context state
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        setSession(sessionData.session);
+        setUser(sessionData.session.user);
       }
 
       return { error: null };

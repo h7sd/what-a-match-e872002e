@@ -182,9 +182,9 @@ export default function Auth() {
         if (mfaJustCompleted) {
           const redirect = searchParams.get('redirect');
           if (redirect === 'premium') {
-            navigate('/?showPremium=true');
+            navigate('/?showPremium=true', { replace: true, state: { mfaJustVerified: true } });
           } else {
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true, state: { mfaJustVerified: true } });
           }
           return;
         }
@@ -726,9 +726,9 @@ export default function Auth() {
         
         const redirect = searchParams.get('redirect');
         if (redirect === 'premium') {
-          navigate('/?showPremium=true', { replace: true });
+          navigate('/?showPremium=true', { replace: true, state: { mfaJustVerified: true } });
         } else {
-          navigate('/dashboard', { replace: true });
+          navigate('/dashboard', { replace: true, state: { mfaJustVerified: true } });
         }
       }
     } catch (err: any) {

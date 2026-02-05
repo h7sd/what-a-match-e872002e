@@ -327,23 +327,33 @@ export default function Dashboard() {
         navigate('/auth');
         return;
       }
-      
-      if (user) {
-        // Check if user has MFA enabled and needs to verify
+
+      // If we just came from MFA verification, give the client a moment to settle tokens.
+      // This prevents a redirect loop (/dashboard -> /auth?mfa=required) while the session is upgrading.
+      const cameFromMfa = (location.state as any)?.mfaJustVerified === true;
+      if (cameFromMfa) {
+        return;
+      }
+
+      const needsMfa = async () => {
         const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        
-        if (aalData) {
-          // If user has MFA enabled (nextLevel is aal2) but hasn't verified (currentLevel is aal1)
-          if (aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
-            // User needs to complete MFA verification
-            navigate('/auth?mfa=required');
-          }
-        }
+        return !!aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1';
+      };
+
+      // First check
+      if (!(await needsMfa())) return;
+
+      // Retry once after a refresh (covers the "verified but not applied yet" race)
+      await supabase.auth.refreshSession();
+      await new Promise((r) => setTimeout(r, 150));
+
+      if (await needsMfa()) {
+        navigate('/auth?mfa=required');
       }
     };
-    
+
     checkMfaStatus();
-  }, [user, authLoading, navigate, isBanned, banCheckDone]);
+  }, [user, authLoading, navigate, isBanned, banCheckDone, location.state]);
 
   // Populate form with profile data
   useEffect(() => {
