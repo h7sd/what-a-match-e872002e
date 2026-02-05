@@ -2181,6 +2181,47 @@ class UserVaultPrefixCommands(commands.Cog):
                 await message.reply(f"❌ Reload failed: {e}")
             return
 
+        # ===== ?restart - Admin only process restart (standalone only) =====
+        if lowered == "?restart":
+            # Same authorization logic as ?reload
+            admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
+            admin_ids = {int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()}
+
+            app_info = getattr(self.client, "application", None)
+            owner_id = getattr(app_info, "owner", None)
+            owner_id = getattr(owner_id, "id", None) if owner_id else None
+
+            is_authorized = message.author.id in admin_ids or message.author.id == owner_id
+
+            if not is_authorized:
+                api = getattr(self.client, "api", None)
+                if api:
+                    try:
+                        result = await api.check_admin(str(message.author.id))
+                        if result.get("is_admin") or result.get("is_supporter"):
+                            is_authorized = True
+                        print(f"🔍 [restart] Admin check for {message.author.id}: {result}")
+                    except Exception as e:
+                        print(f"⚠️ Could not check UserVault admin status: {e}")
+
+            if not is_authorized:
+                await message.reply("❌ Admin only command. You need to be a UserVault admin or supporter.")
+                return
+
+            # Never kill a host bot when loaded as extension
+            if _RUNNING_AS_EXTENSION or self.__class__.__module__ != "__main__":
+                await message.reply(
+                    "⚠️ `?restart` ist im Extension-Modus deaktiviert (würde den Host-Bot killen). "
+                    "Nutze `?reload` oder starte den Host-Prozess neu."
+                )
+                return
+
+            await message.reply("🧨 Restarting bot process now…")
+            try:
+                await self.client.close()
+            finally:
+                os._exit(0)
+
         # ===== ?ping - Simple connectivity test =====
         if lowered == "?ping":
             await message.reply("🏓 Pong! Bot is responding.")
@@ -2191,9 +2232,15 @@ class UserVaultPrefixCommands(commands.Cog):
             embed = discord.Embed(
                 title="🤖 Bot Version",
                 description=f"**Version:** `{BOT_CODE_VERSION}`",
-                color=0x5865F2
+                color=0x5865F2,
             )
+
+            embed.add_field(name="Mode", value="extension" if _RUNNING_AS_EXTENSION else "standalone", inline=True)
+            embed.add_field(name="PID", value=str(os.getpid()), inline=True)
+            embed.add_field(name="Module", value=f"`{self.__class__.__module__}`", inline=False)
+            embed.add_field(name="Running file", value=f"`{os.path.abspath(__file__)}`", inline=False)
             embed.add_field(name="API Endpoint", value=f"`{FUNCTIONS_BASE_URL}`", inline=False)
+
             embed.set_footer(text=f"UserVault Bot • {BOT_CODE_VERSION}")
             await message.reply(embed=embed)
             return
