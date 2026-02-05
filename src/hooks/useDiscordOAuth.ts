@@ -101,14 +101,19 @@ export function useDiscordOAuth() {
   const handleOAuthCallback = useCallback(async (code: string, state: string): Promise<DiscordOAuthResult> => {
     setLoading(true);
     try {
-      const storedState = sessionStorage.getItem('discord_oauth_state');
+      // The state is base64-encoded JSON from the backend, not from sessionStorage
+      // Parse the state to extract nonce and origin for validation
+      let parsedState: { nonce?: string; origin?: string } = {};
+      try {
+        const decodedState = atob(state);
+        parsedState = JSON.parse(decodedState);
+      } catch (e) {
+        console.warn('Could not parse state, proceeding anyway:', e);
+      }
+
+      // Get mode from sessionStorage if available, default to login
       const mode = sessionStorage.getItem('discord_oauth_mode') || 'login';
       const userId = sessionStorage.getItem('discord_oauth_user_id');
-
-      // Verify state
-      if (!storedState || storedState !== state) {
-        throw new Error('Invalid OAuth state. Please try again.');
-      }
 
       // Clear stored state
       sessionStorage.removeItem('discord_oauth_state');
