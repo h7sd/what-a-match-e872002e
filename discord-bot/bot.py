@@ -22,6 +22,7 @@ import hashlib
 import hmac
 import json
 import time
+import random
 from typing import Optional, Dict, Any, List
 
 import discord
@@ -497,6 +498,216 @@ class BlackjackView(discord.ui.View):
         
         await interaction.response.edit_message(content=content, view=None)
         self.stop()
+
+
+class MinesButton(discord.ui.Button):
+    """Single cell button for Minesweeper."""
+    
+    def __init__(self, x: int, y: int, is_mine: bool, view: "MinesView"):
+        super().__init__(
+            style=discord.ButtonStyle.secondary,
+            label="•",
+            row=y
+        )
+        self.x = x
+        self.y = y
+        self.is_mine = is_mine
+        self.mines_view = view
+        self.revealed = False
+    
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.mines_view.user_id:
+            await interaction.response.send_message("❌ Das ist nicht dein Spiel!", ephemeral=True)
+            return
+        
+        if self.revealed:
+            await interaction.response.send_message("❌ Dieses Feld ist bereits aufgedeckt!", ephemeral=True)
+            return
+        
+        self.revealed = True
+        self.disabled = True
+        
+        if self.is_mine:
+            # BOOM! Game over
+            self.style = discord.ButtonStyle.danger
+            self.label = "💣"
+            self.mines_view.game_over = True
+            self.mines_view.won = False
+            
+            # Reveal all mines
+            for item in self.mines_view.children:
+                if isinstance(item, MinesButton):
+                    item.disabled = True
+                    if item.is_mine:
+                        item.style = discord.ButtonStyle.danger
+                        item.label = "💣"
+            
+            embed = self.mines_view.create_embed(game_over=True, won=False)
+            await interaction.response.edit_message(embed=embed, view=self.mines_view)
+            self.mines_view.stop()
+        else:
+            # Safe! Increase multiplier
+            self.style = discord.ButtonStyle.success
+            self.label = "✓"
+            self.mines_view.revealed_count += 1
+            self.mines_view.update_multiplier()
+            
+            # Check if all safe cells revealed
+            total_safe = 25 - self.mines_view.mine_count
+            if self.mines_view.revealed_count >= total_safe:
+                self.mines_view.game_over = True
+                self.mines_view.won = True
+                # Disable all buttons
+                for item in self.mines_view.children:
+                    if isinstance(item, MinesButton):
+                        item.disabled = True
+                embed = self.mines_view.create_embed(game_over=True, won=True)
+                await interaction.response.edit_message(embed=embed, view=self.mines_view)
+                
+                # Award winnings
+                winnings = int(self.mines_view.bet * self.mines_view.multiplier)
+                await self.mines_view.bot.api.send_reward(
+                    str(interaction.user.id),
+                    winnings,
+                    "mines",
+                    f"Minesweeper win x{self.mines_view.multiplier:.2f}"
+                )
+                self.mines_view.stop()
+            else:
+                embed = self.mines_view.create_embed()
+                await interaction.response.edit_message(embed=embed, view=self.mines_view)
+
+
+class MinesCashoutButton(discord.ui.Button):
+    """Cashout button for Minesweeper."""
+    
+    def __init__(self, view: "MinesView"):
+        super().__init__(
+            style=discord.ButtonStyle.success,
+            label="💰 Cashout",
+            row=4
+        )
+        self.mines_view = view
+    
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.mines_view.user_id:
+            await interaction.response.send_message("❌ Das ist nicht dein Spiel!", ephemeral=True)
+            return
+        
+        if self.mines_view.revealed_count == 0:
+            await interaction.response.send_message("❌ Du musst mindestens ein Feld aufdecken!", ephemeral=True)
+            return
+        
+        self.mines_view.game_over = True
+        self.mines_view.won = True
+        self.mines_view.cashed_out = True
+        
+        # Reveal all mines and disable
+        for item in self.mines_view.children:
+            if isinstance(item, MinesButton):
+                item.disabled = True
+                if item.is_mine and not item.revealed:
+                    item.label = "💣"
+                    item.style = discord.ButtonStyle.secondary
+        
+        # Calculate winnings
+        winnings = int(self.mines_view.bet * self.mines_view.multiplier)
+        
+        embed = self.mines_view.create_embed(game_over=True, won=True, cashed_out=True)
+        await interaction.response.edit_message(embed=embed, view=self.mines_view)
+        
+        # Award winnings
+        await self.mines_view.bot.api.send_reward(
+            str(interaction.user.id),
+            winnings,
+            "mines",
+            f"Minesweeper cashout x{self.mines_view.multiplier:.2f}"
+        )
+        self.mines_view.stop()
+
+
+class MinesView(discord.ui.View):
+    """View for Minesweeper game with 5x5 grid."""
+    
+    def __init__(self, bot, user_id: int, bet: int, mine_count: int = 5):
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.bot = bot
+        self.user_id = user_id
+        self.bet = bet
+        self.mine_count = mine_count
+        self.revealed_count = 0
+        self.multiplier = 1.0
+        self.game_over = False
+        self.won = False
+        self.cashed_out = False
+        
+        # Generate mine positions (5x5 grid = 25 cells)
+        all_positions = [(x, y) for x in range(5) for y in range(4)]  # Only 4 rows for buttons (row 4 = cashout)
+        self.mine_positions = set(random.sample(all_positions, mine_count))
+        
+        # Create grid buttons (4 rows of 5)
+        for y in range(4):
+            for x in range(5):
+                is_mine = (x, y) in self.mine_positions
+                btn = MinesButton(x, y, is_mine, self)
+                self.add_item(btn)
+        
+        # Add cashout button
+        self.add_item(MinesCashoutButton(self))
+    
+    def update_multiplier(self):
+        """Calculate multiplier based on revealed safe cells."""
+        safe_cells = 20 - self.mine_count  # 20 grid cells (4 rows * 5 cols)
+        revealed = self.revealed_count
+        
+        if revealed == 0:
+            self.multiplier = 1.0
+            return
+        
+        # Progressive multiplier formula
+        # Each reveal increases risk, so multiplier grows exponentially
+        base_multi = 1.0
+        for i in range(revealed):
+            remaining_safe = safe_cells - i
+            remaining_total = 20 - i
+            if remaining_total > 0 and remaining_safe > 0:
+                risk_factor = remaining_total / remaining_safe
+                base_multi *= risk_factor
+        
+        self.multiplier = round(base_multi, 2)
+    
+    def create_embed(self, game_over: bool = False, won: bool = False, cashed_out: bool = False) -> discord.Embed:
+        """Create the game embed."""
+        if game_over:
+            if won:
+                winnings = int(self.bet * self.multiplier)
+                if cashed_out:
+                    title = "💰 Ausgezahlt!"
+                    description = f"Du hast **{winnings} UC** gewonnen!"
+                    color = discord.Color.gold()
+                else:
+                    title = "🎉 Alle sicheren Felder gefunden!"
+                    description = f"Du hast **{winnings} UC** gewonnen!"
+                    color = discord.Color.green()
+            else:
+                title = "💥 BOOM!"
+                description = f"Du hast eine Mine getroffen! **-{self.bet} UC**"
+                color = discord.Color.red()
+        else:
+            title = "💣 Minesweeper"
+            potential = int(self.bet * self.multiplier)
+            description = (
+                f"**Einsatz:** {self.bet} UC\n"
+                f"**Minen:** {self.mine_count}\n"
+                f"**Aufgedeckt:** {self.revealed_count}/15\n"
+                f"**Multiplikator:** x{self.multiplier:.2f}\n"
+                f"**Potenzieller Gewinn:** {potential} UC"
+            )
+            color = discord.Color.blurple()
+        
+        embed = discord.Embed(title=title, description=description, color=color)
+        embed.set_footer(text="Decke Felder auf ohne eine Mine zu treffen!")
+        return embed
 
 
 class UserVaultBot(commands.Bot):
@@ -987,6 +1198,27 @@ class UserVaultPrefixCommands(commands.Cog):
             "Type a number in chat to guess."
         )
 
+    @commands.command(name="mines")
+    async def mines_prefix(self, ctx: commands.Context, bet: int = 50):
+        """Start a Minesweeper game."""
+        if bet < 10:
+            await ctx.send("❌ Minimum bet is 10 UC!")
+            return
+        if bet > 1000:
+            await ctx.send("❌ Maximum bet is 1000 UC!")
+            return
+        
+        # Check balance
+        balance_result = await ctx.bot.api.get_balance(str(ctx.author.id))  # type: ignore[attr-defined]
+        current_balance = balance_result.get("balance", 0)
+        if current_balance < bet:
+            await ctx.send(f"❌ Insufficient balance! You have {current_balance} UC.")
+            return
+        
+        view = MinesView(ctx.bot, ctx.author.id, bet)
+        embed = view.create_embed()
+        await ctx.send(embed=embed, view=view)
+
     @commands.command(name="trivia")
     async def trivia_prefix(self, ctx: commands.Context):
         trivia_data = await ctx.bot.api.get_trivia()  # type: ignore[attr-defined]
@@ -1232,6 +1464,36 @@ class UserVaultPrefixCommands(commands.Cog):
              await message.reply("🏓 Pong! Bot is responding.")
              return
 
+        # ===== ?mines - Minesweeper game =====
+        if lowered.startswith("?mines"):
+            parts = content.split()
+            bet = 50  # Default bet
+            if len(parts) > 1:
+                try:
+                    bet = int(parts[1])
+                except ValueError:
+                    await message.reply("❌ Ungültiger Einsatz! Nutze: `?mines <einsatz>`")
+                    return
+            
+            if bet < 10:
+                await message.reply("❌ Minimum Einsatz ist 10 UC!")
+                return
+            if bet > 1000:
+                await message.reply("❌ Maximum Einsatz ist 1000 UC!")
+                return
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = balance_result.get("balance", 0)
+            if current_balance < bet:
+                await message.reply(f"❌ Nicht genug Guthaben! Du hast {current_balance} UC.")
+                return
+            
+            view = MinesView(self.client, message.author.id, bet)
+            embed = view.create_embed()
+            await message.reply(embed=embed, view=view)
+            return
+
         if lowered.startswith("?lookup"):
             parts = content.split(maxsplit=1)
             if len(parts) < 2 or not parts[1].strip():
@@ -1308,7 +1570,7 @@ class UserVaultPrefixCommands(commands.Cog):
                 known_cmds = {
                     "helping", "commands", "reload", "lookup", "apistats",
                     "balance", "daily", "slots", "coin", "rps", "blackjack",
-                    "guess", "trivia", "link", "unlink", "profile"
+                    "guess", "trivia", "link", "unlink", "profile", "mines", "ping"
                 }
                 if cmd_part not in known_cmds:
                     # Check if it's in the database
