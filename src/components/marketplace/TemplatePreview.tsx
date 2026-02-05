@@ -5,23 +5,33 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TemplatePreviewProps {
   templateData: Record<string, unknown> | null;
   mini?: boolean;
 }
 
-// Fetch current user's display name to show in preview
-function useCurrentUserName() {
+interface Badge {
+  id: string;
+  name: string;
+  icon_url: string | null;
+  color: string | null;
+  description: string | null;
+  custom_color?: string | null;
+}
+
+// Fetch current user's profile data and badges
+function useCurrentUserData() {
   const { user } = useAuth();
   
-  return useQuery({
-    queryKey: ['current-user-preview-name', user?.id],
+  const profileQuery = useQuery({
+    queryKey: ['current-user-preview-profile', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('display_name, username')
+        .select('id, display_name, username, occupation, location')
         .eq('user_id', user.id)
         .single();
       return data;
@@ -29,12 +39,52 @@ function useCurrentUserName() {
     enabled: !!user?.id,
     staleTime: 60000,
   });
+
+  const badgesQuery = useQuery({
+    queryKey: ['current-user-preview-badges', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from('user_badges')
+        .select(`
+          id,
+          display_order,
+          is_enabled,
+          custom_color,
+          badge:global_badges (
+            id,
+            name,
+            icon_url,
+            color,
+            description
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_enabled', true)
+        .order('display_order', { ascending: true });
+      
+      return (data || [])
+        .filter(ub => ub.badge)
+        .map(ub => ({
+          ...ub.badge,
+          custom_color: ub.custom_color,
+        })) as Badge[];
+    },
+    enabled: !!user?.id,
+    staleTime: 60000,
+  });
+
+  return {
+    profile: profileQuery.data,
+    badges: badgesQuery.data || [],
+    isLoading: profileQuery.isLoading || badgesQuery.isLoading,
+  };
 }
 
-// Memoized component - exact ProfileCard replica with user's name
+// Memoized component - exact ProfileCard replica with user's name and badges
 export const TemplatePreview = memo(function TemplatePreview({ templateData, mini = false }: TemplatePreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { data: currentUser } = useCurrentUserName();
+  const { profile: currentUser, badges: userBadges } = useCurrentUserData();
   
   // Extract style properties from template data - this is a STATIC snapshot
   const styles = useMemo(() => {
@@ -71,6 +121,9 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
   // Use current user's name if logged in, otherwise show template name
   const previewDisplayName = currentUser?.display_name || currentUser?.username || styles.displayName || 'Your Name';
   const previewUsername = currentUser?.username || styles.username || 'username';
+  // Use current user's occupation/location if available
+  const previewOccupation = currentUser?.occupation || styles.occupation;
+  const previewLocation = currentUser?.location || styles.location;
 
   const accentColor = styles.accentColor || '#8b5cf6';
 
@@ -403,29 +456,63 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
                 {previewUsername}
               </p>
 
-              {/* Badges placeholder */}
+              {/* User's REAL badges */}
               <div 
                 className={cn(
                   "flex flex-wrap justify-center gap-2 mb-4 px-3 py-1.5 rounded-full",
                   !styles.transparentBadges && "bg-black/20 backdrop-blur-sm"
                 )}
               >
-                {[1, 2, 3].map(i => (
-                  <div 
-                    key={i}
-                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                    style={{ 
-                      backgroundColor: `${accentColor}20`,
-                      border: `1px solid ${accentColor}40`,
-                      boxShadow: styles.glowBadges ? `0 0 10px ${accentColor}40` : undefined
-                    }}
-                  >
-                    <div 
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full"
-                      style={{ backgroundColor: accentColor }}
-                    />
-                  </div>
-                ))}
+                <TooltipProvider delayDuration={0}>
+                  {userBadges.length > 0 ? (
+                    userBadges.slice(0, 6).map((badge) => (
+                      <Tooltip key={badge.id}>
+                        <TooltipTrigger asChild>
+                          <div 
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
+                            style={{ 
+                              boxShadow: styles.glowBadges ? `0 0 10px ${badge.custom_color || badge.color || accentColor}40` : undefined
+                            }}
+                          >
+                            {badge.icon_url ? (
+                              <img 
+                                src={badge.icon_url} 
+                                alt={badge.name}
+                                className="w-full h-full object-contain rounded-full"
+                              />
+                            ) : (
+                              <div 
+                                className="w-full h-full rounded-full"
+                                style={{ backgroundColor: badge.custom_color || badge.color || accentColor }}
+                              />
+                            )}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          <p className="font-medium">{badge.name}</p>
+                          {badge.description && <p className="text-muted-foreground">{badge.description}</p>}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))
+                  ) : (
+                    // Fallback placeholder badges if user has none
+                    [1, 2, 3].map(i => (
+                      <div 
+                        key={i}
+                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center"
+                        style={{ 
+                          backgroundColor: `${accentColor}20`,
+                          border: `1px solid ${accentColor}40`,
+                        }}
+                      >
+                        <div 
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full"
+                          style={{ backgroundColor: accentColor }}
+                        />
+                      </div>
+                    ))
+                  )}
+                </TooltipProvider>
               </div>
 
               {/* Bio from template */}
@@ -441,19 +528,19 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
                 </p>
               )}
 
-              {/* Location & Occupation from template */}
-              {(styles.occupation || styles.location) && (
+              {/* Location & Occupation from current user */}
+              {(previewOccupation || previewLocation) && (
                 <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs text-muted-foreground mb-4">
-                  {styles.occupation && (
+                  {previewOccupation && (
                     <div className="flex items-center gap-1">
                       <Briefcase className="w-3 h-3" />
-                      <span>{styles.occupation}</span>
+                      <span>{previewOccupation}</span>
                     </div>
                   )}
-                  {styles.location && (
+                  {previewLocation && (
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
-                      <span>{styles.location}</span>
+                      <span>{previewLocation}</span>
                     </div>
                   )}
                 </div>
