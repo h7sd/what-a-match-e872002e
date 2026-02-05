@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Image, Type, FileText, Upload, X, Globe, Monitor, Copy, Check, ExternalLink } from 'lucide-react';
+import { Image, Type, FileText, Upload, X, Globe, Monitor, Copy, Check, ExternalLink, Palette } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,7 +40,24 @@ interface DiscordEmbedSettingsProps {
   onOgIconUrlChange: (url: string) => void;
   ogTitleAnimation: string;
   onOgTitleAnimationChange: (animation: string) => void;
+  ogEmbedColor: string;
+  onOgEmbedColorChange: (color: string) => void;
   username: string;
+}
+
+const EMBED_COLOR_PRESETS = [
+  { name: 'Discord Blue', color: '#5865F2' },
+  { name: 'Success', color: '#22C55E' },
+  { name: 'Warning', color: '#EAB308' },
+  { name: 'Error', color: '#EF4444' },
+  { name: 'Purple', color: '#8B5CF6' },
+  { name: 'Pink', color: '#EC4899' },
+  { name: 'Cyan', color: '#06B6D4' },
+  { name: 'Orange', color: '#F97316' },
+];
+
+function isValidHex(hex: string): boolean {
+  return /^#([0-9A-Fa-f]{3}){1,2}$/.test(hex);
 }
 
 export function DiscordEmbedSettings({
@@ -56,6 +73,8 @@ export function DiscordEmbedSettings({
   onOgIconUrlChange,
   ogTitleAnimation,
   onOgTitleAnimationChange,
+  ogEmbedColor,
+  onOgEmbedColorChange,
   username,
 }: DiscordEmbedSettingsProps) {
   const { toast } = useToast();
@@ -64,6 +83,8 @@ export function DiscordEmbedSettings({
   const [cursorVisible, setCursorVisible] = useState(true);
   const [tabAnimatedTitle, setTabAnimatedTitle] = useState('');
   const [copied, setCopied] = useState(false);
+  const [embedColorInput, setEmbedColorInput] = useState(ogEmbedColor || '#5865F2');
+  const [embedColorValid, setEmbedColorValid] = useState(true);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
 
   const displayTitle = ogTitle || `@${username} | uservault.cc`;
@@ -291,7 +312,10 @@ export function DiscordEmbedSettings({
                 Discord Embed Preview
               </p>
               <div className="flex items-start gap-3">
-                <div className="flex-1 border-l-4 border-[#5865F2] bg-[#2f3136] rounded-r-lg p-3 max-w-md">
+                <div 
+                  className="flex-1 border-l-4 bg-[#2f3136] rounded-r-lg p-3 max-w-md"
+                  style={{ borderColor: embedColorValid ? embedColorInput : '#5865F2' }}
+                >
                   {/* Site name with icon */}
                   <div className="flex items-center gap-2 mb-1">
                     {ogIconUrl ? (
@@ -473,6 +497,71 @@ export function DiscordEmbedSettings({
                   className="bg-card border-border resize-none"
                   rows={2}
                 />
+              </div>
+
+              {/* Embed Color */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Palette className="w-4 h-4 text-primary" />
+                  Embed Sidebar Color
+                </Label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={embedColorValid ? embedColorInput : '#5865F2'}
+                      onChange={(e) => {
+                        setEmbedColorInput(e.target.value);
+                        setEmbedColorValid(true);
+                        onOgEmbedColorChange(e.target.value);
+                      }}
+                      className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border bg-transparent appearance-none"
+                      style={{ backgroundColor: embedColorValid ? embedColorInput : '#5865F2' }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      value={embedColorInput}
+                      onChange={(e) => {
+                        setEmbedColorInput(e.target.value);
+                        if (isValidHex(e.target.value)) {
+                          setEmbedColorValid(true);
+                          onOgEmbedColorChange(e.target.value);
+                        } else {
+                          setEmbedColorValid(false);
+                        }
+                      }}
+                      placeholder="#5865F2"
+                      className={`font-mono uppercase ${!embedColorValid ? 'border-destructive' : ''}`}
+                      maxLength={7}
+                    />
+                    {!embedColorValid && (
+                      <p className="text-xs text-destructive mt-1">Invalid HEX color</p>
+                    )}
+                  </div>
+                </div>
+                {/* Preset Colors */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {EMBED_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={() => {
+                        setEmbedColorInput(preset.color);
+                        setEmbedColorValid(true);
+                        onOgEmbedColorChange(preset.color);
+                      }}
+                      className={`
+                        w-7 h-7 rounded-lg transition-all hover:scale-110 border-2
+                        ${embedColorInput.toLowerCase() === preset.color.toLowerCase() 
+                          ? 'border-white ring-2 ring-primary' 
+                          : 'border-transparent'
+                        }
+                      `}
+                      style={{ backgroundColor: preset.color }}
+                      title={preset.name}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* Image Upload */}

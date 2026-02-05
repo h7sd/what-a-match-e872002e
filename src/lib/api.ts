@@ -132,6 +132,9 @@ export interface PublicProfile {
   likes_count: number | null;
   dislikes_count: number | null;
   show_likes: boolean | null;
+  use_global_badge_color: boolean | null;
+  global_badge_color: string | null;
+  og_embed_color: string | null;
 }
 
 export async function getPublicProfile(username: string): Promise<PublicProfile | null> {

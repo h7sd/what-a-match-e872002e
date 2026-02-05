@@ -1036,6 +1036,7 @@ export type Database = {
           effects_config: Json | null
           email_verified: boolean | null
           enable_profile_gradient: boolean | null
+          global_badge_color: string | null
           glow_badges: boolean | null
           glow_socials: boolean | null
           glow_username: boolean | null
@@ -1052,6 +1053,7 @@ export type Database = {
           name_font: string | null
           occupation: string | null
           og_description: string | null
+          og_embed_color: string | null
           og_icon_url: string | null
           og_image_url: string | null
           og_title: string | null
@@ -1083,6 +1085,7 @@ export type Database = {
           uid_number: number
           updated_at: string
           use_discord_avatar: boolean | null
+          use_global_badge_color: boolean | null
           user_id: string
           username: string
           views_count: number | null
@@ -1121,6 +1124,7 @@ export type Database = {
           effects_config?: Json | null
           email_verified?: boolean | null
           enable_profile_gradient?: boolean | null
+          global_badge_color?: string | null
           glow_badges?: boolean | null
           glow_socials?: boolean | null
           glow_username?: boolean | null
@@ -1137,6 +1141,7 @@ export type Database = {
           name_font?: string | null
           occupation?: string | null
           og_description?: string | null
+          og_embed_color?: string | null
           og_icon_url?: string | null
           og_image_url?: string | null
           og_title?: string | null
@@ -1168,6 +1173,7 @@ export type Database = {
           uid_number?: number
           updated_at?: string
           use_discord_avatar?: boolean | null
+          use_global_badge_color?: boolean | null
           user_id: string
           username: string
           views_count?: number | null
@@ -1206,6 +1212,7 @@ export type Database = {
           effects_config?: Json | null
           email_verified?: boolean | null
           enable_profile_gradient?: boolean | null
+          global_badge_color?: string | null
           glow_badges?: boolean | null
           glow_socials?: boolean | null
           glow_username?: boolean | null
@@ -1222,6 +1229,7 @@ export type Database = {
           name_font?: string | null
           occupation?: string | null
           og_description?: string | null
+          og_embed_color?: string | null
           og_icon_url?: string | null
           og_image_url?: string | null
           og_title?: string | null
@@ -1253,6 +1261,7 @@ export type Database = {
           uid_number?: number
           updated_at?: string
           use_discord_avatar?: boolean | null
+          use_global_badge_color?: boolean | null
           user_id?: string
           username?: string
           views_count?: number | null
@@ -1623,6 +1632,39 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          last_login_date: string | null
+          longest_streak: number
+          total_logins: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_login_date?: string | null
+          longest_streak?: number
+          total_logins?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_login_date?: string | null
+          longest_streak?: number
+          total_logins?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -2081,6 +2123,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      update_user_streak: { Args: { p_user_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

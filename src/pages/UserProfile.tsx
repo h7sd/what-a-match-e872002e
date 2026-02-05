@@ -418,9 +418,11 @@ export default function UserProfile() {
           <ProfileCard 
             profile={{...profile, accent_color: accentColor} as any} 
             badges={badges.map((b: PublicBadge) => ({
-              id: b.id || b.name, // Use real ID from API
+              id: b.id || b.name,
               name: b.name,
-              color: b.color,
+              color: (profile as any).use_global_badge_color && (profile as any).global_badge_color 
+                ? (profile as any).global_badge_color 
+                : b.color,
               icon_url: b.icon_url,
             }))}
             showUsername={profile.show_username ?? true}

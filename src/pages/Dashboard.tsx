@@ -91,6 +91,8 @@ import { AdminEventController } from '@/components/admin/AdminEventController';
 import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
 import { AdminMarketplaceManager } from '@/components/admin/AdminMarketplaceManager';
 import { MarketplacePage } from '@/components/marketplace/MarketplacePage';
+import { GlobalBadgeColorSettings } from '@/components/dashboard/GlobalBadgeColorSettings';
+import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
 import { cn } from '@/lib/utils';
 
 type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'marketplace' | 'admin' | 'settings';
@@ -241,6 +243,11 @@ export default function Dashboard() {
   const [ogImageUrl, setOgImageUrl] = useState('');
   const [ogIconUrl, setOgIconUrl] = useState('');
   const [ogTitleAnimation, setOgTitleAnimation] = useState('none');
+  const [ogEmbedColor, setOgEmbedColor] = useState('#5865F2');
+  
+  // Global badge color settings
+  const [useGlobalBadgeColor, setUseGlobalBadgeColor] = useState(false);
+  const [globalBadgeColor, setGlobalBadgeColor] = useState('#8B5CF6');
 
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -407,6 +414,10 @@ export default function Dashboard() {
       setOgImageUrl((profile as any).og_image_url || '');
       setOgIconUrl((profile as any).og_icon_url || '');
       setOgTitleAnimation((profile as any).og_title_animation || 'none');
+      setOgEmbedColor((profile as any).og_embed_color || '#5865F2');
+      // Global badge color settings
+      setUseGlobalBadgeColor((profile as any).use_global_badge_color ?? false);
+      setGlobalBadgeColor((profile as any).global_badge_color || '#8B5CF6');
       const config = profile.effects_config as Record<string, any> || {};
       setEffects({
         sparkles: config.sparkles ?? false,
@@ -594,6 +605,9 @@ export default function Dashboard() {
         og_image_url: ogEnabled ? (ogImageUrl || null) : null,
         og_icon_url: ogEnabled ? (ogIconUrl || null) : null,
         og_title_animation: ogEnabled ? ogTitleAnimation : 'none',
+        og_embed_color: ogEnabled ? (ogEmbedColor || null) : null,
+        use_global_badge_color: useGlobalBadgeColor,
+        global_badge_color: useGlobalBadgeColor ? (globalBadgeColor || null) : null,
         display_name_animation: displayNameAnimation,
       } as any);
       toast({ title: 'Profile saved!' });
@@ -847,12 +861,19 @@ export default function Dashboard() {
             {/* Alias Requests Section - shows only if there are pending requests */}
             <AliasRequestsSection />
 
-          <OverviewStats
-            profileViews={profile.views_count || 0}
-            uidNumber={(profile as any).uid_number || 1}
-            username={profile.username}
-            profileId={profile.id}
-          />
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <OverviewStats
+                profileViews={profile.views_count || 0}
+                uidNumber={(profile as any).uid_number || 1}
+                username={profile.username}
+                profileId={profile.id}
+              />
+            </div>
+            <div>
+              <StreakDisplay />
+            </div>
+          </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -1186,6 +1207,8 @@ export default function Dashboard() {
                         onOgIconUrlChange={setOgIconUrl}
                         ogTitleAnimation={ogTitleAnimation}
                         onOgTitleAnimationChange={setOgTitleAnimation}
+                        ogEmbedColor={ogEmbedColor}
+                        onOgEmbedColorChange={setOgEmbedColor}
                         username={username}
                       />
                     </div>
@@ -1355,6 +1378,14 @@ export default function Dashboard() {
                 <div className="glass-card p-6">
                   <FriendBadgesManager />
                 </div>
+
+                {/* Global Badge Color Settings */}
+                <GlobalBadgeColorSettings
+                  useGlobalColor={useGlobalBadgeColor}
+                  onUseGlobalColorChange={setUseGlobalBadgeColor}
+                  globalColor={globalBadgeColor}
+                  onGlobalColorChange={setGlobalBadgeColor}
+                />
               </div>
             )}
 

@@ -62,23 +62,25 @@ export function ProfileBadgesDisplay({
 
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="inline-flex items-center justify-center -space-x-1 mb-4 px-2.5 py-1 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm mx-auto">
-        {badges.map((badge) => (
-          <StealableBadge
-            key={badge.id}
-            badge={badge}
-            victimUsername={profileUsername}
-            isOwnProfile={isOwnProfile}
-            hasActiveStealEvent={
-              canShowStealUI &&
-              (activeEventType === 'steal' || (activeEventType === 'hunt' && !!huntTargetBadgeId && badge.id === huntTargetBadgeId))
-            }
-            activeEventId={activeEventId ?? null}
-            accentColor={accentColor}
-            transparentBadges={transparentBadges}
-            onStealSuccess={handleStealSuccess}
-          />
-        ))}
+      <div className="w-full flex justify-center mb-4">
+        <div className="inline-flex flex-wrap items-center justify-center gap-1 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 backdrop-blur-sm">
+          {badges.map((badge) => (
+            <StealableBadge
+              key={badge.id}
+              badge={badge}
+              victimUsername={profileUsername}
+              isOwnProfile={isOwnProfile}
+              hasActiveStealEvent={
+                canShowStealUI &&
+                (activeEventType === 'steal' || (activeEventType === 'hunt' && !!huntTargetBadgeId && badge.id === huntTargetBadgeId))
+              }
+              activeEventId={activeEventId ?? null}
+              accentColor={accentColor}
+              transparentBadges={transparentBadges}
+              onStealSuccess={handleStealSuccess}
+            />
+          ))}
+        </div>
       </div>
     </TooltipProvider>
   );
