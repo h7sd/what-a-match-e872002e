@@ -1210,7 +1210,7 @@ class CrashView(discord.ui.View):
         return embed
 
 
-
+class UserVaultBot(commands.Bot):
     """Main Discord bot class."""
     
     def __init__(self):
