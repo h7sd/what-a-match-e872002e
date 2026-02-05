@@ -94,6 +94,19 @@ const gameDefinitions: GameDefinition[] = [
     emoji: "📅",
     type: "instant",
     rewards: { min: 25, max: 100, currency: "UC" }
+  },
+  {
+    id: "plinko",
+    name: "Plinko",
+    description: "Drop a ball and watch it bounce for prizes!",
+    emoji: "🔴",
+    type: "instant",
+    options: [
+      { name: "Low Risk", value: "low" },
+      { name: "Medium Risk", value: "medium" },
+      { name: "High Risk", value: "high" }
+    ],
+    rewards: { min: 0, max: 1000, currency: "UC" }
   }
 ];
 
@@ -170,6 +183,15 @@ const slotPayouts: Record<string, number> = {
   "🍊🍊🍊": 75,
   "🍋🍋🍋": 50,
   "🍒🍒🍒": 25,
+};
+
+// Plinko configuration - multipliers for each row position
+// 8 rows, ball bounces left or right at each level
+// Low risk: more centered outcomes, Medium: balanced, High: extreme edges
+const plinkoMultipliers: Record<string, number[]> = {
+  low: [1.5, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.5],    // 9 landing positions
+  medium: [3, 1.5, 1.2, 0.7, 0.4, 0.7, 1.2, 1.5, 3],
+  high: [10, 3, 1.5, 0.5, 0.2, 0.5, 1.5, 3, 10],
 };
 
 // RPS configuration
@@ -288,6 +310,49 @@ function checkGuess(secret: number, guess: number, attemptsLeft?: number): { cor
     hint: guess < secret ? "📈 Higher!" : "📉 Lower!",
     reward: isCorrect ? rewards.numberGuessBase + bonus : 0,
     answer: secret
+  };
+}
+
+// Plinko game logic
+function playPlinko(risk: string, bet: number): { 
+  path: string[]; 
+  finalPosition: number; 
+  multiplier: number; 
+  payout: number;
+  risk: string;
+  display: string;
+} {
+  const validRisks = ["low", "medium", "high"];
+  const riskLevel = validRisks.includes(risk) ? risk : "medium";
+  const multipliers = plinkoMultipliers[riskLevel];
+  
+  // Simulate ball dropping through 8 rows
+  // Ball starts at center (position 4), can go left (-1) or right (+1) at each row
+  const path: string[] = [];
+  let position = 4; // Start center (0-8 range, center is 4)
+  
+  for (let row = 0; row < 8; row++) {
+    const goRight = Math.random() < 0.5;
+    position = Math.max(0, Math.min(8, position + (goRight ? 1 : -1)));
+    path.push(goRight ? "R" : "L");
+  }
+  
+  // Map final position (0-8) to multiplier index (0-8)
+  const multiplier = multipliers[position];
+  const payout = Math.floor(bet * multiplier);
+  
+  // Create visual display
+  const positionEmojis = ["🔴", "🟠", "🟡", "🟢", "⚪", "🟢", "🟡", "🟠", "🔴"];
+  const slots = multipliers.map((m, i) => i === position ? "🔵" : "⚫");
+  const display = slots.join("");
+  
+  return {
+    path,
+    finalPosition: position,
+    multiplier,
+    payout,
+    risk: riskLevel,
+    display,
   };
 }
 
@@ -435,6 +500,14 @@ Deno.serve(async (req) => {
           responseData = playRPS(params.choice);
         }
         break;
+
+      // ============ Plinko ============
+      case "play_plinko": {
+        const risk = params.risk || "medium";
+        const bet = params.bet || 50;
+        responseData = playPlinko(risk, bet);
+        break;
+      }
 
       // ============ Number Guess ============
       case "generate_number":

@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-05-dice-v1"
+BOT_CODE_VERSION = "2026-02-05-plinko-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -404,6 +404,10 @@ class UserVaultAPI:
     async def get_game_config(self) -> dict:
         """Get game configuration."""
         return await self.game_api("get_config")
+    
+    async def play_plinko(self, risk: str = "medium", bet: int = 50) -> dict:
+        """Play Plinko game."""
+        return await self.game_api("play_plinko", risk=risk, bet=bet)
     
     # ============ REWARD METHODS ============
     
@@ -2593,6 +2597,122 @@ class UserVaultPrefixCommands(commands.Cog):
             embed.add_field(name="Bot Roll", value=bot_display, inline=True)
             embed.add_field(name="Result", value=result_text, inline=False)
             embed.set_footer(text=f"Bet: {bet:,} UC • {BOT_CODE_VERSION}")
+            
+            await message.reply(embed=embed)
+            return
+
+        # ── ?plinko ── Plinko game
+        if lowered.startswith("?plinko"):
+            parts = content.split()
+            bet = 50  # Default bet
+            risk = "medium"  # Default risk
+            
+            # Parse arguments: ?plinko [bet] [risk]
+            if len(parts) >= 2:
+                # First arg could be bet or risk
+                if parts[1].isdigit():
+                    bet = int(parts[1])
+                    if len(parts) >= 3:
+                        risk = parts[2].lower()
+                elif parts[1] in {"low", "medium", "high"}:
+                    risk = parts[1].lower()
+                    if len(parts) >= 3 and parts[2].isdigit():
+                        bet = int(parts[2])
+            
+            if bet < 10:
+                await message.reply("❌ Minimum bet is 10 UC!")
+                return
+            
+            if risk not in {"low", "medium", "high"}:
+                await message.reply(
+                    "🔴 **Plinko**\n"
+                    "Drop a ball through the pyramid!\n\n"
+                    "**Usage:** `?plinko <bet> <risk>`\n"
+                    "**Risks:** `low`, `medium`, `high`\n\n"
+                    "• **Low Risk:** Safer, smaller multipliers (0.5x - 1.5x)\n"
+                    "• **Medium Risk:** Balanced (0.4x - 3x)\n"
+                    "• **High Risk:** Risky, huge rewards possible (0.2x - 10x)\n\n"
+                    "Example: `?plinko 100 high`"
+                )
+                return
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
+            if current_balance < bet:
+                await message.reply(f"❌ Not enough UC! You have **{current_balance:,} UC**.")
+                return
+            
+            # Play Plinko via API
+            result = await self.client.api.play_plinko(risk, bet)  # type: ignore[attr-defined]
+            
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+                return
+            
+            multiplier = result.get("multiplier", 1)
+            payout = result.get("payout", bet)
+            path = result.get("path", [])
+            final_pos = result.get("finalPosition", 4)
+            
+            # Create visual pyramid display
+            risk_emojis = {"low": "🟢", "medium": "🟡", "high": "🔴"}
+            risk_emoji = risk_emojis.get(risk, "🟡")
+            
+            # Build path visualization
+            path_display = " → ".join(["⬅️" if p == "L" else "➡️" for p in path[-4:]])  # Show last 4 moves
+            
+            # Multiplier display for this risk level
+            multipliers = {
+                "low": [1.5, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.5],
+                "medium": [3, 1.5, 1.2, 0.7, 0.4, 0.7, 1.2, 1.5, 3],
+                "high": [10, 3, 1.5, 0.5, 0.2, 0.5, 1.5, 3, 10],
+            }
+            mult_row = multipliers[risk]
+            mult_display = " ".join([f"**{m}x**" if i == final_pos else f"{m}x" for i, m in enumerate(mult_row)])
+            
+            # Landing slots visual
+            slots = ["⚫"] * 9
+            slots[final_pos] = "🔵"
+            slots_display = " ".join(slots)
+            
+            # Net profit/loss
+            net = payout - bet
+            won = net >= 0
+            
+            if won:
+                if net > 0:
+                    result_text = f"🎉 **WIN!** +{net:,} UC (x{multiplier})"
+                    color = discord.Color.green()
+                    # Award net profit
+                    await self.client.api.send_reward(  # type: ignore[attr-defined]
+                        str(message.author.id), net, "plinko", f"Plinko win (x{multiplier})"
+                    )
+                else:
+                    result_text = f"🤝 **Break even!** x{multiplier}"
+                    color = discord.Color.gold()
+            else:
+                result_text = f"💀 **Lost!** {net:,} UC (x{multiplier})"
+                color = discord.Color.red()
+                # Deduct loss
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), net, "plinko", f"Plinko loss (x{multiplier})"
+                )
+            
+            embed = discord.Embed(
+                title=f"🔴 Plinko {risk_emoji}",
+                description=(
+                    f"```\n{slots_display}\n```\n"
+                    f"**Path:** {path_display}\n\n"
+                    f"**Multipliers:**\n{mult_display}"
+                ),
+                color=color
+            )
+            embed.add_field(name="Bet", value=f"{bet:,} UC", inline=True)
+            embed.add_field(name="Risk", value=risk.capitalize(), inline=True)
+            embed.add_field(name="Multiplier", value=f"x{multiplier}", inline=True)
+            embed.add_field(name="Result", value=result_text, inline=False)
+            embed.set_footer(text=f"Payout: {payout:,} UC • {BOT_CODE_VERSION}")
             
             await message.reply(embed=embed)
             return
