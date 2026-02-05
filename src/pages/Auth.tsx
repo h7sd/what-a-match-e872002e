@@ -314,7 +314,29 @@ export default function Auth() {
               ? 'Your account has been created with Discord.'
               : 'Successfully signed in with Discord.'
           });
-          navigate('/dashboard', { replace: true });
+          
+          // New users go to dashboard, existing users go to their profile
+          if (result.is_new_user) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            // Get the user's profile to redirect to their profile page
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (currentUser) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('username')
+                .eq('user_id', currentUser.id)
+                .single();
+              
+              if (profile?.username) {
+                navigate(`/${profile.username}`, { replace: true });
+              } else {
+                navigate('/dashboard', { replace: true });
+              }
+            } else {
+              navigate('/dashboard', { replace: true });
+            }
+          }
         }
       };
       processDiscordCallback();
