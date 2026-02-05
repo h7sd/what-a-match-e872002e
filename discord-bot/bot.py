@@ -1306,20 +1306,88 @@ class CrashView(discord.ui.View):
                 result = await self.api.get_pending_notifications()
 
                 notifications = result.get("notifications") or []
+                needs_reload = False
+                
                 if notifications:
                     for notif in notifications:
                         sent_ok = await self.send_command_notification(channel, notif)
                         if sent_ok:
                             await self.api.mark_notification_processed(notif["id"])
+                            # Trigger reload for new or updated commands
+                            action = notif.get("action", "")
+                            if action in ("created", "updated"):
+                                needs_reload = True
                         else:
                             # Leave unprocessed so it can retry after the next poll
                             print(f"⚠️ Notification NOT marked processed (send failed): {notif.get('id')}")
+
+                # Auto-reload after processing all notifications if any command was created/updated
+                if needs_reload:
+                    await self._trigger_auto_reload(channel)
 
             except Exception as e:
                 print(f"❌ Notification poll error: {e}")
 
             # Poll every 5 seconds
             await asyncio.sleep(5)
+
+    async def _trigger_auto_reload(self, channel):
+        """Automatically reload the extension when new commands are deployed."""
+        try:
+            # Only works in extension mode
+            if _RUNNING_AS_EXTENSION:
+                ext_name = "bot"  # The extension module name
+                
+                # Try to find the actual extension name
+                for ext in list(self.extensions.keys()):
+                    if "bot" in ext.lower() or "uservault" in ext.lower():
+                        ext_name = ext
+                        break
+                
+                print(f"🔄 Auto-reloading extension '{ext_name}' due to command update...")
+                
+                # Cleanup before reload
+                try:
+                    if self.get_cog("UserVaultPrefixCommands") is not None:
+                        await self.remove_cog("UserVaultPrefixCommands")
+                except Exception as e:
+                    print(f"⚠️ Could not remove cog before auto-reload: {e}")
+                
+                # Clear flags
+                if hasattr(self, "_uservault_prefix_cog_loaded"):
+                    del self._uservault_prefix_cog_loaded
+                if hasattr(self, "_uservault_implemented_prefix_cmds"):
+                    del self._uservault_implemented_prefix_cmds
+                if hasattr(self, "_uv_notif_channel_logged"):
+                    del self._uv_notif_channel_logged
+                
+                # Cancel this notification task (will restart after reload)
+                if self.notification_task and not self.notification_task.done():
+                    self.notification_task.cancel()
+                
+                await self.reload_extension(ext_name)
+                
+                try:
+                    await channel.send(f"🔄 **Auto-Reload** abgeschlossen! Neue Commands sind jetzt verfügbar. (Version: `{BOT_CODE_VERSION}`)")
+                except Exception:
+                    pass
+                
+                print(f"✅ Auto-reload completed for {ext_name}")
+                
+            else:
+                # Standalone mode - can't auto-reload, just notify
+                print("⚠️ Auto-reload not available in standalone mode. Restart the bot to pick up new commands.")
+                try:
+                    await channel.send("⚠️ Neuer Command deployed! Bitte Bot manuell neustarten (`?restart`) um ihn zu aktivieren.")
+                except Exception:
+                    pass
+                    
+        except Exception as e:
+            print(f"❌ Auto-reload failed: {e}")
+            try:
+                await channel.send(f"❌ Auto-Reload fehlgeschlagen: {e}. Bitte manuell `?reload` ausführen.")
+            except Exception:
+                pass
 
     async def send_command_notification(self, channel, notif: dict) -> bool:
         """Send a command notification embed to Discord. Returns True if sent successfully."""
