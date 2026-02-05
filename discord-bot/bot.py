@@ -1645,10 +1645,19 @@ class UserVaultPrefixCommands(commands.Cog):
             
             try:
                 # Attempt to reload the extension
-                ext_name = __name__
+                # Use the Cog's module name (more robust than __name__ in some reload contexts)
+                ext_name = self.__class__.__module__
                 if ext_name == "__main__":
                     await message.reply("⚠️ Cannot reload in standalone mode. Restart the bot instead.")
                     return
+
+                # Proactively remove the cog/listeners to avoid duplicate handlers and to ensure
+                # the new module instance can re-register cleanly.
+                try:
+                    if self.client.get_cog("UserVaultPrefixCommands") is not None:
+                        self.client.remove_cog("UserVaultPrefixCommands")
+                except Exception as e:
+                    print(f"⚠️ [UserVault] Could not remove prefix cog before reload: {e}")
                 
                 # Clear the flag so the cog gets re-added on reload
                 if hasattr(self.client, "_uservault_prefix_cog_loaded"):
@@ -1663,7 +1672,12 @@ class UserVaultPrefixCommands(commands.Cog):
                 
                 await message.reply("🔄 Reloading extension...")
                 await self.client.reload_extension(ext_name)
-                # Note: This message won't be sent if reload succeeds because the cog is replaced
+                # Send a confirmation after successful reload.
+                # (This coroutine continues even though the module code was reloaded.)
+                try:
+                    await message.channel.send("✅ Reload complete. Commands should work immediately.")
+                except Exception:
+                    pass
             except Exception as e:
                 await message.reply(f"❌ Reload failed: {e}")
             return
@@ -2013,39 +2027,48 @@ async def setup(client: commands.Bot):
         print("   AND set intents.message_content = True in your host bot")
 
     # Register slash commands only if enabled
+    # IMPORTANT: Make this idempotent so `reload_extension()` doesn't fail due to duplicates.
     if ENABLE_SLASH_COMMANDS:
-        client.tree.add_command(trivia)
-        client.tree.add_command(slots)
-        client.tree.add_command(coin)
-        client.tree.add_command(rps)
-        client.tree.add_command(blackjack)
-        client.tree.add_command(guess)
-        client.tree.add_command(balance)
-        client.tree.add_command(daily)
-        client.tree.add_command(link)
-        client.tree.add_command(unlink)
-        client.tree.add_command(profile)
-        client.tree.add_command(apistats)
+        slash_cmds = [
+            trivia,
+            slots,
+            coin,
+            rps,
+            blackjack,
+            guess,
+            balance,
+            daily,
+            link,
+            unlink,
+            profile,
+            apistats,
+        ]
+
+        for cmd in slash_cmds:
+            try:
+                existing = client.tree.get_command(cmd.name)
+                if existing is None:
+                    client.tree.add_command(cmd)
+            except Exception as e:
+                # Never fail extension load because a slash command is already present
+                print(f"⚠️ [UserVault] Could not register slash command '{getattr(cmd, 'name', '?')}' on setup: {e}")
     
     # If the client has an API attribute, use it; otherwise create one
     _ensure_uservault_client_state(client)
 
     # Prefix commands + message listener (needed for '?guess')
-    if not hasattr(client, "_uservault_prefix_cog_loaded"):
-        cog = UserVaultPrefixCommands(client)
-        await client.add_cog(cog)
-        client._uservault_prefix_cog_loaded = True
-        print("📦 [UserVault] Prefix commands cog loaded")
-    else:
-        # Reload scenario: remove old cog and add new one
-        old_cog = client.get_cog("UserVaultPrefixCommands")
-        if old_cog:
-            await client.remove_cog("UserVaultPrefixCommands")
-            print("🔄 [UserVault] Removed old prefix cog for reload")
-        cog = UserVaultPrefixCommands(client)
-        await client.add_cog(cog)
-        client._uservault_prefix_cog_loaded = True  # Fix: Set flag after reload too
-        print("📦 [UserVault] Prefix commands cog reloaded")
+    # IMPORTANT: Always remove+re-add to guarantee clean state on reload.
+    try:
+        if client.get_cog("UserVaultPrefixCommands") is not None:
+            client.remove_cog("UserVaultPrefixCommands")
+            print("🔄 [UserVault] Removed old prefix cog")
+    except Exception as e:
+        print(f"⚠️ [UserVault] Could not remove old prefix cog: {e}")
+
+    cog = UserVaultPrefixCommands(client)
+    await client.add_cog(cog)
+    client._uservault_prefix_cog_loaded = True
+    print("📦 [UserVault] Prefix commands cog loaded")
     
     # Start notification polling if not already running
     if not hasattr(client, '_uservault_notification_task') or client._uservault_notification_task is None or client._uservault_notification_task.done():
