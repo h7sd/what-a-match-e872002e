@@ -391,10 +391,11 @@ export default function Auth() {
     }
   };
 
-  // Generate verification code via edge function (uses service role)
+  // Generate verification code via backend function
   const generateVerificationCode = async (targetEmail: string, type: 'signup' | 'password_reset') => {
+    const normalizedEmail = targetEmail.toLowerCase().trim();
     const response = await supabase.functions.invoke('generate-verification-code', {
-      body: { email: targetEmail.toLowerCase(), type },
+      body: { email: normalizedEmail, type },
     });
     
     if (response.error || response.data?.error) {
@@ -404,10 +405,13 @@ export default function Auth() {
     return response.data;
   };
 
-  // Verify code via edge function (uses service role)
+  // Verify code via backend function
   const verifyCodeViaEdge = async (targetEmail: string, code: string, type: 'signup' | 'password_reset') => {
+    const normalizedEmail = targetEmail.toLowerCase().trim();
+    const normalizedCode = code.trim();
+
     const response = await supabase.functions.invoke('verify-code', {
-      body: { email: targetEmail.toLowerCase(), code, type },
+      body: { email: normalizedEmail, code: normalizedCode, type },
     });
     
     if (response.error || response.data?.error) {

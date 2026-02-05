@@ -93,10 +93,12 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP
+  // Get client IP (prefer Cloudflare header when behind proxy)
+  const cfIp = req.headers.get('cf-connecting-ip');
   const forwardedFor = req.headers.get('x-forwarded-for');
   const realIp = req.headers.get('x-real-ip');
-  const clientIp = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+  const xClientIp = req.headers.get('x-client-ip');
+  const clientIp = cfIp || forwardedFor?.split(',')[0]?.trim() || realIp || xClientIp || 'unknown';
 
   try {
     const { email, code, type }: VerifyRequest = await req.json();
