@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { checkAliasExists, checkUsernameExists } from '@/lib/api';
 import { supabase } from '@/integrations/supabase/client';
+import { useDiscordOAuth } from '@/hooks/useDiscordOAuth';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -126,6 +127,7 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
 
   // Discord Connection State
   const [discordIntegration, setDiscordIntegration] = useState<any>(null);
+  const { initiateDiscordLink, loading: discordLoading } = useDiscordOAuth();
 
   // Email Change State
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
@@ -930,17 +932,19 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
             )}
           </div>
 
-          <div className="flex items-center justify-between opacity-50">
+          <div className={cn("flex items-center justify-between", !discordIntegration && "opacity-50")}>
             <div className="flex items-center gap-3">
               <FaDiscord className="w-5 h-5" />
               <div>
                 <p className="font-medium text-sm">Login with Discord</p>
                 <p className="text-xs text-muted-foreground">
-                  Coming soon - Discord OAuth not yet available
+                  {discordIntegration 
+                    ? `Linked to @${discordIntegration.username}` 
+                    : 'Connect your Discord account first'}
                 </p>
               </div>
             </div>
-            <Switch disabled />
+            <Switch disabled={!discordIntegration} checked={!!discordIntegration} />
           </div>
         </div>
       </div>
@@ -1001,11 +1005,16 @@ export function AccountSettings({ profile, onUpdateUsername, onSaveDisplayName, 
           ) : (
             <Button 
               variant="outline" 
-              className="w-full opacity-60 cursor-not-allowed"
-              disabled={true}
+              className="w-full"
+              onClick={() => user && initiateDiscordLink(user.id)}
+              disabled={discordLoading}
             >
-              <FaDiscord className="w-4 h-4 mr-2 text-[#5865F2]" />
-              Coming Soon
+              {discordLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FaDiscord className="w-4 h-4 mr-2 text-[#5865F2]" />
+              )}
+              Connect Discord
             </Button>
           )}
 
