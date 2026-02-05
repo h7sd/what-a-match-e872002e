@@ -92,6 +92,44 @@ def _validate_standalone_config():
         raise ValueError("DISCORD_WEBHOOK_SECRET is required!")
 
 
+def safe_int_balance(value: Any) -> int:
+    """
+    Safely convert any balance value to int.
+    
+    Handles:
+    - Strings with commas (e.g., "1,234,567")
+    - Strings with decimals (e.g., "1234.56")
+    - Negative numbers (e.g., "-500")
+    - BigInt strings from API
+    - None/empty values
+    - Already int values
+    """
+    if value is None:
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            # Remove commas, spaces, and take integer part
+            cleaned = value.replace(",", "").replace(" ", "").strip()
+            if not cleaned or cleaned == "":
+                return 0
+            # Handle decimals by taking the integer part
+            if "." in cleaned:
+                cleaned = cleaned.split(".")[0]
+            return int(cleaned)
+        except (ValueError, AttributeError):
+            return 0
+    # Fallback for any other type
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return 0
+
+
+
 class RequestLogger:
     """Logger for API requests with colors and timing."""
     
@@ -259,11 +297,13 @@ class UserVaultAPI:
             "code": code.upper().strip(),
             "discordUserId": discord_user_id
         }
+        # CRITICAL: Use exact same JSON serialization as backend expects
+        # Must use separators=(",", ":") and ensure_ascii=False for signature to match
+        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
         timestamp = str(int(time.time() * 1000))
-        body_str = json.dumps(payload)
         signature = hmac.new(
-            WEBHOOK_SECRET.encode(),
-            f"{timestamp}.{body_str}".encode(),
+            WEBHOOK_SECRET.encode("utf-8"),
+            f"{timestamp}.{payload_json}".encode("utf-8"),
             hashlib.sha256
         ).hexdigest()
         
@@ -273,12 +313,28 @@ class UserVaultAPI:
             "x-webhook-timestamp": timestamp,
         }
         
+        self.logger.request_start("bot-verify-code", "verify", discord_user_id)
         start = time.time()
-        async with aiohttp.ClientSession() as session:
-            async with session.post(verify_url, json=payload, headers=headers) as resp:
+        
+        try:
+            session = await self._get_session()
+            async with session.post(
+                verify_url,
+                data=payload_json.encode("utf-8"),
+                headers=headers,
+            ) as resp:
+                duration_ms = (time.time() - start) * 1000
                 data = await resp.json()
-                RequestLogger.log_request("POST", verify_url, resp.status, time.time() - start, payload, data)
+                
+                if resp.status == 200 and not data.get("error"):
+                    self.logger.request_success("verify", duration_ms, json.dumps(data)[:100])
+                else:
+                    self.logger.request_error("verify", data.get("error", "Unknown"), resp.status)
+                
                 return data
+        except Exception as e:
+            self.logger.request_error("verify", str(e))
+            return {"error": str(e)}
     
     async def unlink_account(self, discord_user_id: str) -> dict:
         """Unlink Discord account from UserVault."""
@@ -1470,15 +1526,7 @@ class UserVaultPrefixCommands(commands.Cog):
         
         # Check balance
         balance_result = await ctx.bot.api.get_balance(str(ctx.author.id))  # type: ignore[attr-defined]
-        current_balance = balance_result.get("balance", 0)
-        # Balance might be string from BigInt - convert to int safely
-        if isinstance(current_balance, str):
-            try:
-                current_balance = int(current_balance.replace(",", "").split(".")[0])
-            except (ValueError, AttributeError):
-                current_balance = 0
-        elif not isinstance(current_balance, int):
-            current_balance = int(current_balance) if current_balance else 0
+        current_balance = safe_int_balance(balance_result.get("balance", 0))
         if current_balance < bet:
             await ctx.send(f"❌ Insufficient balance! You have {current_balance} UC.")
             return
@@ -1817,15 +1865,7 @@ class UserVaultPrefixCommands(commands.Cog):
             
             # Check balance
             balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
-            current_balance = balance_result.get("balance", 0)
-            # Balance might be string from BigInt - convert to int safely
-            if isinstance(current_balance, str):
-                try:
-                    current_balance = int(current_balance.replace(",", "").split(".")[0])
-                except (ValueError, AttributeError):
-                    current_balance = 0
-            elif not isinstance(current_balance, int):
-                current_balance = int(current_balance) if current_balance else 0
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
             if current_balance < bet:
                 await message.reply(f"❌ Nicht genug Guthaben! Du hast {current_balance} UC.")
                 return
@@ -1852,15 +1892,7 @@ class UserVaultPrefixCommands(commands.Cog):
             
             # Check balance (no max limit - only balance dependent)
             balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
-            current_balance = balance_result.get("balance", 0)
-            # Balance might be string from BigInt - convert to int safely
-            if isinstance(current_balance, str):
-                try:
-                    current_balance = int(current_balance.replace(",", "").split(".")[0])
-                except (ValueError, AttributeError):
-                    current_balance = 0
-            elif not isinstance(current_balance, int):
-                current_balance = int(current_balance) if current_balance else 0
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
             if current_balance < bet:
                 await message.reply(f"❌ Nicht genug Guthaben! Du hast {current_balance} UC.")
                 return
@@ -1925,15 +1957,7 @@ class UserVaultPrefixCommands(commands.Cog):
             
             # Check balance
             balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
-            current_balance = balance_result.get("balance", 0)
-            # Balance might be string from BigInt - convert to int safely
-            if isinstance(current_balance, str):
-                try:
-                    current_balance = int(current_balance.replace(",", "").split(".")[0])
-                except (ValueError, AttributeError):
-                    current_balance = 0
-            elif not isinstance(current_balance, int):
-                current_balance = int(current_balance) if current_balance else 0
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
             if current_balance < bet:
                 await message.reply(f"❌ Nicht genug Guthaben! Du hast {current_balance} UC.")
                 return
