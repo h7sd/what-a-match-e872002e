@@ -1209,11 +1209,28 @@ class UserVaultPrefixCommands(commands.Cog):
                     await message.reply("⚠️ Cannot reload in standalone mode. Restart the bot instead.")
                     return
                 
-                await self.client.reload_extension(ext_name)
-                await message.reply("✅ Extension reloaded!")
+                 # Clear the flag so the cog gets re-added on reload
+                 if hasattr(self.client, "_uservault_prefix_cog_loaded"):
+                     del self.client._uservault_prefix_cog_loaded
+                 
+                 # Cancel notification task if running (will restart on reload)
+                 if hasattr(self.client, "_uservault_notification_task"):
+                     task = self.client._uservault_notification_task
+                     if task and not task.done():
+                         task.cancel()
+                     del self.client._uservault_notification_task
+                 
+                 await message.reply("🔄 Reloading extension...")
+                 await self.client.reload_extension(ext_name)
+                 # Note: This message won't be sent if reload succeeds because the cog is replaced
             except Exception as e:
                 await message.reply(f"❌ Reload failed: {e}")
             return
+ 
+         # ===== ?ping - Simple connectivity test =====
+         if lowered == "?ping":
+             await message.reply("🏓 Pong! Bot is responding.")
+             return
 
         if lowered.startswith("?lookup"):
             parts = content.split(maxsplit=1)
@@ -1519,8 +1536,19 @@ async def setup(client: commands.Bot):
 
     # Prefix commands + message listener (needed for '?guess')
     if not hasattr(client, "_uservault_prefix_cog_loaded"):
-        await client.add_cog(UserVaultPrefixCommands(client))
-        client._uservault_prefix_cog_loaded = True
+         cog = UserVaultPrefixCommands(client)
+         await client.add_cog(cog)
+         client._uservault_prefix_cog_loaded = True
+         print("📦 [UserVault] Prefix commands cog loaded")
+     else:
+         # Reload scenario: remove old cog and add new one
+         old_cog = client.get_cog("UserVaultPrefixCommands")
+         if old_cog:
+             await client.remove_cog("UserVaultPrefixCommands")
+             print("🔄 [UserVault] Removed old prefix cog for reload")
+         cog = UserVaultPrefixCommands(client)
+         await client.add_cog(cog)
+         print("📦 [UserVault] Prefix commands cog reloaded")
     
     # Start notification polling if not already running
     if not hasattr(client, '_uservault_notification_task') or client._uservault_notification_task is None or client._uservault_notification_task.done():
