@@ -932,6 +932,10 @@ async def setup(client: commands.Bot):
     client.tree.add_command(guess)
     client.tree.add_command(balance)
     client.tree.add_command(daily)
+    client.tree.add_command(link)
+    client.tree.add_command(unlink)
+    client.tree.add_command(profile)
+    client.tree.add_command(apistats)
     
     # If the client has an API attribute, use it; otherwise create one
     if not hasattr(client, 'api'):
@@ -939,12 +943,81 @@ async def setup(client: commands.Bot):
     if not hasattr(client, 'active_guess_games'):
         client.active_guess_games = {}
     
+    # Start notification polling if not already running
+    if not hasattr(client, '_uservault_notification_task') or client._uservault_notification_task is None or client._uservault_notification_task.done():
+        async def poll_notifications_for_extension():
+            """Poll for command notifications and send to Discord."""
+            await client.wait_until_ready()
+            
+            channel = client.get_channel(COMMAND_UPDATES_CHANNEL_ID)
+            if not channel:
+                print(f"⚠️ [UserVault] Could not find channel {COMMAND_UPDATES_CHANNEL_ID} for command notifications")
+                return
+            
+            print(f"📢 [UserVault] Sending command updates to #{channel.name}")
+            
+            while not client.is_closed():
+                try:
+                    result = await client.api.get_pending_notifications()
+                    
+                    if result.get("notifications"):
+                        for notif in result["notifications"]:
+                            await send_notification_embed(client, channel, notif)
+                            await client.api.mark_notification_processed(notif["id"])
+                            
+                except Exception as e:
+                    print(f"❌ [UserVault] Notification poll error: {e}")
+                
+                # Poll every 5 seconds
+                await asyncio.sleep(5)
+        
+        client._uservault_notification_task = asyncio.create_task(poll_notifications_for_extension())
+        print("📡 [UserVault] Started command notification polling (extension mode)")
+    
     print("✅ UserVault API Bot extension loaded!")
+
+
+async def send_notification_embed(client: commands.Bot, channel, notif: dict):
+    """Send a command notification embed to Discord."""
+    action = notif.get("action", "unknown")
+    command_name = notif.get("command_name", "unknown")
+    changes = notif.get("changes", {})
+    
+    # Color based on action
+    colors = {
+        "created": discord.Color.green(),
+        "updated": discord.Color.blue(),
+        "deleted": discord.Color.red(),
+    }
+    
+    # Emoji based on action
+    emojis = {
+        "created": "🆕",
+        "updated": "✏️",
+        "deleted": "🗑️",
+    }
+    
+    embed = discord.Embed(
+        title=f"{emojis.get(action, '📋')} Command {action.capitalize()}: /{command_name}",
+        color=colors.get(action, discord.Color.greyple()),
+        timestamp=discord.utils.utcnow()
+    )
+    
+    if changes:
+        changes_text = "\n".join([f"• **{k}**: {v}" for k, v in changes.items()])
+        embed.add_field(name="Changes", value=changes_text[:1024], inline=False)
+    
+    embed.set_footer(text="UserVault Bot Commands")
+    
+    try:
+        await channel.send(embed=embed)
+    except Exception as e:
+        print(f"❌ [UserVault] Failed to send notification: {e}")
 
 
 # ============ RUN BOT ============
 
 if __name__ == "__main__":
     print("🚀 Starting UserVault Bot...")
-    print(f"📡 API URL: {API_URL}")
+    print(f"📡 API URL: {FUNCTIONS_BASE_URL}")
     bot.run(BOT_TOKEN)
