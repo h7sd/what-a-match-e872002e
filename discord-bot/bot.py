@@ -256,6 +256,10 @@ class UserVaultAPI:
         """Get UserVault profile for Discord user."""
         return await self.reward_api("get_profile", discord_user_id)
     
+    async def lookup_profile(self, username: str) -> dict:
+        """Look up any UserVault profile by username (public info only)."""
+        return await self.game_api("lookup_profile", username=username)
+    
     async def get_trivia(self) -> dict:
         """Get a trivia question."""
         return await self.game_api("get_trivia")
@@ -1041,6 +1045,44 @@ class UserVaultPrefixCommands(commands.Cog):
             f"📈 **Total Earned:** {total_earned} UC\n"
             f"🔗 **Profile:** {profile_url}"
         )
+
+    @commands.command(name="lookup")
+    async def lookup_prefix(self, ctx: commands.Context, username: str = None):
+        """Look up any UserVault profile by username."""
+        if not username:
+            await ctx.send("❌ Usage: `?lookup <username>`")
+            return
+        
+        # Clean up username
+        username = username.strip().lower()
+        
+        # Call the API to get public profile info
+        result = await ctx.bot.api.lookup_profile(username)  # type: ignore[attr-defined]
+        
+        if result.get("error"):
+            await ctx.send(f"❌ {result['error']}")
+            return
+        
+        display_name = result.get("display_name") or result.get("username", username)
+        bio = result.get("bio", "No bio set")
+        views = result.get("views_count", 0)
+        likes = result.get("likes_count", 0)
+        is_premium = result.get("is_premium", False)
+        profile_url = f"https://uservault.cc/{username}"
+        
+        premium_badge = "⭐ " if is_premium else ""
+        
+        embed = discord.Embed(
+            title=f"{premium_badge}{display_name}",
+            url=profile_url,
+            description=bio[:200] if bio else "No bio set",
+            color=discord.Color.blurple()
+        )
+        embed.add_field(name="👁️ Views", value=str(views), inline=True)
+        embed.add_field(name="❤️ Likes", value=str(likes), inline=True)
+        embed.set_footer(text=f"uservault.cc/{username}")
+        
+        await ctx.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

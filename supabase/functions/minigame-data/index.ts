@@ -512,6 +512,45 @@ serve(async (req) => {
         };
         break;
 
+      // ============ Profile Lookup ============
+      case "lookup_profile": {
+        const username = params.username?.toLowerCase?.()?.trim?.();
+        if (!username) {
+          responseData = { error: "Username is required" };
+          break;
+        }
+        
+        // Create Supabase client for database access
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // Look up profile by username or alias
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, display_name, bio, views_count, likes_count, dislikes_count, is_premium, avatar_url, created_at")
+          .or(`username.eq.${username},alias_username.eq.${username}`)
+          .single();
+        
+        if (profileError || !profile) {
+          responseData = { error: `Profile '${username}' not found` };
+        } else {
+          responseData = {
+            username: profile.username,
+            display_name: profile.display_name,
+            bio: profile.bio,
+            views_count: profile.views_count || 0,
+            likes_count: profile.likes_count || 0,
+            dislikes_count: profile.dislikes_count || 0,
+            is_premium: profile.is_premium || false,
+            avatar_url: profile.avatar_url,
+            created_at: profile.created_at,
+          };
+        }
+        break;
+      }
+
       default:
         responseData = { error: "Unknown action" };
     }
