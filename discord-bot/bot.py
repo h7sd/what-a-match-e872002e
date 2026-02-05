@@ -1989,6 +1989,18 @@ class UserVaultPrefixCommands(commands.Cog):
             await message.reply("🏓 Pong! Bot is responding.")
             return
 
+        # ===== ?version - Show bot version =====
+        if lowered == "?version":
+            embed = discord.Embed(
+                title="🤖 Bot Version",
+                description=f"**Version:** `{BOT_CODE_VERSION}`",
+                color=0x5865F2
+            )
+            embed.add_field(name="API Endpoint", value=f"`{FUNCTIONS_BASE_URL}`", inline=False)
+            embed.set_footer(text=f"UserVault Bot • {BOT_CODE_VERSION}")
+            await message.reply(embed=embed)
+            return
+
         # ===== ?mines - Minesweeper game =====
         if lowered.startswith("?mines"):
             parts = content.split()
