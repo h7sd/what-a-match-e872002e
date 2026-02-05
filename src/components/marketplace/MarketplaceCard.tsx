@@ -8,7 +8,8 @@ import {
   X, 
   Sparkles,
   Package,
-  User
+  User,
+  Wand2
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MarketplaceItem, usePurchaseItem } from '@/hooks/useMarketplace';
+import { MarketplaceItem, usePurchaseItem, useApplyTemplate } from '@/hooks/useMarketplace';
 import { cn } from '@/lib/utils';
 
 interface MarketplaceCardProps {
@@ -40,7 +41,9 @@ export function MarketplaceCard({
   isPurchased 
 }: MarketplaceCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showApplyConfirm, setShowApplyConfirm] = useState(false);
   const purchaseMutation = usePurchaseItem();
+  const applyTemplateMutation = useApplyTemplate();
 
   const name = item.item_type === 'badge' ? item.badge_name : item.template_name;
   const description = item.item_type === 'badge' ? item.badge_description : item.template_description;
@@ -57,6 +60,13 @@ export function MarketplaceCard({
     purchaseMutation.mutate(item.id);
     setShowConfirm(false);
   };
+
+  const handleApplyTemplate = () => {
+    applyTemplateMutation.mutate(item.id);
+    setShowApplyConfirm(false);
+  };
+
+  const hasTemplateData = item.item_type === 'template' && item.template_data;
 
   const saleTypeLabel = () => {
     switch (item.sale_type) {
@@ -210,10 +220,23 @@ export function MarketplaceCard({
             )}
 
             {isPurchased && (
-              <Button size="sm" variant="secondary" disabled className="gap-1.5">
-                <Check className="w-4 h-4" />
-                Owned
+            <div className="flex gap-1.5">
+              {hasTemplateData && (
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  className="gap-1.5"
+                  onClick={() => setShowApplyConfirm(true)}
+                  disabled={applyTemplateMutation.isPending}
+                >
+                  <Wand2 className="w-4 h-4" />
+                  Apply
+                </Button>
+              )}
+              <Button size="sm" variant="secondary" disabled className="gap-1">
+                <Check className="w-3.5 h-3.5" />
               </Button>
+            </div>
             )}
           </div>
         </div>
@@ -247,6 +270,33 @@ export function MarketplaceCard({
               disabled={purchaseMutation.isPending}
             >
               {purchaseMutation.isPending ? 'Processing...' : 'Confirm Purchase'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showApplyConfirm} onOpenChange={setShowApplyConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply Template</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Apply the <strong>{name}</strong> template to your profile?
+                </p>
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600">
+                  <p className="font-medium">⚠️ This will overwrite your current profile style settings.</p>
+                  <p className="mt-1 text-xs opacity-80">
+                    Your personal data (username, bio, display name) will NOT be changed.
+                  </p>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApplyTemplate} disabled={applyTemplateMutation.isPending}>
+              {applyTemplateMutation.isPending ? 'Applying...' : 'Apply Template'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

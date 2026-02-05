@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useAuth } from '@/lib/auth';
+import { useUserBadges, GlobalBadge } from '@/hooks/useBadges';
+import { useCurrentUserProfile } from '@/hooks/useProfile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge, Package, Upload, Coins, AlertCircle } from 'lucide-react';
+import { Badge, Package, Upload, Coins, AlertCircle, Wand2, Library, Sparkles } from 'lucide-react';
 import { useCreateMarketplaceItem } from '@/hooks/useMarketplace';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +21,13 @@ interface CreateListingDialogProps {
 }
 
 export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogProps) {
+  const { user } = useAuth();
+  const { data: userBadges } = useUserBadges(user?.id || '');
+  const { data: currentProfile } = useCurrentUserProfile();
+  
   const [itemType, setItemType] = useState<'badge' | 'template'>('badge');
+  const [badgeSource, setBadgeSource] = useState<'create' | 'existing'>('create');
+  const [selectedBadgeId, setSelectedBadgeId] = useState<string>('');
   const [saleType, setSaleType] = useState<'single' | 'limited' | 'unlimited'>('unlimited');
   const [stockLimit, setStockLimit] = useState(10);
   const [price, setPrice] = useState(100);
@@ -34,8 +43,87 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
   const [templatePreviewUrl, setTemplatePreviewUrl] = useState('');
+  const [exportCurrentProfile, setExportCurrentProfile] = useState(false);
   
   const createMutation = useCreateMarketplaceItem();
+
+  // Get the selected existing badge data
+  const selectedExistingBadge = userBadges?.find(ub => ub.badge_id === selectedBadgeId)?.badge;
+
+  // Build template data from current profile (excluding personal info)
+  const buildTemplateData = () => {
+    if (!currentProfile) return null;
+    
+    // Only include style/appearance settings, NOT personal data
+    return {
+      // Visual settings
+      background_url: currentProfile.background_url,
+      background_color: currentProfile.background_color,
+      background_video_url: (currentProfile as any).background_video_url,
+      background_effect: (currentProfile as any).background_effect,
+      accent_color: currentProfile.accent_color,
+      card_color: currentProfile.card_color,
+      card_style: (currentProfile as any).card_style,
+      text_color: (currentProfile as any).text_color,
+      icon_color: (currentProfile as any).icon_color,
+      
+      // Card border settings
+      card_border_enabled: (currentProfile as any).card_border_enabled,
+      card_border_width: (currentProfile as any).card_border_width,
+      card_border_color: (currentProfile as any).card_border_color,
+      
+      // Typography
+      name_font: (currentProfile as any).name_font,
+      text_font: (currentProfile as any).text_font,
+      
+      // Avatar settings
+      avatar_shape: (currentProfile as any).avatar_shape,
+      
+      // Layout
+      layout_style: (currentProfile as any).layout_style,
+      
+      // Effects
+      effects_config: currentProfile.effects_config,
+      profile_opacity: (currentProfile as any).profile_opacity,
+      profile_blur: (currentProfile as any).profile_blur,
+      monochrome_icons: (currentProfile as any).monochrome_icons,
+      animated_title: (currentProfile as any).animated_title,
+      swap_bio_colors: (currentProfile as any).swap_bio_colors,
+      glow_username: (currentProfile as any).glow_username,
+      glow_socials: (currentProfile as any).glow_socials,
+      glow_badges: (currentProfile as any).glow_badges,
+      enable_profile_gradient: (currentProfile as any).enable_profile_gradient,
+      icon_only_links: (currentProfile as any).icon_only_links,
+      icon_links_opacity: (currentProfile as any).icon_links_opacity,
+      transparent_badges: (currentProfile as any).transparent_badges,
+      
+      // Start screen settings
+      start_screen_enabled: (currentProfile as any).start_screen_enabled,
+      start_screen_font: (currentProfile as any).start_screen_font,
+      start_screen_color: (currentProfile as any).start_screen_color,
+      start_screen_bg_color: (currentProfile as any).start_screen_bg_color,
+      start_screen_animation: (currentProfile as any).start_screen_animation,
+      
+      // Visibility settings
+      show_volume_control: (currentProfile as any).show_volume_control,
+      show_username: (currentProfile as any).show_username,
+      show_badges: (currentProfile as any).show_badges,
+      show_views: (currentProfile as any).show_views,
+      show_avatar: (currentProfile as any).show_avatar,
+      show_links: (currentProfile as any).show_links,
+      show_description: (currentProfile as any).show_description,
+      show_display_name: (currentProfile as any).show_display_name,
+      
+      // Example placeholders (buyer sees these as preview, not actual data)
+      _example_display_name: "Example User",
+      _example_bio: "This is an example bio for the template preview.",
+      _example_username: "example",
+      
+      // Mark as template
+      _is_template: true,
+      _template_version: 1,
+    };
+  };
 
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,9 +165,15 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
   };
 
   const handleSubmit = () => {
-    if (itemType === 'badge' && !badgeName.trim()) {
-      toast.error('Badge name is required');
-      return;
+    if (itemType === 'badge') {
+      if (badgeSource === 'create' && !badgeName.trim()) {
+        toast.error('Badge name is required');
+        return;
+      }
+      if (badgeSource === 'existing' && !selectedBadgeId) {
+        toast.error('Please select a badge to sell');
+        return;
+      }
     }
     if (itemType === 'template' && !templateName.trim()) {
       toast.error('Template name is required');
@@ -94,22 +188,41 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
       return;
     }
 
+    // Determine badge data based on source
+    let finalBadgeName = badgeName;
+    let finalBadgeDescription = badgeDescription;
+    let finalBadgeColor = badgeColor;
+    let finalBadgeIconUrl = badgeIconUrl;
+    
+    if (itemType === 'badge' && badgeSource === 'existing' && selectedExistingBadge) {
+      finalBadgeName = selectedExistingBadge.name;
+      finalBadgeDescription = selectedExistingBadge.description || '';
+      finalBadgeColor = selectedExistingBadge.color || '#8B5CF6';
+      finalBadgeIconUrl = selectedExistingBadge.icon_url || '';
+    }
+    
+    // Build template data if exporting profile
+    const templateData = itemType === 'template' && exportCurrentProfile ? buildTemplateData() : null;
+
     createMutation.mutate({
       item_type: itemType,
       sale_type: saleType,
       stock_limit: saleType === 'limited' ? stockLimit : null,
       price,
-      badge_name: itemType === 'badge' ? badgeName : null,
-      badge_description: itemType === 'badge' ? badgeDescription : null,
-      badge_color: itemType === 'badge' ? badgeColor : null,
-      badge_icon_url: itemType === 'badge' ? badgeIconUrl : null,
+      badge_name: itemType === 'badge' ? finalBadgeName : null,
+      badge_description: itemType === 'badge' ? finalBadgeDescription : null,
+      badge_color: itemType === 'badge' ? finalBadgeColor : null,
+      badge_icon_url: itemType === 'badge' ? finalBadgeIconUrl : null,
       template_name: itemType === 'template' ? templateName : null,
       template_description: itemType === 'template' ? templateDescription : null,
       template_preview_url: itemType === 'template' ? templatePreviewUrl : null,
+      template_data: templateData,
     }, {
       onSuccess: () => {
         onOpenChange(false);
         // Reset form
+        setBadgeSource('create');
+        setSelectedBadgeId('');
         setBadgeName('');
         setBadgeDescription('');
         setBadgeColor('#8B5CF6');
@@ -117,6 +230,7 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
         setTemplateName('');
         setTemplateDescription('');
         setTemplatePreviewUrl('');
+        setExportCurrentProfile(false);
         setPrice(100);
         setSaleType('unlimited');
       }
@@ -148,6 +262,90 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
             </TabsList>
 
             <TabsContent value="badge" className="space-y-4 mt-4">
+              {/* Badge Source Selection */}
+              <div className="space-y-3">
+                <Label>Badge Source</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={badgeSource === 'existing' ? 'default' : 'outline'}
+                    className="gap-2"
+                    onClick={() => setBadgeSource('existing')}
+                  >
+                    <Library className="w-4 h-4" />
+                    My Badges
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={badgeSource === 'create' ? 'default' : 'outline'}
+                    className="gap-2"
+                    onClick={() => setBadgeSource('create')}
+                  >
+                    <Wand2 className="w-4 h-4" />
+                    Create New
+                  </Button>
+                </div>
+              </div>
+
+              {badgeSource === 'existing' ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Select Badge to Sell</Label>
+                    {userBadges && userBadges.length > 0 ? (
+                      <Select value={selectedBadgeId} onValueChange={setSelectedBadgeId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a badge..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {userBadges.map((ub) => (
+                            <SelectItem key={ub.badge_id} value={ub.badge_id}>
+                              <div className="flex items-center gap-2">
+                                {ub.badge?.icon_url ? (
+                                  <img src={ub.badge.icon_url} alt="" className="w-5 h-5 rounded object-cover" />
+                                ) : (
+                                  <div
+                                    className="w-5 h-5 rounded"
+                                    style={{ backgroundColor: ub.badge?.color || '#8B5CF6' }}
+                                  />
+                                )}
+                                <span>{ub.badge?.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground text-center">
+                        You don't have any badges yet. Create a new one instead!
+                      </div>
+                    )}
+                  </div>
+                  
+                  {selectedExistingBadge && (
+                    <div className="p-3 bg-muted/30 rounded-lg border border-border/50">
+                      <div className="flex items-center gap-3">
+                        {selectedExistingBadge.icon_url ? (
+                          <img src={selectedExistingBadge.icon_url} alt="" className="w-10 h-10 rounded object-cover" />
+                        ) : (
+                          <div
+                            className="w-10 h-10 rounded flex items-center justify-center"
+                            style={{ backgroundColor: selectedExistingBadge.color || '#8B5CF6' }}
+                          >
+                            <Badge className="w-5 h-5 text-white" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium">{selectedExistingBadge.name}</p>
+                          {selectedExistingBadge.description && (
+                            <p className="text-xs text-muted-foreground">{selectedExistingBadge.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
               <div className="space-y-2">
                 <Label htmlFor="badgeName">Badge Name *</Label>
                 <Input
@@ -214,15 +412,48 @@ export function CreateListingDialog({ open, onOpenChange }: CreateListingDialogP
                   )}
                 </div>
               </div>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="template" className="space-y-4 mt-4">
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-500">
-                  Template selling coming soon! You'll be able to export your profile settings and sell them.
+              {/* Export Current Profile Option */}
+              <div className="space-y-3">
+                <Label>Template Source</Label>
+                <div className="grid grid-cols-1 gap-2">
+                  <Button
+                    type="button"
+                    variant={exportCurrentProfile ? 'default' : 'outline'}
+                    className="gap-2 justify-start"
+                    onClick={() => setExportCurrentProfile(true)}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Export My Current Profile Style
+                  </Button>
+                </div>
+              </div>
+
+              {exportCurrentProfile && (
+                <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg flex gap-2">
+                  <Sparkles className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-green-500">
+                    <p className="font-medium">Profile style will be exported!</p>
+                    <p className="text-xs mt-1 opacity-80">
+                      Only visual settings are included. Personal data (username, UID, bio content, display name) 
+                      will NOT be shared. Buyers receive example placeholder values.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!exportCurrentProfile && (
+                <div className="p-3 bg-muted/50 border border-border/50 rounded-lg flex gap-2">
+                  <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-muted-foreground">
+                    Click "Export My Current Profile Style" to include your visual settings in this template.
                 </p>
               </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="templateName">Template Name *</Label>

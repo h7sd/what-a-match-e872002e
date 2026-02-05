@@ -26,7 +26,7 @@ export function MarketplacePopover() {
         {user && balance && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30">
             <Coins className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-xs font-bold text-amber-500">{balance.balance?.toLocaleString() || 0} UV</span>
+            <span className="text-xs font-bold text-amber-500">{balance.balance?.toLocaleString() || 0} UC</span>
           </div>
         )}
       </div>
@@ -103,8 +103,8 @@ export function MarketplacePopover() {
           <div className="text-[10px] text-muted-foreground uppercase">Items</div>
         </div>
         <div className="text-center border-x border-border/50">
-          <div className="text-lg font-bold text-primary">1000</div>
-          <div className="text-[10px] text-muted-foreground uppercase">Start UV</div>
+          <div className="text-lg font-bold text-primary">1,000</div>
+          <div className="text-[10px] text-muted-foreground uppercase">Start UC</div>
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-amber-500">∞</div>

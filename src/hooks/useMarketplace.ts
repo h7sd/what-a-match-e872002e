@@ -3,6 +3,52 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 
+// Template data fields that can be applied to a profile
+const TEMPLATE_APPLICABLE_FIELDS = [
+  'background_url',
+  'background_color',
+  'background_video_url',
+  'background_effect',
+  'accent_color',
+  'card_color',
+  'card_style',
+  'text_color',
+  'icon_color',
+  'card_border_enabled',
+  'card_border_width',
+  'card_border_color',
+  'name_font',
+  'text_font',
+  'avatar_shape',
+  'layout_style',
+  'effects_config',
+  'profile_opacity',
+  'profile_blur',
+  'monochrome_icons',
+  'animated_title',
+  'swap_bio_colors',
+  'glow_username',
+  'glow_socials',
+  'glow_badges',
+  'enable_profile_gradient',
+  'icon_only_links',
+  'icon_links_opacity',
+  'transparent_badges',
+  'start_screen_enabled',
+  'start_screen_font',
+  'start_screen_color',
+  'start_screen_bg_color',
+  'start_screen_animation',
+  'show_volume_control',
+  'show_username',
+  'show_badges',
+  'show_views',
+  'show_avatar',
+  'show_links',
+  'show_description',
+  'show_display_name',
+];
+
 export interface MarketplaceItem {
   id: string;
   seller_id: string;
@@ -229,6 +275,71 @@ export function useCreateMarketplaceItem() {
     },
     onError: (error) => {
       toast.error('Failed to submit item: ' + error.message);
+    }
+  });
+}
+
+// Apply a purchased template to user's profile
+export function useApplyTemplate() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      // Get the purchased item with template data
+      const { data: purchase, error: purchaseError } = await supabase
+        .from('marketplace_purchases')
+        .select('*, item:marketplace_items(*)')
+        .eq('buyer_id', user.id)
+        .eq('item_id', itemId)
+        .single();
+      
+      if (purchaseError || !purchase) {
+        throw new Error('You have not purchased this template');
+      }
+      
+      const item = purchase.item as MarketplaceItem;
+      
+      if (item.item_type !== 'template') {
+        throw new Error('This is not a template');
+      }
+      
+      const templateData = item.template_data as Record<string, unknown> | null;
+      
+      if (!templateData) {
+        throw new Error('Template has no style data');
+      }
+      
+      // Filter to only applicable fields (exclude personal data and meta fields)
+      const updates: Record<string, unknown> = {};
+      for (const field of TEMPLATE_APPLICABLE_FIELDS) {
+        if (templateData[field] !== undefined) {
+          updates[field] = templateData[field];
+        }
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        throw new Error('Template has no applicable style settings');
+      }
+      
+      // Apply to user's profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('user_id', user.id);
+      
+      if (updateError) throw updateError;
+      
+      return { applied: Object.keys(updates).length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success(`Template applied! ${data.applied} settings updated.`);
+    },
+    onError: (error) => {
+      toast.error(error.message);
     }
   });
 }
