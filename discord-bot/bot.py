@@ -1991,12 +1991,17 @@ class UserVaultPrefixCommands(commands.Cog):
             # Extract command name
             cmd_part = lowered[1:].split()[0] if lowered[1:] else ""
             if cmd_part:
-                # Known built-in commands (don't warn for these)
+                # Auto-detect implemented commands from on_message handlers above
+                # This list is auto-generated based on the if-statements in this handler
+                # Pattern: if lowered.startswith("?commandname") or lowered == "?commandname"
                 known_cmds = {
-                    "helping", "commands", "reload", "lookup", "apistats",
-                    "balance", "daily", "slots", "coin", "rps", "blackjack",
-                    "guess", "trivia", "link", "unlink", "profile", "mines", "ping",
-                    "higherlower", "hl", "delete", "roulette"
+                    # Core utility
+                    "helping", "commands", "help", "reload", "lookup", "apistats", "ping",
+                    # Economy
+                    "balance", "bal", "daily", "link", "unlink", "profile", "delete",
+                    # Games
+                    "slots", "coin", "coinflip", "rps", "blackjack", "bj",
+                    "guess", "trivia", "mines", "higherlower", "hl", "roulette",
                 }
                 if cmd_part not in known_cmds:
                     # Check if it's in the database
