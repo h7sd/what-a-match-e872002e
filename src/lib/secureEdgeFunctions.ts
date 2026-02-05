@@ -1,9 +1,12 @@
 /**
- * Secure Edge Function caller that routes through the API proxy
- * to hide the Supabase project URL from network inspection.
+ * Secure backend function caller.
+ *
+ * - Uses the app's existing auth session (so MFA-required calls work)
+ * - Calls functions via PUBLIC_API_URL (derived from the backend project id)
  */
 
-import { PUBLIC_API_URL, supabase } from '@/lib/supabase-proxy-client';
+import { supabase } from '@/integrations/supabase/client';
+import { PUBLIC_API_URL } from '@/lib/supabase-proxy-client';
 
 interface InvokeOptions {
   body?: Record<string, unknown>;
@@ -16,15 +19,14 @@ interface InvokeResult<T = unknown> {
 }
 
 /**
- * Invoke an edge function through the API proxy.
- * This hides the Supabase project URL from network inspection.
+ * Invoke a backend function via PUBLIC_API_URL.
  */
 export async function invokeSecure<T = unknown>(
   functionName: string,
   options: InvokeOptions = {}
 ): Promise<InvokeResult<T>> {
   try {
-    // Get the current session token
+    // Get the current session token (from the main app client)
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
@@ -76,3 +78,4 @@ export async function invokeSecure<T = unknown>(
     };
   }
 }
+

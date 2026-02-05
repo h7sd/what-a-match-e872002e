@@ -1,6 +1,6 @@
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecure } from '@/lib/secureEdgeFunctions';
 
-// Secure API layer that proxies all public requests through edge function
+// Secure API layer that proxies all public requests through backend function
 // This prevents direct database queries from being visible in dev tools
 
 interface ApiResponse<T> {
@@ -10,8 +10,8 @@ interface ApiResponse<T> {
 
 async function callApi<T>(action: string, params?: Record<string, any>): Promise<T | null> {
   try {
-    const { data, error } = await supabase.functions.invoke('api-proxy', {
-      body: { action, params }
+    const { data, error } = await invokeSecure<ApiResponse<T>>('api-proxy', {
+      body: { action, params },
     });
 
     if (error) {
@@ -19,17 +19,18 @@ async function callApi<T>(action: string, params?: Record<string, any>): Promise
       return null;
     }
 
-    if (data?.error) {
+    if (!data || data.error) {
       console.error('API returned error');
       return null;
     }
 
-    return data?.data as T;
-  } catch (err) {
+    return (data.data as T) ?? null;
+  } catch {
     console.error('API request failed');
     return null;
   }
 }
+
 
 // Stats
 export interface PublicStats {

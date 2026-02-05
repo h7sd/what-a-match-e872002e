@@ -386,23 +386,24 @@ export default function Auth() {
       console.warn('Turnstile bypassed for development environment');
       return true;
     }
-    
+
     try {
-      const response = await supabase.functions.invoke('verify-turnstile', {
-        body: { token },
-      });
-      
-      if (response.error || !response.data?.success) {
-        console.error('Turnstile verification failed:', response.error || response.data);
+      const { data, error } = await invokeSecure<{ success?: boolean; codes?: string[]; ['error-codes']?: string[] }>(
+        'verify-turnstile',
+        { body: { token } },
+      );
+
+      if (error || !data?.success) {
+        console.error('Turnstile verification failed:', error || data);
         // Check for timeout-or-duplicate error - this means token was already used
-        const errorCodes = response.data?.codes || response.data?.['error-codes'] || [];
-        if (errorCodes.includes('timeout-or-duplicate')) {
+        const errorCodes = (data as any)?.codes || (data as any)?.['error-codes'] || [];
+        if (Array.isArray(errorCodes) && errorCodes.includes('timeout-or-duplicate')) {
           // Token expired or already verified - reset and let user try again
           return false;
         }
         // Allow bypass if verification fails on known domains
         const hostname = window.location.hostname;
-        const isAllowedDomain = hostname.includes('lovable.app') || 
+        const isAllowedDomain = hostname.includes('lovable.app') ||
                                 hostname.includes('lovableproject.com') ||
                                 hostname.includes('uservault.cc') ||
                                 hostname.includes('localhost');
@@ -412,13 +413,13 @@ export default function Auth() {
         }
         return false;
       }
-      
+
       return true;
     } catch (error) {
       console.error('Turnstile verification error:', error);
       // Allow bypass on error for known domains
       const hostname = window.location.hostname;
-      const isAllowedDomain = hostname.includes('lovable.app') || 
+      const isAllowedDomain = hostname.includes('lovable.app') ||
                               hostname.includes('lovableproject.com') ||
                               hostname.includes('uservault.cc') ||
                               hostname.includes('localhost');
@@ -429,15 +430,16 @@ export default function Auth() {
   // Generate verification code via backend function
   const generateVerificationCode = async (targetEmail: string, type: 'signup' | 'password_reset') => {
     const normalizedEmail = targetEmail.toLowerCase().trim();
-    const response = await supabase.functions.invoke('generate-verification-code', {
+
+    const { data, error } = await invokeSecure<{ error?: string }>('generate-verification-code', {
       body: { email: normalizedEmail, type },
     });
-    
-    if (response.error || response.data?.error) {
-      throw new Error(response.data?.error || response.error?.message || 'Error generating verification code');
+
+    if (error || (data as any)?.error) {
+      throw new Error((data as any)?.error || error?.message || 'Error generating verification code');
     }
-    
-    return response.data;
+
+    return data;
   };
 
   // Verify code via backend function
@@ -445,15 +447,15 @@ export default function Auth() {
     const normalizedEmail = targetEmail.toLowerCase().trim();
     const normalizedCode = code.trim();
 
-    const response = await supabase.functions.invoke('verify-code', {
+    const { data, error } = await invokeSecure<{ error?: string }>('verify-code', {
       body: { email: normalizedEmail, code: normalizedCode, type },
     });
-    
-    if (response.error || response.data?.error) {
-      throw new Error(response.data?.error || response.error?.message || 'Invalid or expired code');
+
+    if (error || (data as any)?.error) {
+      throw new Error((data as any)?.error || error?.message || 'Invalid or expired code');
     }
-    
-    return response.data;
+
+    return data;
   };
 
   const sendPasswordResetEmail = async (targetEmail: string) => {
@@ -600,18 +602,18 @@ export default function Auth() {
           return;
         }
 
-        const response = await supabase.functions.invoke('reset-password', {
-          body: { 
-            email: emailParam, 
-            code: codeParam, 
-            newPassword 
+        const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
+          body: {
+            email: emailParam,
+            code: codeParam,
+            newPassword
           },
         });
 
-        if (response.error || response.data?.error) {
+        if (error || (data as any)?.error) {
           toast({
             title: 'Reset failed',
-            description: response.data?.error || response.error?.message || 'Please try again.',
+            description: (data as any)?.error || error?.message || 'Please try again.',
             variant: 'destructive',
           });
         } else {

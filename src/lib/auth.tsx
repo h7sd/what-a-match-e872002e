@@ -64,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!emailOrUsername.includes('@')) {
       const usernameInput = emailOrUsername.toLowerCase().trim();
       
-      // Get user email via secure edge function (handles rate limiting + validation)
-      const { data: userData, error: userError } = await supabase.functions.invoke('get-user-email', {
+      // Get user email via secure backend function (handles rate limiting + validation)
+      const { data: userData, error: userError } = await invokeSecure<any>('get-user-email', {
         body: { username: usernameInput }
       });
       
@@ -108,9 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if user is banned
     if (data.user) {
       try {
-        const { data: banData } = await supabase.functions.invoke('check-ban-status', {
+        const { data: banData, error: banFnError } = await invokeSecure<any>('check-ban-status', {
           body: { userId: data.user.id }
         });
+
+        if (banFnError) throw banFnError;
 
         if (banData?.isBanned) {
           setBanStatus({
