@@ -1,0 +1,294 @@
+.flame-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Main flame body */
+.flame-main {
+  position: relative;
+  width: 60%;
+  height: 85%;
+}
+
+.flame-primary {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    #ff6b35 0%,
+    #ff8c42 20%,
+    #ffa94d 40%,
+    #ffc078 60%,
+    #ffe066 80%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  filter: blur(1px);
+  animation: flameDance 0.8s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+.flame-secondary {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  height: 90%;
+  background: linear-gradient(
+    to top,
+    #ff8c42 0%,
+    #ffa94d 30%,
+    #ffc078 60%,
+    #ffe066 80%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  filter: blur(0.5px);
+  animation: flameDance 0.6s ease-in-out infinite alternate-reverse;
+  transform-origin: bottom center;
+}
+
+.flame-tertiary {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 80%;
+  background: linear-gradient(
+    to top,
+    #ffa94d 0%,
+    #ffc078 30%,
+    #ffe066 60%,
+    #fff3bf 80%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  animation: flameDance 0.5s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+/* Inner bright core */
+.flame-core {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 35%;
+  height: 45%;
+  background: linear-gradient(
+    to top,
+    #fff 0%,
+    #fff3bf 40%,
+    #ffe066 70%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  filter: blur(2px);
+  animation: coreFlicker 0.3s ease-in-out infinite alternate;
+}
+
+/* Shadow/glow beneath flame */
+.flame-shadow {
+  position: absolute;
+  bottom: -8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 15%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 107, 53, 0.6) 0%,
+    rgba(255, 140, 66, 0.3) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  filter: blur(4px);
+  animation: shadowPulse 1s ease-in-out infinite;
+}
+
+/* Ambient glow */
+.flame-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 140, 66, 0.3) 0%,
+    rgba(255, 107, 53, 0.1) 40%,
+    transparent 70%
+  );
+  filter: blur(10px);
+  animation: glowPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Sparks */
+.flame-sparks {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.spark {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #ffe066;
+  border-radius: 50%;
+  filter: blur(0.5px);
+  box-shadow: 0 0 4px #ffa94d;
+}
+
+.spark-1 {
+  left: 30%;
+  animation: sparkFloat1 1.5s ease-out infinite;
+}
+
+.spark-2 {
+  left: 50%;
+  animation: sparkFloat2 1.8s ease-out infinite 0.3s;
+}
+
+.spark-3 {
+  left: 70%;
+  animation: sparkFloat3 1.6s ease-out infinite 0.6s;
+}
+
+/* Inactive flame state */
+.flame-inactive {
+  width: 60%;
+  height: 60%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flame-core-inactive {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    #4a5568 0%,
+    #718096 50%,
+    #a0aec0 80%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  opacity: 0.5;
+}
+
+/* Animations */
+@keyframes flameDance {
+  0% {
+    transform: translateX(-50%) scaleX(1) scaleY(1) skewX(-2deg);
+  }
+  25% {
+    transform: translateX(-50%) scaleX(0.95) scaleY(1.02) skewX(1deg);
+  }
+  50% {
+    transform: translateX(-50%) scaleX(1.02) scaleY(0.98) skewX(-1deg);
+  }
+  75% {
+    transform: translateX(-50%) scaleX(0.98) scaleY(1.01) skewX(2deg);
+  }
+  100% {
+    transform: translateX(-50%) scaleX(1) scaleY(1) skewX(-2deg);
+  }
+}
+
+@keyframes coreFlicker {
+  0% {
+    opacity: 0.9;
+    transform: translateX(-50%) scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scaleY(1.05);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translateX(-50%) scaleY(0.95);
+  }
+}
+
+@keyframes shadowPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translateX(-50%) scaleX(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateX(-50%) scaleX(1.1);
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@keyframes sparkFloat1 {
+  0% {
+    bottom: 30%;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    bottom: 100%;
+    opacity: 0;
+    transform: translateX(-10px) scale(0.3);
+  }
+}
+
+@keyframes sparkFloat2 {
+  0% {
+    bottom: 35%;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    bottom: 110%;
+    opacity: 0;
+    transform: translateX(5px) scale(0.2);
+  }
+}
+
+@keyframes sparkFloat3 {
+  0% {
+    bottom: 25%;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    bottom: 95%;
+    opacity: 0;
+    transform: translateX(8px) scale(0.4);
+  }
+}
