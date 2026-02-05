@@ -6,7 +6,7 @@ import { MarketplaceCard } from './MarketplaceCard';
 interface MarketplaceGridProps {
   items: MarketplaceItem[];
   isLoading: boolean;
-  userBalance: number;
+  userBalance: bigint;
   isOwner?: boolean;
   isPurchased?: boolean;
   emptyMessage: string;

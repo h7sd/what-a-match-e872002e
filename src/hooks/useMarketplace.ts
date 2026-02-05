@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
+import { ucToBigInt } from '@/lib/uc';
 
 // Template data fields that can be applied to a profile
 const TEMPLATE_APPLICABLE_FIELDS = [
@@ -77,9 +78,9 @@ export interface MarketplaceItem {
 export interface UserBalance {
   id: string;
   user_id: string;
-  balance: number;
-  total_earned: number;
-  total_spent: number;
+  balance: bigint;
+  total_earned: bigint;
+  total_spent: bigint;
   created_at: string;
   updated_at: string;
 }
@@ -87,12 +88,28 @@ export interface UserBalance {
 export interface UCTransaction {
   id: string;
   user_id: string;
-  amount: number;
+  amount: bigint;
   transaction_type: 'earn' | 'spend' | 'refund' | 'initial';
   description: string | null;
   reference_id: string | null;
   reference_type: string | null;
   created_at: string;
+}
+
+function normalizeUserBalance(row: any): UserBalance {
+  return {
+    ...row,
+    balance: ucToBigInt(row?.balance),
+    total_earned: ucToBigInt(row?.total_earned),
+    total_spent: ucToBigInt(row?.total_spent),
+  } as UserBalance;
+}
+
+function normalizeTransaction(row: any): UCTransaction {
+  return {
+    ...row,
+    amount: ucToBigInt(row?.amount),
+  } as UCTransaction;
 }
 
 // Get user's UC balance
@@ -121,10 +138,10 @@ export function useUserBalance() {
           .single();
         
         if (insertError) throw insertError;
-        return newBalance as UserBalance;
+        return normalizeUserBalance(newBalance);
       }
       
-      return data as UserBalance;
+      return normalizeUserBalance(data);
     },
     enabled: !!user?.id,
   });
@@ -147,7 +164,7 @@ export function useUCTransactions() {
         .limit(50);
       
       if (error) throw error;
-      return data as UCTransaction[];
+      return (data || []).map(normalizeTransaction);
     },
     enabled: !!user?.id,
   });
