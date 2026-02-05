@@ -521,18 +521,35 @@ serve(async (req) => {
           .eq("user_id", userId)
           .single();
 
-        const balBI = toBigInt(balRow?.balance);
-        const earnedBI = toBigInt(balRow?.total_earned);
         const rewardBI = BigInt(reward);
+        let finalBalance: bigint;
 
-        await supabase
-          .from("user_balances")
-          .update({
-            balance: (balBI + rewardBI).toString(),
-            total_earned: (earnedBI + rewardBI).toString(),
-            updated_at: now.toISOString(),
-          })
-          .eq("user_id", userId);
+        if (balRow) {
+          // Update existing balance
+          const balBI = toBigInt(balRow.balance);
+          const earnedBI = toBigInt(balRow.total_earned);
+          finalBalance = balBI + rewardBI;
+
+          await supabase
+            .from("user_balances")
+            .update({
+              balance: finalBalance.toString(),
+              total_earned: (earnedBI + rewardBI).toString(),
+              updated_at: now.toISOString(),
+            })
+            .eq("user_id", userId);
+        } else {
+          // No balance record exists - create one
+          console.log(`Creating missing balance record for returning user ${userId}`);
+          finalBalance = rewardBI;
+          
+          await supabase.from("user_balances").insert({
+            user_id: userId,
+            balance: finalBalance.toString(),
+            total_earned: finalBalance.toString(),
+            total_spent: "0",
+          });
+        }
 
         await supabase.from("uv_transactions").insert({
           user_id: userId,
@@ -542,13 +559,16 @@ serve(async (req) => {
           reference_type: "daily_reward",
         });
 
+        // Verify final balance
         const { data: newBalance } = await supabase
           .from("user_balances")
           .select("balance")
           .eq("user_id", userId)
           .single();
 
-        const newBalanceBI = toBigInt(newBalance?.balance);
+        const newBalanceBI = newBalance ? toBigInt(newBalance.balance) : finalBalance;
+        
+        console.log(`Daily reward for ${profile.username}: streak=${newStreak}, reward=${reward}, newBalance=${newBalanceBI}`);
 
         return new Response(
           JSON.stringify({
@@ -563,6 +583,9 @@ serve(async (req) => {
       } else {
         // First claim
         const reward = 50;
+        const rewardBI = BigInt(reward);
+        
+        console.log(`First daily claim for user ${userId} (Discord: ${discordUserId})`);
         
         await supabase.from("daily_rewards").insert({
           user_id: userId,
@@ -571,29 +594,41 @@ serve(async (req) => {
           last_claim: now.toISOString(),
         });
 
-        // Add UV
+        // Check if balance exists
         const { data: currentBalance } = await supabase
           .from("user_balances")
           .select("balance, total_earned")
           .eq("user_id", userId)
           .single();
 
-        const rewardBI = BigInt(reward);
+        let finalBalance: bigint;
 
         if (!currentBalance) {
-          await supabase.from("user_balances").insert({
+          console.log(`Creating new balance record for user ${userId}`);
+          // Create new balance record
+          const { error: insertError } = await supabase.from("user_balances").insert({
             user_id: userId,
             balance: rewardBI.toString(),
             total_earned: rewardBI.toString(),
-            total_spent: 0,
+            total_spent: "0",
           });
+          
+          if (insertError) {
+            console.error(`Failed to insert balance for user ${userId}:`, insertError);
+          }
+          
+          finalBalance = rewardBI;
         } else {
           const balBI = toBigInt(currentBalance.balance);
           const earnedBI = toBigInt(currentBalance.total_earned);
+          finalBalance = balBI + rewardBI;
+          
+          console.log(`Updating balance for user ${userId}: ${balBI} + ${rewardBI} = ${finalBalance}`);
+          
           await supabase
             .from("user_balances")
             .update({
-              balance: (balBI + rewardBI).toString(),
+              balance: finalBalance.toString(),
               total_earned: (earnedBI + rewardBI).toString(),
               updated_at: now.toISOString(),
             })
@@ -608,13 +643,21 @@ serve(async (req) => {
           reference_type: "daily_reward",
         });
 
-        const { data: newBalance } = await supabase
+        // Verify the final balance from DB (for consistency)
+        const { data: verifyBalance, error: verifyError } = await supabase
           .from("user_balances")
           .select("balance")
           .eq("user_id", userId)
           .single();
 
-        const newBalanceBI = toBigInt(newBalance?.balance);
+        if (verifyError) {
+          console.error(`Failed to verify balance for user ${userId}:`, verifyError);
+        }
+
+        // Use the computed finalBalance as fallback if DB read fails
+        const newBalanceBI = verifyBalance ? toBigInt(verifyBalance.balance) : finalBalance;
+        
+        console.log(`Daily reward complete for ${profile.username}: reward=${reward}, newBalance=${newBalanceBI}`);
 
         return new Response(
           JSON.stringify({
