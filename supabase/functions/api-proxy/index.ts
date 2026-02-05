@@ -209,6 +209,57 @@ async function runHealthCheck(supabase: any): Promise<{
     checks.search = { status: 'error', latency_ms: Date.now() - searchStart, error: 'Search failed' };
   }
 
+  // Test username availability check (register flow)
+  const usernameCheckStart = Date.now();
+  try {
+    const [asUsername, asAlias] = await Promise.all([
+      supabase.from('profiles').select('id').eq('username', 'test_health_check_user').maybeSingle(),
+      supabase.from('profiles').select('id').eq('alias_username', 'test_health_check_user').maybeSingle()
+    ]);
+    const hasError = asUsername.error || asAlias.error;
+    checks.username_check = { 
+      status: hasError ? 'error' : 'ok', 
+      latency_ms: Date.now() - usernameCheckStart,
+      ...(hasError && { error: 'Username check failed' })
+    };
+  } catch (e) {
+    checks.username_check = { status: 'error', latency_ms: Date.now() - usernameCheckStart, error: 'Username check failed' };
+  }
+
+  // Test email lookup (login flow via auth admin)
+  const emailCheckStart = Date.now();
+  try {
+    // Test auth admin API is accessible
+    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    checks.email_lookup = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - emailCheckStart,
+      ...(error && { error: 'Email lookup failed' })
+    };
+  } catch (e) {
+    checks.email_lookup = { status: 'error', latency_ms: Date.now() - emailCheckStart, error: 'Email lookup failed' };
+  }
+
+  // Test registration availability check (combined username + email)
+  const registerCheckStart = Date.now();
+  try {
+    // Simulate register check by testing username lookup
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', 'nonexistent_test_user_12345')
+      .limit(1);
+    // Success if query executes (regardless of whether user exists)
+    checks.register_check = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - registerCheckStart,
+      ...(error && { error: 'Register check failed' })
+    };
+  } catch (e) {
+    console.error('Register check error:', e);
+    checks.register_check = { status: 'error', latency_ms: Date.now() - registerCheckStart, error: 'Register check failed' };
+  }
+
   // Calculate overall status
   const errorCount = Object.values(checks).filter(c => c.status === 'error').length;
   const totalChecks = Object.keys(checks).length;
