@@ -22,16 +22,16 @@ export function useDiscordOAuth() {
   const { toast } = useToast();
 
   const getRedirectUri = useCallback(() => {
-    // Use the proxy URL for the callback to hide Supabase project ID
-    return `https://api.uservault.cc/functions/v1/discord-oauth-callback`;
+    // Use an SPA route as redirect_uri so Discord lands back in the app (works for preview + production).
+    // This route is registered in App.tsx and forwards the params to /auth.
+    return `${window.location.origin}/functions/v1/discord-oauth-callback`;
   }, []);
 
   const initiateDiscordLogin = useCallback(async () => {
     setLoading(true);
     try {
-      // Always redirect to uservault.cc after Discord login
-      const targetOrigin = 'https://uservault.cc';
-      
+      // Redirect back to the currently running app (preview or production)
+      const targetOrigin = window.location.origin;
       // Get the OAuth URL from our edge function
       const { data, error } = await supabase.functions.invoke('discord-oauth', {
         body: { 
@@ -65,9 +65,8 @@ export function useDiscordOAuth() {
   const initiateDiscordLink = useCallback(async (userId: string) => {
     setLoading(true);
     try {
-      // Always redirect to uservault.cc after Discord link
-      const targetOrigin = 'https://uservault.cc';
-      
+      // Redirect back to the currently running app (preview or production)
+      const targetOrigin = window.location.origin;
       const { data, error } = await supabase.functions.invoke('discord-oauth', {
         body: { 
           action: 'get_auth_url',
