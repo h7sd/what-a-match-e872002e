@@ -1761,7 +1761,7 @@ class UserVaultPrefixCommands(commands.Cog):
             return
 
         # ===== ?higherlower / ?hl - Higher or Lower game =====
-        if lowered.startswith("?higherlower") or lowered.startswith("?hl"):
+        if lowered.startswith("?higherlower") or lowered.startswith("?hl ") or lowered == "?hl":
             parts = content.split()
             bet = 50  # Default bet
             if len(parts) > 1:
@@ -1785,6 +1785,138 @@ class UserVaultPrefixCommands(commands.Cog):
             view = HigherLowerView(self.client, message.author.id, bet)
             embed = view.create_embed()
             await message.reply(embed=embed, view=view)
+            return
+
+        # ===== ?roulette - Roulette game =====
+        if lowered.startswith("?roulette"):
+            parts = content.split()
+            
+            # Usage: ?roulette <bet> <wette>
+            # Wetten: red, black, odd, even, 0-36
+            if len(parts) < 3:
+                await message.reply(
+                    "🎰 **Roulette Usage:**\n"
+                    "`?roulette <einsatz> <wette>`\n\n"
+                    "**Wetten:**\n"
+                    "• `red` / `black` - Farbe (2x)\n"
+                    "• `odd` / `even` - Ungerade/Gerade (2x)\n"
+                    "• `0-36` - Einzelne Zahl (36x)\n\n"
+                    "Beispiel: `?roulette 100 red`"
+                )
+                return
+            
+            try:
+                bet = int(parts[1])
+            except ValueError:
+                await message.reply("❌ Ungültiger Einsatz!")
+                return
+            
+            if bet < 10:
+                await message.reply("❌ Minimum Einsatz ist 10 UC!")
+                return
+            
+            wette = parts[2].lower()
+            
+            # Validate bet type
+            valid_colors = {"red", "rot", "black", "schwarz"}
+            valid_parity = {"odd", "ungerade", "even", "gerade"}
+            valid_number = set(str(i) for i in range(37))
+            
+            bet_type = None
+            bet_value = None
+            
+            if wette in valid_colors:
+                bet_type = "color"
+                bet_value = "red" if wette in {"red", "rot"} else "black"
+            elif wette in valid_parity:
+                bet_type = "parity"
+                bet_value = "odd" if wette in {"odd", "ungerade"} else "even"
+            elif wette in valid_number:
+                bet_type = "number"
+                bet_value = int(wette)
+            else:
+                await message.reply(
+                    "❌ Ungültige Wette! Erlaubt: `red`, `black`, `odd`, `even`, `0-36`"
+                )
+                return
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = balance_result.get("balance", 0)
+            if current_balance < bet:
+                await message.reply(f"❌ Nicht genug Guthaben! Du hast {current_balance} UC.")
+                return
+            
+            # Roulette numbers and colors
+            red_numbers = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
+            
+            # Spin the wheel
+            import random
+            result_num = random.randint(0, 36)
+            result_color = "green" if result_num == 0 else ("red" if result_num in red_numbers else "black")
+            result_parity = None if result_num == 0 else ("odd" if result_num % 2 == 1 else "even")
+            
+            # Color emojis
+            color_emoji = {"red": "🔴", "black": "⚫", "green": "🟢"}
+            
+            # Check win
+            won = False
+            multiplier = 0
+            
+            if bet_type == "color":
+                won = (bet_value == result_color)
+                multiplier = 2
+            elif bet_type == "parity":
+                won = (result_num != 0 and bet_value == result_parity)
+                multiplier = 2
+            elif bet_type == "number":
+                won = (bet_value == result_num)
+                multiplier = 36
+            
+            # Calculate winnings
+            if won:
+                winnings = bet * multiplier
+                # Add winnings (net profit)
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id),
+                    winnings - bet,  # Net profit
+                    "roulette",
+                    f"Roulette win ({bet_type}: {bet_value})"
+                )
+                result_text = f"🎉 **GEWONNEN!** +{winnings} UC (x{multiplier})"
+            else:
+                # Deduct bet
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id),
+                    -bet,
+                    "roulette",
+                    f"Roulette loss ({bet_type}: {bet_value})"
+                )
+                result_text = f"❌ **Verloren!** -{bet} UC"
+            
+            # Build response embed
+            embed = discord.Embed(
+                title="🎰 Roulette",
+                color=discord.Color.green() if won else discord.Color.red()
+            )
+            embed.add_field(
+                name="Ergebnis",
+                value=f"{color_emoji[result_color]} **{result_num}** ({result_color.upper()})",
+                inline=True
+            )
+            embed.add_field(
+                name="Deine Wette",
+                value=f"{bet} UC auf **{bet_value}**",
+                inline=True
+            )
+            embed.add_field(
+                name="Resultat",
+                value=result_text,
+                inline=False
+            )
+            embed.set_footer(text="Viel Glück beim nächsten Spin!")
+            
+            await message.reply(embed=embed)
             return
 
         if lowered.startswith("?lookup"):
@@ -1864,7 +1996,7 @@ class UserVaultPrefixCommands(commands.Cog):
                     "helping", "commands", "reload", "lookup", "apistats",
                     "balance", "daily", "slots", "coin", "rps", "blackjack",
                     "guess", "trivia", "link", "unlink", "profile", "mines", "ping",
-                    "higherlower", "hl", "delete"
+                    "higherlower", "hl", "delete", "roulette"
                 }
                 if cmd_part not in known_cmds:
                     # Check if it's in the database
