@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { invokeSecure } from '@/lib/secureEdgeFunctions';
+import { supabase } from '../integrations/supabase/client';
+import { invokeSecure } from './secureEdgeFunctions';
 
 interface MfaChallenge {
   factorId: string;
