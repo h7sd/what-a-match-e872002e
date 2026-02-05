@@ -64,18 +64,25 @@ async function proxyToSupabase(request, pathname) {
   
   try {
     const response = await fetch(proxyRequest);
-    
+
     // Clone the response and add CORS headers
     const newHeaders = new Headers(response.headers);
     Object.entries(corsHeaders).forEach(([key, value]) => {
       newHeaders.set(key, value);
     });
-    
+
+    // Ensure the Discord OAuth callback renders as HTML in the browser.
+    // Some proxy setups can lose/alter the Content-Type, which makes browsers show the raw HTML source.
+    if (pathname.startsWith("/functions/v1/discord-oauth-callback") && method === "GET") {
+      newHeaders.set("Content-Type", "text/html; charset=utf-8");
+      newHeaders.set("Cache-Control", "no-store");
+    }
+
     // Add cache-control for certain endpoints
     if (pathname.includes("/storage/v1/object/public/")) {
       newHeaders.set("Cache-Control", "public, max-age=31536000");
     }
-    
+
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
