@@ -14,25 +14,18 @@ export function HeroSection() {
   const [heroAvatars, setHeroAvatars] = useState<string[]>([]);
 
   useEffect(() => {
-    // Fetch stats
-    supabase.functions
-      .invoke('api-proxy', { body: { action: 'get_stats' } })
-      .then(({ data }) => {
-        if (data?.data?.totalUsers) {
-          setUserCount(data.data.totalUsers);
-        }
-      })
-      .catch(() => {});
-
-    // Fetch hero avatars (uid 1-5, shuffled server-side)
-    supabase.functions
-      .invoke('api-proxy', { body: { action: 'get_hero_avatars' } })
-      .then(({ data }) => {
-        if (Array.isArray(data?.data)) {
-          setHeroAvatars(data.data);
-        }
-      })
-      .catch(() => {});
+    // Batch both requests into a single Promise.all to reduce waterfall
+    Promise.all([
+      supabase.functions.invoke('api-proxy', { body: { action: 'get_stats' } }),
+      supabase.functions.invoke('api-proxy', { body: { action: 'get_hero_avatars' } }),
+    ]).then(([statsRes, avatarsRes]) => {
+      if (statsRes.data?.data?.totalUsers) {
+        setUserCount(statsRes.data.data.totalUsers);
+      }
+      if (Array.isArray(avatarsRes.data?.data)) {
+        setHeroAvatars(avatarsRes.data.data);
+      }
+    }).catch(() => {});
   }, []);
   
   const { scrollYProgress } = useScroll({

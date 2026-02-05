@@ -59,11 +59,11 @@ function useProfileQueue() {
   const preloadedRef = useRef<SwapProfile | null>(null);
   const isPreloadingRef = useRef(false);
 
-  // Load the pool of featured profiles
+  // Load the pool of featured profiles - reduced to 30 for faster initial load
   const { data: pool } = useQuery({
     queryKey: ["landing", "card-swap", "pool"],
     queryFn: async () => {
-      const featured = await getFeaturedProfiles(100);
+      const featured = await getFeaturedProfiles(30);
       return shuffle(featured);
     },
     staleTime: 120_000,
