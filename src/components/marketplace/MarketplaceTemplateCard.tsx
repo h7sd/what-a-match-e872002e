@@ -184,8 +184,8 @@ interface MarketplaceTemplateCardProps {
  
        {/* Full Preview Dialog - shows exact profile appearance */}
        <Dialog open={showPreview} onOpenChange={setShowPreview}>
-         <DialogContent className="max-w-lg max-h-[90vh] p-0 overflow-hidden">
-           <DialogHeader className="p-4 pb-2 border-b border-border/50">
+         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 overflow-hidden">
+           <DialogHeader className="absolute top-0 left-0 right-0 z-20 p-4 pb-2 bg-gradient-to-b from-black/80 to-transparent">
              <DialogTitle className="text-base flex items-center gap-2">
                {item.template_name || 'Template Preview'}
                <span className="text-xs font-normal text-muted-foreground">
@@ -193,11 +193,13 @@ interface MarketplaceTemplateCardProps {
                </span>
              </DialogTitle>
            </DialogHeader>
-           <div className="p-4">
-             <div className="rounded-xl overflow-hidden border border-border/50 aspect-[9/16] max-h-[65vh]">
-               <TemplatePreview templateData={templateData} />
-             </div>
-             <div className="flex items-center justify-between mt-4">
+           {/* Full-width template preview */}
+           <div className="w-full aspect-[9/16] max-h-[75vh]">
+             <TemplatePreview templateData={templateData} />
+           </div>
+           {/* Footer with price and buy button */}
+           <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent">
+             <div className="flex items-center justify-between">
                <div className="flex items-center gap-2 text-amber-500 font-bold">
                  <Coins className="w-4 h-4" />
                  <span>{formatUC(item.price)} UC</span>
