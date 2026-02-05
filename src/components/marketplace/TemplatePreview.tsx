@@ -308,253 +308,134 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
         </>
       )}
 
-      {/* Centered card container */}
-      <div className="relative z-10 w-full max-w-sm mx-auto px-4">
-        <motion.div 
-          className="relative"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+      {/* Centered card container - compact layout like real profile */}
+      <div className="relative z-10 flex flex-col items-center justify-center text-center px-4">
+        {/* Display Name with glow effect */}
+        <h2 
+          className="text-2xl sm:text-3xl font-bold mb-1"
+          style={{ 
+            color: styles.textColor || '#fff',
+            fontFamily: styles.nameFont || 'Inter',
+            textShadow: styles.glowUsername ? `0 0 20px ${accentColor}, 0 0 40px ${accentColor}60` : undefined,
+            background: styles.enableGradient 
+              ? `linear-gradient(90deg, ${accentColor}, #fff, ${accentColor})` 
+              : undefined,
+            WebkitBackgroundClip: styles.enableGradient ? 'text' : undefined,
+            WebkitTextFillColor: styles.enableGradient ? 'transparent' : undefined,
+          }}
         >
-          {/* Animated glow effect behind card */}
-          <motion.div
-            className="absolute -inset-1 rounded-2xl opacity-60 blur-xl"
-            style={{
-              background: `linear-gradient(135deg, ${accentColor}, ${accentColor}80, ${accentColor}40)`,
-            }}
-            animate={{
-              opacity: [0.4, 0.6, 0.4],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
+          {previewDisplayName}
+        </h2>
 
-          {/* Main card */}
-          <div
-            className="relative rounded-2xl p-6 sm:p-8 backdrop-blur-xl overflow-hidden"
-            style={{
-              backgroundColor: styles.cardColor || 'rgba(0,0,0,0.6)',
-              border: styles.cardBorderEnabled 
-                ? `${styles.cardBorderWidth || 1}px solid ${styles.cardBorderColor || accentColor}30` 
-                : undefined,
-            }}
-          >
-            {/* Corner sparkle decorations - animated */}
-            <motion.div
-              className="absolute top-4 right-4 text-lg"
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              style={{ color: accentColor }}
-            >
-              ✦
-            </motion.div>
-            <motion.div
-              className="absolute bottom-4 right-4 text-lg"
-              animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1, 0.8] }}
-              transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-              style={{ color: accentColor }}
-            >
-              ✦
-            </motion.div>
+        {/* Username */}
+        <p className="text-muted-foreground text-sm mb-4 flex items-center gap-0.5">
+          <AtSign className="w-3.5 h-3.5" />
+          {previewUsername}
+        </p>
 
-            {/* Gradient border glow */}
-            <div
-              className="absolute inset-0 rounded-2xl opacity-30 pointer-events-none"
-              style={{
-                background: `linear-gradient(135deg, ${accentColor}30, transparent 50%, ${accentColor}20)`,
-              }}
-            />
-
-            <div className="relative z-10 flex flex-col items-center text-center">
-              {/* Avatar with OrbitingAvatar effect - EXACT replica */}
-              {styles.avatarUrl && (
-                <div className="mb-4 sm:mb-6 relative" style={{ width: 120, height: 120 }}>
-                  {/* Orbiting particle */}
-                  <motion.div
-                    className="absolute inset-[-4px] pointer-events-none"
-                    style={{
-                      borderRadius: styles.avatarShape === 'circle' ? '50%' : '24px',
-                    }}
-                  >
-                    <motion.div
-                      className="absolute w-3 h-3 rounded-full"
-                      style={{
-                        background: `radial-gradient(circle, ${accentColor}, transparent)`,
-                        boxShadow: `0 0 10px ${accentColor}`,
-                        filter: 'blur(1px)',
+        {/* User's REAL badges in pill container */}
+        <div 
+          className={cn(
+            "flex flex-wrap justify-center items-center gap-2 mb-4 px-4 py-2 rounded-full",
+            !styles.transparentBadges && "bg-black/40 backdrop-blur-sm"
+          )}
+        >
+          <TooltipProvider delayDuration={0}>
+            {userBadges.length > 0 ? (
+              userBadges.slice(0, 6).map((badge) => (
+                <Tooltip key={badge.id}>
+                  <TooltipTrigger asChild>
+                    <div 
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer overflow-hidden"
+                      style={{ 
+                        boxShadow: styles.glowBadges ? `0 0 10px ${badge.custom_color || badge.color || accentColor}40` : undefined
                       }}
-                      animate={{
-                        rotate: 360,
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: 'linear',
-                      }}
-                      initial={{ x: 54, y: -6 }}
-                    />
-                  </motion.div>
-
-                  {/* Glow ring - rotating */}
-                  <motion.div
-                    className="absolute inset-[-4px] pointer-events-none"
-                    style={{
-                      borderRadius: styles.avatarShape === 'circle' ? '50%' : '24px',
-                      background: `conic-gradient(from 0deg, ${accentColor}40, transparent, ${accentColor}40)`,
-                    }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                  />
-
-                  {/* Avatar image */}
-                  <motion.div
-                    className={cn("relative w-full h-full overflow-hidden", avatarShapeClass)}
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ type: 'spring', stiffness: 300 }}
-                  >
-                    <img
-                      src={styles.avatarUrl}
-                      alt={previewDisplayName}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  </motion.div>
-
-                  {/* Inner glow */}
-                  <div
-                    className={cn("absolute inset-0 pointer-events-none", avatarShapeClass)}
-                    style={{
-                      boxShadow: `inset 0 0 30px ${accentColor}20`,
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Display Name - SHOWS LOGGED-IN USER'S NAME */}
-              <h2 
-                className="text-xl sm:text-2xl font-bold mb-1"
-                style={{ 
-                  color: styles.textColor || '#fff',
-                  fontFamily: styles.nameFont || 'Inter',
-                  textShadow: styles.glowUsername ? `0 0 20px ${accentColor}` : undefined,
-                  background: styles.enableGradient 
-                    ? `linear-gradient(90deg, ${accentColor}, #fff, ${accentColor})` 
-                    : undefined,
-                  WebkitBackgroundClip: styles.enableGradient ? 'text' : undefined,
-                  WebkitTextFillColor: styles.enableGradient ? 'transparent' : undefined,
-                }}
-              >
-                {previewDisplayName}
-              </h2>
-
-              {/* Username - SHOWS LOGGED-IN USER'S USERNAME */}
-              <p className="text-muted-foreground text-sm mb-3 flex items-center gap-0.5">
-                <AtSign className="w-3.5 h-3.5" />
-                {previewUsername}
-              </p>
-
-              {/* User's REAL badges */}
-              <div 
-                className={cn(
-                  "flex flex-wrap justify-center gap-2 mb-4 px-3 py-1.5 rounded-full",
-                  !styles.transparentBadges && "bg-black/20 backdrop-blur-sm"
-                )}
-              >
-                <TooltipProvider delayDuration={0}>
-                  {userBadges.length > 0 ? (
-                    userBadges.slice(0, 6).map((badge) => (
-                      <Tooltip key={badge.id}>
-                        <TooltipTrigger asChild>
-                          <div 
-                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
-                            style={{ 
-                              boxShadow: styles.glowBadges ? `0 0 10px ${badge.custom_color || badge.color || accentColor}40` : undefined
-                            }}
-                          >
-                            {badge.icon_url ? (
-                              <img 
-                                src={badge.icon_url} 
-                                alt={badge.name}
-                                className="w-full h-full object-contain rounded-full"
-                              />
-                            ) : (
-                              <div 
-                                className="w-full h-full rounded-full"
-                                style={{ backgroundColor: badge.custom_color || badge.color || accentColor }}
-                              />
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          <p className="font-medium">{badge.name}</p>
-                          {badge.description && <p className="text-muted-foreground">{badge.description}</p>}
-                        </TooltipContent>
-                      </Tooltip>
-                    ))
-                  ) : (
-                    // Fallback placeholder badges if user has none
-                    [1, 2, 3].map(i => (
-                      <div 
-                        key={i}
-                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center"
-                        style={{ 
-                          backgroundColor: `${accentColor}20`,
-                          border: `1px solid ${accentColor}40`,
-                        }}
-                      >
-                        <div 
-                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full"
-                          style={{ backgroundColor: accentColor }}
+                    >
+                      {badge.icon_url ? (
+                        <img 
+                          src={badge.icon_url} 
+                          alt={badge.name}
+                          className="w-full h-full object-contain"
                         />
-                      </div>
-                    ))
-                  )}
-                </TooltipProvider>
-              </div>
-
-              {/* Bio from template */}
-              {styles.bio && (
-                <p 
-                  className="text-muted-foreground text-xs sm:text-sm max-w-xs leading-relaxed mb-4"
+                      ) : (
+                        <div 
+                          className="w-full h-full rounded-full"
+                          style={{ backgroundColor: badge.custom_color || badge.color || accentColor }}
+                        />
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <p className="font-medium">{badge.name}</p>
+                    {badge.description && <p className="text-muted-foreground">{badge.description}</p>}
+                  </TooltipContent>
+                </Tooltip>
+              ))
+            ) : (
+              // Fallback placeholder badges if user has none
+              [1, 2, 3].map(i => (
+                <div 
+                  key={i}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
                   style={{ 
-                    fontFamily: styles.textFont || 'Inter',
-                    color: styles.textColor ? `${styles.textColor}99` : undefined,
+                    backgroundColor: `${accentColor}40`,
                   }}
-                >
-                  {styles.bio}
-                </p>
-              )}
+                />
+              ))
+            )}
+          </TooltipProvider>
+        </div>
 
-              {/* Location & Occupation from current user */}
-              {(previewOccupation || previewLocation) && (
-                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs text-muted-foreground mb-4">
-                  {previewOccupation && (
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" />
-                      <span>{previewOccupation}</span>
-                    </div>
-                  )}
-                  {previewLocation && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      <span>{previewLocation}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Views */}
-              <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                <Eye className="w-3.5 h-3.5" />
-                <span>1,234 views</span>
+        {/* Occupation & Location - styled like the image */}
+        {(previewOccupation || previewLocation) && (
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground mb-4">
+            {previewOccupation && (
+              <div className="flex items-center gap-1.5">
+                <Briefcase className="w-4 h-4" />
+                <span>{previewOccupation}</span>
               </div>
-            </div>
+            )}
+            {previewLocation && (
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" />
+                <span>{previewLocation}</span>
+              </div>
+            )}
           </div>
-        </motion.div>
+        )}
+
+        {/* Views */}
+        <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+          <Eye className="w-4 h-4" />
+          <span>1,234 views</span>
+        </div>
       </div>
+
+      {/* Corner sparkles */}
+      <motion.div
+        className="absolute top-8 right-8 text-xl pointer-events-none"
+        animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        style={{ color: accentColor }}
+      >
+        ✦
+      </motion.div>
+      <motion.div
+        className="absolute bottom-8 right-8 text-xl pointer-events-none"
+        animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
+        transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+        style={{ color: accentColor }}
+      >
+        ✦
+      </motion.div>
+      <motion.div
+        className="absolute top-1/3 left-6 text-sm pointer-events-none"
+        animate={{ opacity: [0.2, 0.8, 0.2], scale: [0.8, 1, 0.8] }}
+        transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+        style={{ color: accentColor }}
+      >
+        ✦
+      </motion.div>
     </div>
   );
 });
