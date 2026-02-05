@@ -64,6 +64,15 @@ export function StreakDisplay() {
               </div>
             )}
           </div>
+
+          {/* Streak Info */}
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground mb-1">Current Streak</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold text-foreground">{currentStreak}</span>
+              <span className="text-lg text-muted-foreground">days</span>
+            </div>
+          </div>
         </div>
 
         {/* Progress to Next Milestone */}
