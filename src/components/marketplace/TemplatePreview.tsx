@@ -210,7 +210,7 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
   // Full preview - EXACT ProfileCard replica with template's styling but user's name
   return (
     <div 
-      className="w-full h-full relative overflow-hidden"
+      className="w-full h-full relative overflow-hidden flex items-center justify-center"
       style={{
         backgroundColor: styles.backgroundColor || '#0a0a0a',
       }}
@@ -255,9 +255,10 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
         </>
       )}
 
-      <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
+      {/* Centered card container */}
+      <div className="relative z-10 w-full max-w-sm mx-auto px-4">
         <motion.div 
-          className="relative w-full max-w-sm mx-auto"
+          className="relative"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -383,6 +384,7 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
               <h2 
                 className="text-xl sm:text-2xl font-bold mb-1"
                 style={{ 
+                  color: styles.textColor || '#fff',
                   fontFamily: styles.nameFont || 'Inter',
                   textShadow: styles.glowUsername ? `0 0 20px ${accentColor}` : undefined,
                   background: styles.enableGradient 
@@ -430,7 +432,10 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
               {styles.bio && (
                 <p 
                   className="text-muted-foreground text-xs sm:text-sm max-w-xs leading-relaxed mb-4"
-                  style={{ fontFamily: styles.textFont || 'Inter' }}
+                  style={{ 
+                    fontFamily: styles.textFont || 'Inter',
+                    color: styles.textColor ? `${styles.textColor}99` : undefined,
+                  }}
                 >
                   {styles.bio}
                 </p>
