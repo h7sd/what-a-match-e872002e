@@ -30,12 +30,15 @@ export function useDiscordOAuth() {
   const initiateDiscordLogin = useCallback(async () => {
     setLoading(true);
     try {
+      // Always redirect to uservault.cc after Discord login
+      const targetOrigin = 'https://uservault.cc';
+      
       // Get the OAuth URL from our edge function
       const { data, error } = await supabase.functions.invoke('discord-oauth', {
         body: { 
           action: 'get_auth_url',
           redirect_uri: getRedirectUri(),
-          frontend_origin: window.location.origin // Pass current origin for redirect
+          frontend_origin: targetOrigin
         }
       });
 
@@ -63,11 +66,14 @@ export function useDiscordOAuth() {
   const initiateDiscordLink = useCallback(async (userId: string) => {
     setLoading(true);
     try {
+      // Always redirect to uservault.cc after Discord link
+      const targetOrigin = 'https://uservault.cc';
+      
       const { data, error } = await supabase.functions.invoke('discord-oauth', {
         body: { 
           action: 'get_auth_url',
           redirect_uri: getRedirectUri(),
-          frontend_origin: window.location.origin // Pass current origin for redirect
+          frontend_origin: targetOrigin
         }
       });
 
