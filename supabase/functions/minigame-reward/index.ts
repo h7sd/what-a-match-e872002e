@@ -13,6 +13,26 @@ const corsHeaders = {
 let loggedWebhookFingerprint = false;
 let webhookFingerprintCache: string | null = null;
 
+// Numeric columns may be returned as strings depending on DB types.
+function toBigInt(value: unknown): bigint {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number") return BigInt(Math.trunc(value));
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return 0n;
+    const integerPart = s.includes(".") ? s.split(".")[0] : s;
+    return BigInt(integerPart);
+  }
+  return 0n;
+}
+
+function safeJsonInt(value: bigint): number | string {
+  const max = BigInt(Number.MAX_SAFE_INTEGER);
+  const min = -max;
+  if (value <= max && value >= min) return Number(value);
+  return value.toString();
+}
+
 function toHex(bytes: ArrayBuffer): string {
   return Array.from(new Uint8Array(bytes))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -269,12 +289,15 @@ serve(async (req) => {
         .eq("user_id", profile.user_id)
         .single();
 
+      const balanceBI = toBigInt(balance?.balance);
+      const earnedBI = toBigInt(balance?.total_earned);
+
       return new Response(
         JSON.stringify({
           success: true,
           username: profile.username,
-          balance: balance?.balance || 0,
-          totalEarned: balance?.total_earned || 0,
+          balance: safeJsonInt(balanceBI),
+          totalEarned: safeJsonInt(earnedBI),
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -301,6 +324,15 @@ serve(async (req) => {
     const userId = profile.user_id;
 
     if (action === "add_uv") {
+      const amountNum = Number(amount);
+      if (!Number.isFinite(amountNum) || !Number.isInteger(amountNum)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid amount" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+      const amountBI = BigInt(amountNum);
+
       // First, get current balance
       const { data: currentBalance } = await supabase
         .from("user_balances")
@@ -309,31 +341,34 @@ serve(async (req) => {
         .single();
 
       if (currentBalance) {
+        const currentBalanceBI = toBigInt(currentBalance.balance);
+        const currentEarnedBI = toBigInt(currentBalance.total_earned);
+
         // Update existing balance by ADDING the amount
-        const newBalanceValue = currentBalance.balance + amount;
+        const newBalanceValue = currentBalanceBI + amountBI;
         
         // CRITICAL: Prevent negative balance
-        if (newBalanceValue < 0) {
+        if (newBalanceValue < 0n) {
           return new Response(
             JSON.stringify({
               success: false,
               error: "Insufficient balance - cannot go negative",
-              currentBalance: currentBalance.balance,
-              requested: amount,
+              currentBalance: safeJsonInt(currentBalanceBI),
+              requested: safeJsonInt(amountBI),
             }),
             { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
         }
         
-        const newTotalEarned = amount > 0 
-          ? currentBalance.total_earned + amount 
-          : currentBalance.total_earned;
+        const newTotalEarned = amountBI > 0n
+          ? currentEarnedBI + amountBI
+          : currentEarnedBI;
 
         await supabase
           .from("user_balances")
           .update({
-            balance: newBalanceValue,
-            total_earned: newTotalEarned,
+            balance: newBalanceValue.toString(),
+            total_earned: newTotalEarned.toString(),
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId);
@@ -343,8 +378,8 @@ serve(async (req) => {
           .from("user_balances")
           .insert({
             user_id: userId,
-            balance: amount > 0 ? amount : 0,
-            total_earned: amount > 0 ? amount : 0,
+            balance: (amountBI > 0n ? amountBI : 0n).toString(),
+            total_earned: (amountBI > 0n ? amountBI : 0n).toString(),
             total_spent: 0,
           });
       }
@@ -352,8 +387,8 @@ serve(async (req) => {
       // Log transaction
       await supabase.from("uv_transactions").insert({
         user_id: userId,
-        amount: amount,
-        transaction_type: amount > 0 ? "earn" : "spend",
+        amount: amountBI.toString(),
+        transaction_type: amountBI > 0n ? "earn" : "spend",
         description: description || `Minigame: ${gameType}`,
         reference_type: "minigame",
       });
@@ -367,13 +402,15 @@ serve(async (req) => {
         .single();
 
       if (existingStats) {
+        const statsEarnedBI = toBigInt(existingStats.total_earned);
+        const statsLostBI = toBigInt(existingStats.total_lost);
         await supabase
           .from("minigame_stats")
           .update({
             games_played: existingStats.games_played + 1,
-            games_won: existingStats.games_won + (amount > 0 ? 1 : 0),
-            total_earned: existingStats.total_earned + (amount > 0 ? amount : 0),
-            total_lost: existingStats.total_lost + (amount < 0 ? Math.abs(amount) : 0),
+            games_won: existingStats.games_won + (amountBI > 0n ? 1 : 0),
+            total_earned: (statsEarnedBI + (amountBI > 0n ? amountBI : 0n)).toString(),
+            total_lost: (statsLostBI + (amountBI < 0n ? -amountBI : 0n)).toString(),
             updated_at: new Date().toISOString(),
           })
           .eq("discord_user_id", discordUserId)
@@ -386,9 +423,9 @@ serve(async (req) => {
             user_id: userId,
             game_type: gameType,
             games_played: 1,
-            games_won: amount > 0 ? 1 : 0,
-            total_earned: amount > 0 ? amount : 0,
-            total_lost: amount < 0 ? Math.abs(amount) : 0,
+            games_won: amountBI > 0n ? 1 : 0,
+            total_earned: (amountBI > 0n ? amountBI : 0n).toString(),
+            total_lost: (amountBI < 0n ? -amountBI : 0n).toString(),
           });
       }
 
@@ -399,12 +436,14 @@ serve(async (req) => {
         .eq("user_id", userId)
         .single();
 
+      const newBalanceBI = toBigInt(newBalance?.balance);
+
       return new Response(
         JSON.stringify({
           success: true,
           username: profile.username,
-          amount,
-          newBalance: newBalance?.balance || 0,
+          amount: safeJsonInt(amountBI),
+          newBalance: safeJsonInt(newBalanceBI),
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -417,13 +456,17 @@ serve(async (req) => {
         .eq("user_id", userId)
         .single();
 
+      const balanceBI = toBigInt(balance?.balance);
+      const earnedBI = toBigInt(balance?.total_earned);
+      const spentBI = toBigInt(balance?.total_spent);
+
       return new Response(
         JSON.stringify({
           success: true,
           username: profile.username,
-          balance: balance?.balance || 0,
-          totalEarned: balance?.total_earned || 0,
-          totalSpent: balance?.total_spent || 0,
+          balance: safeJsonInt(balanceBI),
+          totalEarned: safeJsonInt(earnedBI),
+          totalSpent: safeJsonInt(spentBI),
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
@@ -471,12 +514,22 @@ serve(async (req) => {
           })
           .eq("discord_user_id", discordUserId);
 
-        // Add UV
+        // Add UV (single read + safe numeric handling)
+        const { data: balRow } = await supabase
+          .from("user_balances")
+          .select("balance, total_earned")
+          .eq("user_id", userId)
+          .single();
+
+        const balBI = toBigInt(balRow?.balance);
+        const earnedBI = toBigInt(balRow?.total_earned);
+        const rewardBI = BigInt(reward);
+
         await supabase
           .from("user_balances")
           .update({
-            balance: (await supabase.from("user_balances").select("balance").eq("user_id", userId).single()).data?.balance + reward,
-            total_earned: (await supabase.from("user_balances").select("total_earned").eq("user_id", userId).single()).data?.total_earned + reward,
+            balance: (balBI + rewardBI).toString(),
+            total_earned: (earnedBI + rewardBI).toString(),
             updated_at: now.toISOString(),
           })
           .eq("user_id", userId);
@@ -495,13 +548,15 @@ serve(async (req) => {
           .eq("user_id", userId)
           .single();
 
+        const newBalanceBI = toBigInt(newBalance?.balance);
+
         return new Response(
           JSON.stringify({
             success: true,
             username: profile.username,
             reward,
             streak: newStreak,
-            newBalance: newBalance?.balance || 0,
+            newBalance: safeJsonInt(newBalanceBI),
           }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
@@ -523,14 +578,27 @@ serve(async (req) => {
           .eq("user_id", userId)
           .single();
 
-        await supabase
-          .from("user_balances")
-          .update({
-            balance: (currentBalance?.balance || 0) + reward,
-            total_earned: (currentBalance?.total_earned || 0) + reward,
-            updated_at: now.toISOString(),
-          })
-          .eq("user_id", userId);
+        const rewardBI = BigInt(reward);
+
+        if (!currentBalance) {
+          await supabase.from("user_balances").insert({
+            user_id: userId,
+            balance: rewardBI.toString(),
+            total_earned: rewardBI.toString(),
+            total_spent: 0,
+          });
+        } else {
+          const balBI = toBigInt(currentBalance.balance);
+          const earnedBI = toBigInt(currentBalance.total_earned);
+          await supabase
+            .from("user_balances")
+            .update({
+              balance: (balBI + rewardBI).toString(),
+              total_earned: (earnedBI + rewardBI).toString(),
+              updated_at: now.toISOString(),
+            })
+            .eq("user_id", userId);
+        }
 
         await supabase.from("uv_transactions").insert({
           user_id: userId,
@@ -546,13 +614,15 @@ serve(async (req) => {
           .eq("user_id", userId)
           .single();
 
+        const newBalanceBI = toBigInt(newBalance?.balance);
+
         return new Response(
           JSON.stringify({
             success: true,
             username: profile.username,
             reward,
             streak: 1,
-            newBalance: newBalance?.balance || 0,
+            newBalance: safeJsonInt(newBalanceBI),
           }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );

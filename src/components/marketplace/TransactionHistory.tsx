@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { ArrowDownLeft, ArrowUpRight, Gift, Coins, Gamepad2, ShoppingBag } from 'lucide-react';
 import { UCTransaction } from '@/hooks/useMarketplace';
 import { cn } from '@/lib/utils';
+import { formatUC } from '@/lib/uc';
 
 interface TransactionHistoryProps {
   transactions: UCTransaction[];
@@ -16,9 +17,9 @@ export function TransactionHistory({ transactions }: TransactionHistoryProps) {
     return <ArrowUpRight className="w-4 h-4" />;
   };
 
-  const getColor = (type: string, amount: number) => {
-    if (amount > 0) return 'text-green-500 bg-green-500/10';
-    if (amount < 0) return 'text-red-500 bg-red-500/10';
+  const getColor = (type: string, amount: bigint) => {
+    if (amount > 0n) return 'text-green-500 bg-green-500/10';
+    if (amount < 0n) return 'text-red-500 bg-red-500/10';
     return 'text-muted-foreground bg-muted';
   };
 
@@ -54,9 +55,9 @@ export function TransactionHistory({ transactions }: TransactionHistoryProps) {
           </div>
           <div className={cn(
             "font-bold",
-            tx.amount > 0 ? 'text-green-500' : 'text-red-500'
+            tx.amount > 0n ? 'text-green-500' : 'text-red-500'
           )}>
-            {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()} UC
+            {tx.amount > 0n ? '+' : ''}{formatUC(tx.amount)} UC
           </div>
         </div>
       ))}

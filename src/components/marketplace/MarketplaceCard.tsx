@@ -26,10 +26,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MarketplaceItem, usePurchaseItem, useApplyTemplate } from '@/hooks/useMarketplace';
 import { cn } from '@/lib/utils';
+import { formatUC } from '@/lib/uc';
 
 interface MarketplaceCardProps {
   item: MarketplaceItem;
-  userBalance: number;
+  userBalance: bigint;
   isOwner?: boolean;
   isPurchased?: boolean;
 }
@@ -50,7 +51,8 @@ export function MarketplaceCard({
   const iconUrl = item.item_type === 'badge' ? item.badge_icon_url : item.template_preview_url;
   const color = item.badge_color || '#8B5CF6';
 
-  const canAfford = userBalance >= item.price;
+  const priceBI = BigInt(item.price);
+  const canAfford = userBalance >= priceBI;
   const isSoldOut = 
     item.status === 'sold_out' ||
     (item.sale_type === 'single' && item.stock_sold > 0) ||
@@ -256,7 +258,7 @@ export function MarketplaceCard({
                   <p>
                     Balance after purchase:{' '}
                     <strong className="text-foreground">
-                      {(userBalance - item.price).toLocaleString()} UC
+                      {formatUC(userBalance - priceBI)} UC
                     </strong>
                   </p>
                 </div>

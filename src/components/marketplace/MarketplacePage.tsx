@@ -25,6 +25,7 @@ import { CreateListingDialog } from './CreateListingDialog';
 import { TransactionHistory } from './TransactionHistory';
 import { cn } from '@/lib/utils';
 import PillNav from '@/components/ui/PillNav';
+import { formatUC } from '@/lib/uc';
 
 type ItemFilter = 'all' | 'badge' | 'template';
 type TabValue = 'browse' | 'my-items' | 'purchases' | 'history';
@@ -75,7 +76,7 @@ export function MarketplacePage() {
           <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30">
             <Coins className="w-5 h-5 text-amber-500" />
             <span className="font-bold text-amber-500">
-              {balance?.balance?.toLocaleString() || 0} UC
+              {formatUC(balance?.balance)} UC
             </span>
           </div>
           <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
@@ -132,7 +133,7 @@ export function MarketplacePage() {
           <MarketplaceGrid 
             items={filteredItems || []} 
             isLoading={itemsLoading}
-            userBalance={balance?.balance || 0}
+            userBalance={balance?.balance ?? 0n}
             emptyMessage="No items found"
             emptyAction={() => setShowCreateDialog(true)}
             emptyActionLabel="Be the first to list something!"
@@ -143,7 +144,7 @@ export function MarketplacePage() {
           <MarketplaceGrid 
             items={myItems || []} 
             isLoading={false}
-            userBalance={balance?.balance || 0}
+            userBalance={balance?.balance ?? 0n}
             isOwner
             emptyMessage="You haven't listed anything yet"
             emptyAction={() => setShowCreateDialog(true)}
@@ -155,7 +156,7 @@ export function MarketplacePage() {
           <MarketplaceGrid 
             items={myPurchases?.map(p => p.item as any) || []} 
             isLoading={false}
-            userBalance={balance?.balance || 0}
+            userBalance={balance?.balance ?? 0n}
             isPurchased
             emptyMessage="No purchases yet"
           />
@@ -167,7 +168,7 @@ export function MarketplacePage() {
               <h2 className="text-lg font-semibold">UC Transaction History</h2>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <TrendingUp className="w-4 h-4 text-green-500" />
-                <span>Total Earned: {balance?.total_earned?.toLocaleString() || 0} UC</span>
+                  <span>Total Earned: {formatUC(balance?.total_earned)} UC</span>
               </div>
             </div>
             <TransactionHistory transactions={transactions || []} />

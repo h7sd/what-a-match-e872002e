@@ -30,6 +30,7 @@ import {
 import { MarketplaceGrid } from '@/components/marketplace/MarketplaceGrid';
 import { CreateListingDialog } from '@/components/marketplace/CreateListingDialog';
 import { cn } from '@/lib/utils';
+import { formatUC } from '@/lib/uc';
 
 type ItemFilter = 'all' | 'badge' | 'template';
 
@@ -127,7 +128,7 @@ export default function Marketplace() {
                     <div className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30">
                       <Coins className="w-5 h-5 text-amber-500" />
                       <span className="font-bold text-amber-500 text-lg">
-                        {balance?.balance?.toLocaleString() || 0}
+                        {formatUC(balance?.balance)}
                       </span>
                       <span className="text-amber-500/70 text-sm">UC</span>
                     </div>
@@ -208,7 +209,7 @@ export default function Marketplace() {
                 <MarketplaceGrid 
                   items={filteredItems || []} 
                   isLoading={itemsLoading}
-                  userBalance={balance?.balance || 0}
+                  userBalance={balance?.balance ?? 0n}
                   emptyMessage="No items found"
                   emptyAction={user ? () => setShowCreateDialog(true) : undefined}
                   emptyActionLabel="Be the first to list something!"
@@ -219,7 +220,7 @@ export default function Marketplace() {
                 <MarketplaceGrid 
                   items={myItems || []} 
                   isLoading={false}
-                  userBalance={balance?.balance || 0}
+                  userBalance={balance?.balance ?? 0n}
                   isOwner
                   emptyMessage="You haven't listed anything yet"
                   emptyAction={() => setShowCreateDialog(true)}
@@ -231,7 +232,7 @@ export default function Marketplace() {
                 <MarketplaceGrid 
                   items={myPurchases?.map(p => p.item as any) || []} 
                   isLoading={false}
-                  userBalance={balance?.balance || 0}
+                  userBalance={balance?.balance ?? 0n}
                   isPurchased
                   emptyMessage="No purchases yet"
                   emptyAction={() => setActiveTab('browse')}

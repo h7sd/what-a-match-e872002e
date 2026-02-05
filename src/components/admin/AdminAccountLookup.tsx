@@ -40,6 +40,7 @@ import { getBadgeIcon } from '@/lib/badges';
 import { Link } from 'react-router-dom';
 import { AdminUserDashboard } from './AdminUserDashboard';
 import { BadgeAssignmentSection } from './BadgeAssignmentSection';
+import { formatUC, isValidUCInput, ucToBigInt } from '@/lib/uc';
 
 interface UserProfile {
   id: string;
@@ -113,7 +114,7 @@ export function AdminAccountLookup() {
   const [isSavingAlias, setIsSavingAlias] = useState(false);
   
   // Coins state
-  const [userBalance, setUserBalance] = useState<number | null>(null);
+  const [userBalance, setUserBalance] = useState<bigint | null>(null);
   const [coinsAmount, setCoinsAmount] = useState('');
   const [coinsReason, setCoinsReason] = useState('');
   const [isGivingCoins, setIsGivingCoins] = useState(false);
@@ -212,7 +213,7 @@ export function AdminAccountLookup() {
         .eq('user_id', user.user_id)
         .single();
       
-      setUserBalance(balance?.balance ?? 0);
+      setUserBalance(ucToBigInt(balance?.balance ?? 0));
     } catch (error: any) {
       toast({ title: error.message || 'Error loading user details', variant: 'destructive' });
     } finally {
@@ -222,38 +223,45 @@ export function AdminAccountLookup() {
 
   const handleGiveCoins = async (isPositive: boolean) => {
     if (!selectedUser || !coinsAmount) return;
-    
-    const amount = parseInt(coinsAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
+
+    const raw = coinsAmount.trim();
+    if (!isValidUCInput(raw)) {
       toast({ title: 'Invalid amount', variant: 'destructive' });
       return;
     }
-    
+
+    const amount = BigInt(raw);
+    if (amount <= 0n) {
+      toast({ title: 'Invalid amount', variant: 'destructive' });
+      return;
+    }
+
     const finalAmount = isPositive ? amount : -amount;
     
     setIsGivingCoins(true);
     try {
-      const { data, error } = await supabase.rpc('admin_give_coins', {
+      // DB function now expects p_amount_text (TEXT) so we bypass strict generated typings.
+      const { data, error } = await (supabase as any).rpc('admin_give_coins', {
         p_user_id: selectedUser.user_id,
-        p_amount: finalAmount,
+        p_amount_text: finalAmount.toString(),
         p_reason: coinsReason || (isPositive ? 'Admin bonus' : 'Admin deduction')
       });
       
       if (error) throw error;
       
-      const result = data as { success: boolean; error?: string; new_balance?: number };
+      const result = data as { success: boolean; error?: string; new_balance?: string };
       
       if (!result.success) {
         throw new Error(result.error || 'Failed to update coins');
       }
       
-      setUserBalance(result.new_balance ?? null);
+      setUserBalance(ucToBigInt(result.new_balance ?? null));
       setCoinsAmount('');
       setCoinsReason('');
       
       toast({ 
-        title: isPositive ? `Added ${amount} UC` : `Removed ${amount} UC`,
-        description: `New balance: ${result.new_balance?.toLocaleString()} UC`
+        title: isPositive ? `Added ${formatUC(amount)} UC` : `Removed ${formatUC(amount)} UC`,
+        description: `New balance: ${formatUC(result.new_balance)} UC`
       });
     } catch (error: any) {
       toast({ 
@@ -1033,7 +1041,7 @@ export function AdminAccountLookup() {
                       <span className="font-medium">Current Balance</span>
                     </div>
                     <span className="text-2xl font-bold text-amber-500">
-                      {userBalance?.toLocaleString() ?? 0} UC
+                      {formatUC(userBalance)} UC
                     </span>
                   </div>
                   
