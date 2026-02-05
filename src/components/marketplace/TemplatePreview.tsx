@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AnimatedUsername } from '@/components/profile/AnimatedUsername';
 
 interface TemplatePreviewProps {
   templateData: Record<string, unknown> | null;
@@ -308,112 +309,103 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
         </>
       )}
 
-      {/* Centered card container - compact layout like real profile */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center px-4">
-        {/* Display Name with glow effect */}
-        <h2 
-          className="text-2xl sm:text-3xl font-bold mb-1"
-          style={{ 
-            color: styles.textColor || '#fff',
-            fontFamily: styles.nameFont || 'Inter',
-            textShadow: styles.glowUsername ? `0 0 20px ${accentColor}, 0 0 40px ${accentColor}60` : undefined,
-            background: styles.enableGradient 
-              ? `linear-gradient(90deg, ${accentColor}, #fff, ${accentColor})` 
-              : undefined,
-            WebkitBackgroundClip: styles.enableGradient ? 'text' : undefined,
-            WebkitTextFillColor: styles.enableGradient ? 'transparent' : undefined,
-          }}
-        >
-          {previewDisplayName}
-        </h2>
-
-        {/* Username */}
-        <p className="text-muted-foreground text-sm mb-4 flex items-center gap-0.5">
-          <AtSign className="w-3.5 h-3.5" />
-          {previewUsername}
-        </p>
-
-        {/* User's REAL badges in pill container */}
-        <div 
-          className={cn(
-            "flex flex-wrap justify-center items-center gap-2 mb-4 px-4 py-2 rounded-full",
-            !styles.transparentBadges && "bg-black/40 backdrop-blur-sm"
-          )}
-        >
-          <TooltipProvider delayDuration={0}>
-            {userBadges.length > 0 ? (
-              userBadges.slice(0, 6).map((badge) => (
-                <Tooltip key={badge.id}>
-                  <TooltipTrigger asChild>
-                    <div 
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer overflow-hidden"
-                      style={{ 
-                        boxShadow: styles.glowBadges ? `0 0 10px ${badge.custom_color || badge.color || accentColor}40` : undefined
-                      }}
-                    >
-                      {badge.icon_url ? (
-                        <img 
-                          src={badge.icon_url} 
-                          alt={badge.name}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <div 
-                          className="w-full h-full rounded-full"
-                          style={{ backgroundColor: badge.custom_color || badge.color || accentColor }}
-                        />
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    <p className="font-medium">{badge.name}</p>
-                    {badge.description && <p className="text-muted-foreground">{badge.description}</p>}
-                  </TooltipContent>
-                </Tooltip>
-              ))
-            ) : (
-              // Fallback placeholder badges if user has none
-              [1, 2, 3].map(i => (
-                <div 
-                  key={i}
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
-                  style={{ 
-                    backgroundColor: `${accentColor}40`,
-                  }}
-                />
-              ))
-            )}
-          </TooltipProvider>
-        </div>
-
-        {/* Occupation & Location - styled like the image */}
-        {(previewOccupation || previewLocation) && (
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground mb-4">
-            {previewOccupation && (
-              <div className="flex items-center gap-1.5">
-                <Briefcase className="w-4 h-4" />
-                <span>{previewOccupation}</span>
-              </div>
-            )}
-            {previewLocation && (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4" />
-                <span>{previewLocation}</span>
-              </div>
-            )}
+      {/* Centered content - absolutely positioned for true centering */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center text-center px-4 w-full">
+          {/* Display Name with animation effect from template */}
+          <div className="mb-1">
+            <AnimatedUsername
+              text={previewDisplayName}
+              effect={styles.displayNameAnimation as any || 'none'}
+              fontFamily={styles.nameFont || 'Inter'}
+              className="text-2xl sm:text-3xl font-bold"
+              enableGlitch={styles.glowUsername}
+            />
           </div>
-        )}
 
-        {/* Views */}
-        <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-          <Eye className="w-4 h-4" />
-          <span>1,234 views</span>
+          {/* Username */}
+          <p className="text-muted-foreground text-sm mb-5 flex items-center justify-center gap-0.5">
+            <AtSign className="w-3.5 h-3.5" />
+            {previewUsername}
+          </p>
+
+          {/* User's REAL badges - larger, no pill background like image 2 */}
+          <div className="flex flex-wrap justify-center items-center gap-3 mb-5">
+            <TooltipProvider delayDuration={0}>
+              {userBadges.length > 0 ? (
+                userBadges.slice(0, 6).map((badge) => (
+                  <Tooltip key={badge.id}>
+                    <TooltipTrigger asChild>
+                      <div 
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 cursor-pointer overflow-hidden"
+                        style={{ 
+                          boxShadow: styles.glowBadges ? `0 0 12px ${badge.custom_color || badge.color || accentColor}50` : undefined
+                        }}
+                      >
+                        {badge.icon_url ? (
+                          <img 
+                            src={badge.icon_url} 
+                            alt={badge.name}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div 
+                            className="w-full h-full rounded-full"
+                            style={{ backgroundColor: badge.custom_color || badge.color || accentColor }}
+                          />
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      <p className="font-medium">{badge.name}</p>
+                      {badge.description && <p className="text-muted-foreground">{badge.description}</p>}
+                    </TooltipContent>
+                  </Tooltip>
+                ))
+              ) : (
+                // Fallback placeholder badges if user has none
+                [1, 2, 3].map(i => (
+                  <div 
+                    key={i}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full"
+                    style={{ 
+                      backgroundColor: `${accentColor}60`,
+                    }}
+                  />
+                ))
+              )}
+            </TooltipProvider>
+          </div>
+
+          {/* Occupation & Location */}
+          {(previewOccupation || previewLocation) && (
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground mb-4">
+              {previewOccupation && (
+                <div className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4" />
+                  <span>{previewOccupation}</span>
+                </div>
+              )}
+              {previewLocation && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  <span>{previewLocation}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Views */}
+          <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+            <Eye className="w-4 h-4" />
+            <span>1,234 views</span>
+          </div>
         </div>
       </div>
 
       {/* Corner sparkles */}
       <motion.div
-        className="absolute top-8 right-8 text-xl pointer-events-none"
+        className="absolute top-8 right-8 text-xl pointer-events-none z-20"
         animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
         transition={{ duration: 2, repeat: Infinity }}
         style={{ color: accentColor }}
@@ -421,7 +413,7 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
         ✦
       </motion.div>
       <motion.div
-        className="absolute bottom-8 right-8 text-xl pointer-events-none"
+        className="absolute bottom-8 right-8 text-xl pointer-events-none z-20"
         animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
         transition={{ duration: 2, repeat: Infinity, delay: 1 }}
         style={{ color: accentColor }}
@@ -429,7 +421,7 @@ export const TemplatePreview = memo(function TemplatePreview({ templateData, min
         ✦
       </motion.div>
       <motion.div
-        className="absolute top-1/3 left-6 text-sm pointer-events-none"
+        className="absolute top-1/3 left-6 text-sm pointer-events-none z-20"
         animate={{ opacity: [0.2, 0.8, 0.2], scale: [0.8, 1, 0.8] }}
         transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
         style={{ color: accentColor }}
