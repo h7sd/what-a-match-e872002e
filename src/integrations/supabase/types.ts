@@ -1718,6 +1718,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_give_coins: {
+        Args: { p_amount: number; p_reason?: string; p_user_id: string }
+        Returns: Json
+      }
       can_record_view: {
         Args: { p_ip_hash: string; p_profile_id: string }
         Returns: boolean
