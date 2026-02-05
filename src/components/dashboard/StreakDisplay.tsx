@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, Trophy, Calendar, TrendingUp } from 'lucide-react';
+import { Trophy, Calendar, TrendingUp } from 'lucide-react';
 import { useStreak, STREAK_MILESTONES, getNextMilestone, getCurrentMilestone } from '@/hooks/useStreak';
 import { Progress } from '@/components/ui/progress';
+import { AnimatedFlame } from './AnimatedFlame';
 
 export function StreakDisplay() {
   const { streak, isLoading, streakUpdated } = useStreak();
@@ -49,27 +50,11 @@ export function StreakDisplay() {
         </AnimatePresence>
 
         <div className="flex items-center gap-4">
-          {/* Flame Icon */}
+          {/* Animated Flame */}
           <div className="relative">
-            <motion.div
-              animate={{ 
-                scale: currentStreak > 0 ? [1, 1.1, 1] : 1,
-              }}
-              transition={{ 
-                repeat: currentStreak > 0 ? Infinity : 0, 
-                duration: 2,
-                ease: "easeInOut"
-              }}
-              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center border border-orange-500/30"
-            >
-              <Flame 
-                className="w-8 h-8" 
-                style={{ 
-                  color: currentStreak > 0 ? '#f97316' : '#6b7280',
-                  filter: currentStreak > 0 ? 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.5))' : 'none'
-                }} 
-              />
-            </motion.div>
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center border border-orange-500/30 overflow-hidden">
+              <AnimatedFlame size="md" isActive={currentStreak > 0} />
+            </div>
             {currentMilestone && (
               <div 
                 className="absolute -bottom-1 -right-1 text-lg"
@@ -78,15 +63,6 @@ export function StreakDisplay() {
                 {currentMilestone.icon}
               </div>
             )}
-          </div>
-
-          {/* Streak Info */}
-          <div className="flex-1">
-            <p className="text-sm text-muted-foreground mb-1">Current Streak</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-foreground">{currentStreak}</span>
-              <span className="text-lg text-muted-foreground">days</span>
-            </div>
           </div>
         </div>
 
