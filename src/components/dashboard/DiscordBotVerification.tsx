@@ -110,7 +110,10 @@ export function DiscordBotVerification({ userId, discordUserId }: DiscordBotVeri
   };
 
   // If already linked, show linked status
-  if (discordUserId) {
+  // Only show verified if discordUserId is a non-empty string (not null, undefined, or empty string)
+  const isLinked = discordUserId && discordUserId.trim().length > 0;
+  
+  if (isLinked) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
