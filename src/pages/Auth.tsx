@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/auth';
@@ -13,9 +13,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { invokeSecure } from '@/lib/secureEdgeFunctions';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
-import { LiquidEther } from '@/components/landing/LiquidEther';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
 import { useDiscordOAuth } from '@/hooks/useDiscordOAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const LiquidEther = lazy(() =>
+  import('@/components/landing/LiquidEther').then((m) => ({ default: m.LiquidEther }))
+);
 
 // Visual Auth Stepper Component
 function AuthStepper({ currentStep }: { currentStep: 'signup' | 'verify' | 'complete' }) {
@@ -156,6 +160,15 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { initiateDiscordLogin, handleOAuthCallback, loading: discordLoading } = useDiscordOAuth();
+  const isMobile = useIsMobile();
+
+  const [showBackground, setShowBackground] = useState(false);
+
+  // Delay heavy background to keep auth UI responsive (especially after Discord redirects)
+  useEffect(() => {
+    const t = window.setTimeout(() => setShowBackground(true), 250);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // Track if MFA was just completed to prevent loop
   const [mfaJustCompleted, setMfaJustCompleted] = useState(false);
@@ -771,17 +784,27 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Liquid Ether Background */}
+      {/* Liquid Ether Background (lazy) */}
       <div className="fixed inset-0 z-0">
-        <LiquidEther 
-          colors={['#00D9A5', '#00B4D8', '#0077B6']}
-          autoDemo={true}
-          autoSpeed={0.3}
-          autoIntensity={1.5}
-          mouseForce={12}
-          cursorSize={100}
-          resolution={0.5}
-        />
+        {showBackground ? (
+          <Suspense
+            fallback={
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/10" />
+            }
+          >
+            <LiquidEther 
+              colors={['#00D9A5', '#00B4D8', '#0077B6']}
+              autoDemo={true}
+              autoSpeed={0.3}
+              autoIntensity={1.5}
+              mouseForce={12}
+              cursorSize={100}
+              resolution={isMobile ? 0.25 : 0.5}
+            />
+          </Suspense>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/10" />
+        )}
       </div>
       
       {/* Noise texture overlay */}
