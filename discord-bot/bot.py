@@ -1108,47 +1108,62 @@ class UserVaultBot(commands.Bot):
     async def poll_notifications(self):
         """Poll for command notifications and send to Discord."""
         await self.wait_until_ready()
-        
-        channel = self.get_channel(COMMAND_UPDATES_CHANNEL_ID)
-        if not channel:
-            print(f"⚠️ Could not find channel {COMMAND_UPDATES_CHANNEL_ID} for command notifications")
-            return
-        
-        print(f"📢 Sending command updates to #{channel.name}")
-        
+
+        print(f"📡 Notification polling active (channel_id={COMMAND_UPDATES_CHANNEL_ID})")
+
         while not self.is_closed():
             try:
+                # Resolve channel (retry-friendly: don't permanently exit if cache isn't ready)
+                channel = self.get_channel(COMMAND_UPDATES_CHANNEL_ID)
+                if channel is None:
+                    try:
+                        channel = await self.fetch_channel(COMMAND_UPDATES_CHANNEL_ID)
+                    except Exception as e:
+                        print(f"⚠️ Could not fetch channel {COMMAND_UPDATES_CHANNEL_ID}: {e}")
+                        await asyncio.sleep(5)
+                        continue
+
+                if not hasattr(self, "_uv_notif_channel_logged"):
+                    chan_name = getattr(channel, "name", "unknown")
+                    print(f"📢 Sending command updates to #{chan_name} (id={channel.id})")
+                    self._uv_notif_channel_logged = True
+
                 result = await self.api.get_pending_notifications()
-                
-                if result.get("notifications"):
-                    for notif in result["notifications"]:
-                        await self.send_command_notification(channel, notif)
-                        await self.api.mark_notification_processed(notif["id"])
-                        
+
+                notifications = result.get("notifications") or []
+                if notifications:
+                    for notif in notifications:
+                        sent_ok = await self.send_command_notification(channel, notif)
+                        if sent_ok:
+                            await self.api.mark_notification_processed(notif["id"])
+                        else:
+                            # Leave unprocessed so it can retry after the next poll
+                            print(f"⚠️ Notification NOT marked processed (send failed): {notif.get('id')}")
+
             except Exception as e:
                 print(f"❌ Notification poll error: {e}")
-            
+
             # Poll every 5 seconds
             await asyncio.sleep(5)
-    
-    async def send_command_notification(self, channel, notif: dict):
-        """Send a command notification embed to Discord."""
+
+    async def send_command_notification(self, channel, notif: dict) -> bool:
+        """Send a command notification embed to Discord. Returns True if sent successfully."""
         action = notif.get("action", "unknown")
         command_name = notif.get("command_name", "unknown")
         changes = notif.get("changes") or {}
-        
+
         colors = {
             "created": 0x22c55e,  # green
             "updated": 0xf59e0b,  # amber
             "deleted": 0xef4444,  # red
         }
-        
+
         emojis = {
             "created": "✨",
             "updated": "📝",
             "deleted": "🗑️",
         }
-        
+
         usage = None
         # Prefer explicit usage if the backend included it in change payload
         if isinstance(changes, dict):
@@ -1159,30 +1174,37 @@ class UserVaultBot(commands.Bot):
             title=f"{emojis.get(action, '📋')} Command {action.capitalize()}",
             description=f"**`{shown}`** was {action}",
             color=colors.get(action, 0x6366f1),
-            timestamp=discord.utils.utcnow()
+            timestamp=discord.utils.utcnow(),
         )
-        
+
         embed.add_field(
             name="⏰ Timestamp",
             value=f"<t:{int(time.time())}:F>",
-            inline=True
+            inline=True,
         )
-        
+
         if changes:
-            changes_text = "\n".join([f"• **{k}**: {v}" for k, v in changes.items()])
+            try:
+                changes_items = changes.items() if isinstance(changes, dict) else [("changes", str(changes))]
+                changes_text = "\n".join([f"• **{k}**: {v}" for k, v in changes_items])
+            except Exception:
+                changes_text = str(changes)
+
             embed.add_field(
                 name="📋 Changes",
                 value=changes_text[:1024],
-                inline=False
+                inline=False,
             )
-        
-        embed.set_footer(text="UserVault Command System")
-        
+
+        embed.set_footer(text=f"UserVault Command System • {BOT_CODE_VERSION}")
+
         try:
             await channel.send(embed=embed)
             print(f"📤 Sent notification: {action} {shown}")
+            return True
         except Exception as e:
-            print(f"❌ Failed to send notification: {e}")
+            print(f"❌ Failed to send notification (will retry): {e}")
+            return False
     
     async def close(self):
         if self.notification_task:
