@@ -1101,6 +1101,57 @@ class UserVaultPrefixCommands(commands.Cog):
         if message.author.bot:
             return
 
+        # ===== Manual prefix handling (works even if host bot doesn't call process_commands) =====
+        # Some host bots override on_message without calling bot.process_commands().
+        # In that case, @commands.command prefix commands won't fire. We handle critical
+        # prefix commands here so they still work in extension mode.
+        content = (message.content or "").strip()
+        lowered = content.lower()
+
+        if lowered.startswith("?lookup"):
+            parts = content.split(maxsplit=1)
+            if len(parts) < 2 or not parts[1].strip():
+                await message.reply("❌ Usage: `?lookup <username>`")
+                return
+
+            username = parts[1].strip().lower()
+            try:
+                result = await self.client.api.lookup_profile(username)  # type: ignore[attr-defined]
+            except Exception as e:
+                await message.reply(f"❌ Lookup failed: {e}")
+                return
+
+            if isinstance(result, dict) and result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+                return
+
+            display_name = result.get("display_name") or result.get("username", username)
+            bio = result.get("bio") or ""
+            views = result.get("views_count", 0)
+            likes = result.get("likes_count", 0)
+            is_premium = result.get("is_premium", False)
+            profile_url = f"https://uservault.cc/{result.get('username', username)}"
+
+            premium_badge = "⭐ " if is_premium else ""
+            embed = discord.Embed(
+                title=f"{premium_badge}{display_name}",
+                url=profile_url,
+                description=bio[:200] if bio else "(no bio)",
+                color=discord.Color.blurple(),
+            )
+            embed.add_field(name="👁️ Views", value=str(views), inline=True)
+            embed.add_field(name="❤️ Likes", value=str(likes), inline=True)
+            embed.set_footer(text=profile_url.replace("https://", ""))
+
+            try:
+                await message.reply(embed=embed)
+            except discord.Forbidden:
+                # No Embed Links permission → fallback to plain text
+                await message.reply(
+                    f"👤 {display_name}\n{profile_url}\n👁️ Views: {views} | ❤️ Likes: {likes}"
+                )
+            return
+
         active_guess_games = getattr(self.client, "active_guess_games", {})
         game = active_guess_games.get(message.author.id)
         if game and message.channel.id == game.get("channel_id"):
