@@ -68,9 +68,167 @@ const ALLOWED_ACTIONS = [
   'get_hero_avatars',
   'check_email', // Check if email is already registered
   'check_register_available', // Combined check for registration
+  'health_check', // Comprehensive health check for all API functions
 ] as const;
 
 type AllowedAction = typeof ALLOWED_ACTIONS[number];
+
+// Health check function to test all API endpoints
+async function runHealthCheck(supabase: any): Promise<{
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  checks: Record<string, { status: 'ok' | 'error'; latency_ms: number; error?: string }>;
+  timestamp: string;
+  version: string;
+}> {
+  const checks: Record<string, { status: 'ok' | 'error'; latency_ms: number; error?: string }> = {};
+  
+  // Test database connectivity
+  const dbStart = Date.now();
+  try {
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    checks.database = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - dbStart,
+      ...(error && { error: 'Connection failed' })
+    };
+  } catch (e) {
+    checks.database = { status: 'error', latency_ms: Date.now() - dbStart, error: 'Connection failed' };
+  }
+
+  // Test auth service
+  const authStart = Date.now();
+  try {
+    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    checks.auth = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - authStart,
+      ...(error && { error: 'Auth service unavailable' })
+    };
+  } catch (e) {
+    checks.auth = { status: 'error', latency_ms: Date.now() - authStart, error: 'Auth service unavailable' };
+  }
+
+  // Test profiles query (get_stats simulation)
+  const statsStart = Date.now();
+  try {
+    const { error } = await supabase.from('profiles').select('views_count').limit(5);
+    checks.profiles_read = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - statsStart,
+      ...(error && { error: 'Query failed' })
+    };
+  } catch (e) {
+    checks.profiles_read = { status: 'error', latency_ms: Date.now() - statsStart, error: 'Query failed' };
+  }
+
+  // Test social_links query
+  const linksStart = Date.now();
+  try {
+    const { error } = await supabase.from('social_links').select('id').limit(1);
+    checks.social_links = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - linksStart,
+      ...(error && { error: 'Query failed' })
+    };
+  } catch (e) {
+    checks.social_links = { status: 'error', latency_ms: Date.now() - linksStart, error: 'Query failed' };
+  }
+
+  // Test global_badges query
+  const badgesStart = Date.now();
+  try {
+    const { error } = await supabase.from('global_badges').select('id').limit(1);
+    checks.global_badges = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - badgesStart,
+      ...(error && { error: 'Query failed' })
+    };
+  } catch (e) {
+    checks.global_badges = { status: 'error', latency_ms: Date.now() - badgesStart, error: 'Query failed' };
+  }
+
+  // Test user_badges query
+  const userBadgesStart = Date.now();
+  try {
+    const { error } = await supabase.from('user_badges').select('id').limit(1);
+    checks.user_badges = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - userBadgesStart,
+      ...(error && { error: 'Query failed' })
+    };
+  } catch (e) {
+    checks.user_badges = { status: 'error', latency_ms: Date.now() - userBadgesStart, error: 'Query failed' };
+  }
+
+  // Test friend_badges query
+  const friendBadgesStart = Date.now();
+  try {
+    const { error } = await supabase.from('friend_badges').select('id').limit(1);
+    checks.friend_badges = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - friendBadgesStart,
+      ...(error && { error: 'Query failed' })
+    };
+  } catch (e) {
+    checks.friend_badges = { status: 'error', latency_ms: Date.now() - friendBadgesStart, error: 'Query failed' };
+  }
+
+  // Test RPC function (get_profile_badges_with_friends)
+  const rpcStart = Date.now();
+  try {
+    // Get a sample profile ID first
+    const { data: sampleProfile } = await supabase.from('profiles').select('id').limit(1).single();
+    if (sampleProfile) {
+      const { error } = await supabase.rpc('get_profile_badges_with_friends', { p_profile_id: sampleProfile.id });
+      checks.rpc_functions = { 
+        status: error ? 'error' : 'ok', 
+        latency_ms: Date.now() - rpcStart,
+        ...(error && { error: 'RPC call failed' })
+      };
+    } else {
+      checks.rpc_functions = { status: 'ok', latency_ms: Date.now() - rpcStart };
+    }
+  } catch (e) {
+    checks.rpc_functions = { status: 'error', latency_ms: Date.now() - rpcStart, error: 'RPC call failed' };
+  }
+
+  // Test search functionality
+  const searchStart = Date.now();
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .select('username')
+      .ilike('username', '%a%')
+      .limit(1);
+    checks.search = { 
+      status: error ? 'error' : 'ok', 
+      latency_ms: Date.now() - searchStart,
+      ...(error && { error: 'Search failed' })
+    };
+  } catch (e) {
+    checks.search = { status: 'error', latency_ms: Date.now() - searchStart, error: 'Search failed' };
+  }
+
+  // Calculate overall status
+  const errorCount = Object.values(checks).filter(c => c.status === 'error').length;
+  const totalChecks = Object.keys(checks).length;
+  
+  let status: 'healthy' | 'degraded' | 'unhealthy';
+  if (errorCount === 0) {
+    status = 'healthy';
+  } else if (errorCount < totalChecks / 2) {
+    status = 'degraded';
+  } else {
+    status = 'unhealthy';
+  }
+
+  return {
+    status,
+    checks,
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  };
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -598,6 +756,12 @@ Deno.serve(async (req) => {
 
         // All checks passed
         result = { available: true };
+        break;
+      }
+
+      case 'health_check': {
+        // Comprehensive health check for all API functions
+        result = await runHealthCheck(supabase);
         break;
       }
 

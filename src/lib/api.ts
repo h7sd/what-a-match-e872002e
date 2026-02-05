@@ -249,3 +249,19 @@ export async function checkEmailValid(email: string): Promise<boolean> {
   const result = await callApi<{ valid: boolean }>('check_email', { email });
   return result?.valid ?? false;
 }
+
+// Health check for API status monitoring
+export interface HealthCheckResult {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  checks: Record<string, { 
+    status: 'ok' | 'error'; 
+    latency_ms: number; 
+    error?: string 
+  }>;
+  timestamp: string;
+  version: string;
+}
+
+export async function getApiHealthCheck(): Promise<HealthCheckResult | null> {
+  return callApi<HealthCheckResult>('health_check');
+}
