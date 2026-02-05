@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,19 +11,62 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, svix-id, svix-timestamp, svix-signature",
 };
 
-interface ResendEmailData {
+interface ResendWebhookData {
+  email_id: string;
   from: string;
   to: string[];
   subject: string;
-  text?: string;
-  html?: string;
-  created_at?: string;
-  headers?: Array<{ name: string; value: string }>;
+  created_at: string;
 }
 
-interface ResendWebhookPayload {
-  type: string;
-  data: ResendEmailData;
+interface ResendEmailContent {
+  html: string | null;
+  text: string | null;
+}
+
+// Fetch full email content from Resend API using email_id
+async function fetchEmailContent(emailId: string): Promise<string> {
+  try {
+    const response = await fetch(`https://api.resend.com/emails/${emailId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch email content:", response.status, await response.text());
+      return "Could not retrieve email content";
+    }
+
+    const emailData: ResendEmailContent = await response.json();
+    console.log("Fetched email content:", { 
+      hasHtml: !!emailData.html, 
+      hasText: !!emailData.text,
+      textLength: emailData.text?.length || 0,
+      htmlLength: emailData.html?.length || 0
+    });
+
+    // Prefer plain text, fall back to HTML (strip tags for display)
+    if (emailData.text && emailData.text.trim()) {
+      return emailData.text.trim();
+    }
+    
+    if (emailData.html && emailData.html.trim()) {
+      // Strip HTML tags for plain text display
+      return emailData.html
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    return "No content";
+  } catch (error) {
+    console.error("Error fetching email content:", error);
+    return "Error retrieving email content";
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -38,21 +82,32 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log("Raw webhook payload:", JSON.stringify(rawPayload));
     
-    // Resend webhooks wrap email data in a "data" object
-    // Handle both direct email format and webhook format
-    const emailData: ResendEmailData = rawPayload.data || rawPayload;
+    // Resend webhooks have type and data fields
+    const webhookType = rawPayload.type;
+    const emailData: ResendWebhookData = rawPayload.data;
     
+    console.log("Webhook type:", webhookType);
     console.log("Parsed email data:", {
-      from: emailData.from,
-      to: emailData.to,
-      subject: emailData.subject,
+      email_id: emailData?.email_id,
+      from: emailData?.from,
+      to: emailData?.to,
+      subject: emailData?.subject,
     });
 
-    // Validate required fields
-    if (!emailData.from) {
-      console.error("Missing 'from' field in payload");
+    // Only process email.received events
+    if (webhookType !== "email.received") {
+      console.log("Ignoring non-received event:", webhookType);
       return new Response(
-        JSON.stringify({ error: "Missing 'from' field" }),
+        JSON.stringify({ success: true, message: "Event ignored" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate required fields
+    if (!emailData?.from || !emailData?.email_id) {
+      console.error("Missing required fields in payload");
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -70,6 +125,10 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    // Fetch the actual email content using the Resend API
+    const messageContent = await fetchEmailContent(emailData.email_id);
+    console.log("Email content retrieved, length:", messageContent.length);
 
     // Extract sender email from "Name <email@domain.com>" format
     const fromMatch = emailData.from.match(/<([^>]+)>/) || [null, emailData.from];
@@ -91,13 +150,13 @@ const handler = async (req: Request): Promise<Response> => {
       username = profileData?.username;
     }
 
-    // Create support ticket
+    // Create support ticket with actual email content
     const { data: ticket, error: ticketError } = await supabase
       .from("support_tickets")
       .insert({
         email: senderEmail,
         subject: emailData.subject || "No Subject",
-        message: emailData.text || emailData.html || "No content",
+        message: messageContent,
         user_id: matchedUser?.id || null,
         username: username,
         status: "open",
@@ -115,7 +174,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from("support_messages")
       .insert({
         ticket_id: ticket.id,
-        message: emailData.text || emailData.html || "No content",
+        message: messageContent,
         sender_type: "user",
         sender_id: matchedUser?.id || null,
       });
@@ -124,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error creating message:", messageError);
     }
 
-    console.log("Support ticket created:", ticket.id);
+    console.log("Support ticket created:", ticket.id, "with content length:", messageContent.length);
 
     return new Response(
       JSON.stringify({ success: true, ticketId: ticket.id }),
