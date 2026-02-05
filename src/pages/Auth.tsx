@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Mail, Shield, Check } from 'lucide-react';
+import { FaDiscord } from 'react-icons/fa';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecure } from '@/lib/secureEdgeFunctions';
@@ -14,6 +15,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { LiquidEther } from '@/components/landing/LiquidEther';
 import { PasswordStrengthIndicator, getPasswordStrength } from '@/components/auth/PasswordStrengthIndicator';
+import { useDiscordOAuth } from '@/hooks/useDiscordOAuth';
 
 // Visual Auth Stepper Component
 function AuthStepper({ currentStep }: { currentStep: 'signup' | 'verify' | 'complete' }) {
@@ -153,6 +155,7 @@ export default function Auth() {
   const { signIn, signUp, signOut, verifyMfa, user, mfaChallenge, banStatus, clearBanStatus } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { initiateDiscordLogin, handleOAuthCallback, loading: discordLoading } = useDiscordOAuth();
 
   // Track if MFA was just completed to prevent loop
   const [mfaJustCompleted, setMfaJustCompleted] = useState(false);
@@ -291,11 +294,31 @@ export default function Auth() {
     const emailParam = searchParams.get('email');
     const codeParam = searchParams.get('code');
     const mfaRequired = searchParams.get('mfa');
+    const discordCode = searchParams.get('discord_code');
+    const discordState = searchParams.get('discord_state');
     
     if (type === 'recovery' && emailParam && codeParam) {
       setEmail(emailParam);
       setVerificationCode(codeParam);
       setStep('reset-password');
+    }
+    
+    // Handle Discord OAuth callback
+    if (discordCode && discordState) {
+      const processDiscordCallback = async () => {
+        const result = await handleOAuthCallback(discordCode, discordState);
+        if (result.success) {
+          toast({ 
+            title: result.is_new_user ? 'Account created!' : 'Welcome back!',
+            description: result.is_new_user 
+              ? 'Your account has been created with Discord.'
+              : 'Successfully signed in with Discord.'
+          });
+          navigate('/dashboard', { replace: true });
+        }
+      };
+      processDiscordCallback();
+      return;
     }
     
     // Handle MFA required redirect - check if user has MFA and needs to verify
@@ -320,7 +343,7 @@ export default function Auth() {
       
       checkAndTriggerMfa();
     }
-  }, [searchParams, user, toast]);
+  }, [searchParams, user, toast, handleOAuthCallback, navigate]);
 
   const verifyTurnstile = async (token: string): Promise<boolean> => {
     // Allow bypass token for development/preview environments where Turnstile may fail
@@ -898,6 +921,32 @@ export default function Auth() {
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Sign in
                 </Button>
+
+                {/* Divider */}
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="px-3 bg-black/60 text-white/40">or continue with</span>
+                  </div>
+                </div>
+
+                {/* Discord Login Button */}
+                <Button
+                  type="button"
+                  onClick={initiateDiscordLogin}
+                  disabled={discordLoading}
+                  variant="outline"
+                  className="w-full h-12 bg-[#5865F2]/10 border-[#5865F2]/30 hover:bg-[#5865F2]/20 hover:border-[#5865F2]/50 text-white font-semibold rounded-xl transition-all duration-300"
+                >
+                  {discordLoading ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <FaDiscord className="w-5 h-5 mr-2 text-[#5865F2]" />
+                  )}
+                  Discord
+                </Button>
               </motion.form>
             )}
 
@@ -974,6 +1023,32 @@ export default function Auth() {
                 >
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Continue
+                </Button>
+
+                {/* Divider */}
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="px-3 bg-black/60 text-white/40">or sign up with</span>
+                  </div>
+                </div>
+
+                {/* Discord Signup Button */}
+                <Button
+                  type="button"
+                  onClick={initiateDiscordLogin}
+                  disabled={discordLoading}
+                  variant="outline"
+                  className="w-full h-12 bg-[#5865F2]/10 border-[#5865F2]/30 hover:bg-[#5865F2]/20 hover:border-[#5865F2]/50 text-white font-semibold rounded-xl transition-all duration-300"
+                >
+                  {discordLoading ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <FaDiscord className="w-5 h-5 mr-2 text-[#5865F2]" />
+                  )}
+                  Discord
                 </Button>
               </motion.form>
             )}
