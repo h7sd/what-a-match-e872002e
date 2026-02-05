@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Bump this whenever you deploy to quickly verify the running version
+const VERSION = '2026-02-05.1';
+
 interface DiscordUser {
   id: string;
   username: string;
@@ -17,6 +20,7 @@ interface DiscordUser {
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
+  console.log(`[discord-oauth-callback ${VERSION}] ${req.method} ${url.pathname}${url.search}`);
   
   // Handle both GET (redirect callback) and POST (AJAX callback)
   if (req.method === 'OPTIONS') {
@@ -148,7 +152,8 @@ Deno.serve(async (req) => {
 
       if (existingLink && existingLink.user_id !== user_id) {
         return new Response(JSON.stringify({ 
-          success: false, 
+          success: false,
+          _version: VERSION,
           error: 'This Discord account is already linked to another user' 
         }), {
           status: 400,
@@ -183,7 +188,8 @@ Deno.serve(async (req) => {
         .eq('user_id', user_id);
 
       return new Response(JSON.stringify({ 
-        success: true, 
+        success: true,
+        _version: VERSION,
         discord_user: {
           id: discordUser.id,
           username: discordUser.global_name || discordUser.username,
@@ -322,6 +328,7 @@ Deno.serve(async (req) => {
       // Return success with session info
       return new Response(JSON.stringify({ 
         success: true,
+        _version: VERSION,
         is_new_user: isNewUser,
         email: discordUser.email,
         action_link: linkData.properties.action_link,
@@ -345,7 +352,7 @@ Deno.serve(async (req) => {
       return Response.redirect(errorUrl.toString(), 302);
     }
     
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: message, _version: VERSION }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
