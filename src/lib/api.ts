@@ -230,3 +230,22 @@ export async function checkAliasExists(alias: string): Promise<boolean> {
   if (!result) return true;
   return !!result.exists;
 }
+
+// Registration availability check
+export interface RegisterCheckResult {
+  available: boolean;
+  reason?: 'invalid_username' | 'invalid_email' | 'invalid_username_format' | 'invalid_email_format' | 'username_taken' | 'email_taken';
+}
+
+export async function checkRegisterAvailable(username: string, email: string): Promise<RegisterCheckResult> {
+  const result = await callApi<RegisterCheckResult>('check_register_available', { username, email });
+  // Fail-closed: if API fails, return not available
+  if (!result) return { available: false, reason: 'invalid_email' };
+  return result;
+}
+
+// Email check (for login hints - returns generic response to prevent enumeration)
+export async function checkEmailValid(email: string): Promise<boolean> {
+  const result = await callApi<{ valid: boolean }>('check_email', { email });
+  return result?.valid ?? false;
+}

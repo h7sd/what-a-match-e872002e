@@ -66,6 +66,8 @@ const ALLOWED_ACTIONS = [
   'check_username',
   'check_alias',
   'get_hero_avatars',
+  'check_email', // Check if email is already registered
+  'check_register_available', // Combined check for registration
 ] as const;
 
 type AllowedAction = typeof ALLOWED_ACTIONS[number];
@@ -507,6 +509,95 @@ Deno.serve(async (req) => {
         }
 
         result = avatars;
+        break;
+      }
+
+      case 'check_email': {
+        const { email } = params || {};
+        if (!email || typeof email !== 'string' || email.length > 255) {
+          throw new Error('Invalid input');
+        }
+
+        // Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          throw new Error('Invalid email format');
+        }
+
+        // Check if email exists in auth.users via admin API
+        const { data: users, error } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1,
+        });
+
+        // We can't directly query by email with listUsers, so use a different approach
+        // Query profiles table which may have email or use auth.users lookup
+        const { data: authUser } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
+        
+        // Return minimal response - don't reveal if email exists (security)
+        // Always return same response to prevent email enumeration
+        result = { valid: true };
+        break;
+      }
+
+      case 'check_register_available': {
+        const { username, email } = params || {};
+        
+        // Validate inputs
+        if (!username || typeof username !== 'string' || username.length < 1 || username.length > 20) {
+          result = { available: false, reason: 'invalid_username' };
+          break;
+        }
+        
+        if (!email || typeof email !== 'string' || email.length > 255) {
+          result = { available: false, reason: 'invalid_email' };
+          break;
+        }
+
+        // Validate username format (a-z0-9_)
+        const usernameRegex = /^[a-z0-9_]+$/;
+        const normalizedUsername = username.toLowerCase();
+        if (!usernameRegex.test(normalizedUsername)) {
+          result = { available: false, reason: 'invalid_username_format' };
+          break;
+        }
+
+        // Basic email format validation
+        const emailValidation = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailValidation.test(email)) {
+          result = { available: false, reason: 'invalid_email_format' };
+          break;
+        }
+
+        // Check username availability (in both username and alias columns)
+        const [asUsername, asAlias] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('username', normalizedUsername)
+            .maybeSingle(),
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('alias_username', normalizedUsername)
+            .maybeSingle()
+        ]);
+
+        if (asUsername.data || asAlias.data) {
+          result = { available: false, reason: 'username_taken' };
+          break;
+        }
+
+        // Check email availability via auth admin API
+        const { data: existingUser } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
+        
+        if (existingUser) {
+          result = { available: false, reason: 'email_taken' };
+          break;
+        }
+
+        // All checks passed
+        result = { available: true };
         break;
       }
 
