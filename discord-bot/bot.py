@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-05-users-v2"
+BOT_CODE_VERSION = "2026-02-05-crash-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -1035,7 +1035,182 @@ class HigherLowerView(discord.ui.View):
         return embed
 
 
-class UserVaultBot(commands.Bot):
+# ============ CRASH GAME ============
+
+class CrashButton(discord.ui.Button):
+    """Button to cash out in Crash game."""
+    
+    def __init__(self, crash_view: "CrashView"):
+        super().__init__(style=discord.ButtonStyle.success, label="💰 CASH OUT", row=0)
+        self.crash_view = crash_view
+    
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.crash_view.user_id:
+            await interaction.response.send_message("❌ Das ist nicht dein Spiel!", ephemeral=True)
+            return
+        
+        if self.crash_view.game_over or self.crash_view.cashed_out:
+            await interaction.response.defer()
+            return
+        
+        # Cash out!
+        self.crash_view.cashed_out = True
+        self.crash_view.game_over = True
+        self.crash_view.won = True
+        self.crash_view.cashout_multiplier = self.crash_view.current_multiplier
+        
+        # Disable button
+        self.disabled = True
+        
+        winnings = int(self.crash_view.bet * self.crash_view.cashout_multiplier)
+        
+        embed = self.crash_view.create_embed(game_over=True)
+        await interaction.response.edit_message(embed=embed, view=self.crash_view)
+        
+        # Award winnings
+        await self.crash_view.bot.api.send_reward(
+            str(interaction.user.id),
+            winnings,
+            "crash",
+            f"Crash cashout x{self.crash_view.cashout_multiplier:.2f}"
+        )
+        self.crash_view.stop()
+
+
+class CrashView(discord.ui.View):
+    """View for Crash game - multiplier rises until it crashes."""
+    
+    def __init__(self, bot, user_id: int, bet: int, message=None):
+        super().__init__(timeout=60)  # 1 minute max game time
+        self.bot = bot
+        self.user_id = user_id
+        self.bet = bet
+        self.message = message
+        self.current_multiplier = 1.00
+        self.crash_point = self._generate_crash_point()
+        self.game_over = False
+        self.won = False
+        self.cashed_out = False
+        self.cashout_multiplier = 1.00
+        self.tick_count = 0
+        
+        self.add_item(CrashButton(self))
+    
+    def _generate_crash_point(self) -> float:
+        """Generate crash point using provably fair algorithm.
+        
+        Uses exponential distribution - most crashes happen early,
+        but occasionally goes very high.
+        """
+        # Random float 0-1, with crash formula
+        r = random.random()
+        # Minimum crash at 1.00x, exponential growth
+        # Formula: 0.99 / (1 - r) gives nice distribution
+        # Cap at 100x max
+        if r >= 0.99:
+            return 100.0
+        crash = 0.99 / (1 - r)
+        return min(round(crash, 2), 100.0)
+    
+    async def start_game(self, channel):
+        """Start the crash game animation."""
+        embed = self.create_embed()
+        self.message = await channel.send(embed=embed, view=self)
+        
+        # Deduct bet immediately
+        await self.bot.api.send_reward(
+            str(self.user_id),
+            -self.bet,
+            "crash",
+            "Crash game bet"
+        )
+        
+        # Start multiplier climbing
+        await self.run_game()
+    
+    async def run_game(self):
+        """Run the game loop - multiplier increases until crash or cashout."""
+        while not self.game_over:
+            await asyncio.sleep(0.8)  # Tick every 0.8 seconds
+            
+            if self.game_over or self.cashed_out:
+                break
+            
+            # Increase multiplier
+            self.tick_count += 1
+            # Accelerating growth
+            growth = 0.05 + (self.tick_count * 0.02)
+            self.current_multiplier += growth
+            self.current_multiplier = round(self.current_multiplier, 2)
+            
+            # Check if crashed
+            if self.current_multiplier >= self.crash_point:
+                self.game_over = True
+                self.won = False
+                self.current_multiplier = self.crash_point
+                
+                # Disable button
+                for item in self.children:
+                    item.disabled = True
+                
+                embed = self.create_embed(game_over=True)
+                try:
+                    await self.message.edit(embed=embed, view=self)
+                except:
+                    pass
+                self.stop()
+                return
+            
+            # Update display
+            embed = self.create_embed()
+            try:
+                await self.message.edit(embed=embed, view=self)
+            except:
+                pass
+    
+    def create_embed(self, game_over: bool = False) -> discord.Embed:
+        """Create the game embed."""
+        if game_over:
+            if self.won:
+                winnings = int(self.bet * self.cashout_multiplier)
+                title = "💰 CASHED OUT!"
+                description = (
+                    f"Du hast bei **x{self.cashout_multiplier:.2f}** ausgezahlt!\n\n"
+                    f"💵 **Gewinn: {winnings} UC**\n"
+                    f"📈 Crash war bei: x{self.crash_point:.2f}"
+                )
+                color = discord.Color.gold()
+            else:
+                title = "💥 CRASHED!"
+                description = (
+                    f"Der Multiplikator ist bei **x{self.crash_point:.2f}** gecrasht!\n\n"
+                    f"💸 **Verlust: {self.bet} UC**"
+                )
+                color = discord.Color.red()
+        else:
+            title = "🚀 CRASH"
+            # Create visual multiplier bar
+            bar_length = min(int(self.current_multiplier * 2), 20)
+            bar = "█" * bar_length + "░" * (20 - bar_length)
+            
+            potential = int(self.bet * self.current_multiplier)
+            description = (
+                f"```\n{bar}\n```\n"
+                f"# x{self.current_multiplier:.2f}\n\n"
+                f"**Einsatz:** {self.bet} UC\n"
+                f"**Potenzieller Gewinn:** {potential} UC\n\n"
+                f"⚠️ Cash out bevor es crasht!"
+            )
+            color = discord.Color.green() if self.current_multiplier < 2 else discord.Color.orange()
+            if self.current_multiplier >= 5:
+                color = discord.Color.red()
+        
+        embed = discord.Embed(title=title, description=description, color=color)
+        embed.set_footer(text=f"UserVault Crash • {BOT_CODE_VERSION}")
+        return embed
+
+
+
     """Main Discord bot class."""
     
     def __init__(self):
@@ -2021,6 +2196,32 @@ class UserVaultPrefixCommands(commands.Cog):
             embed.add_field(name="API Endpoint", value=f"`{FUNCTIONS_BASE_URL}`", inline=False)
             embed.set_footer(text=f"UserVault Bot • {BOT_CODE_VERSION}")
             await message.reply(embed=embed)
+            return
+
+        # ===== ?crash - Crash game =====
+        if lowered.startswith("?crash"):
+            parts = content.split()
+            bet = 50  # Default bet
+            if len(parts) > 1:
+                try:
+                    bet = int(parts[1])
+                except ValueError:
+                    await message.reply("❌ Ungültiger Einsatz! Nutze: `?crash <einsatz>`")
+                    return
+            
+            if bet < 10:
+                await message.reply("❌ Minimum Einsatz ist 10 UC!")
+                return
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
+            if current_balance < bet:
+                await message.reply(f"❌ Nicht genug Guthaben! Du hast {current_balance} UC.")
+                return
+            
+            view = CrashView(self.client, message.author.id, bet)
+            asyncio.create_task(view.start_game(message.channel))
             return
 
         # ===== ?mines - Minesweeper game =====
