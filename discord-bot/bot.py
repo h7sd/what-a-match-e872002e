@@ -20,7 +20,9 @@ import os
 import asyncio
 import hashlib
 import hmac
+import inspect
 import json
+import re
 import time
 import random
 from typing import Optional, Dict, Any, List
@@ -1607,8 +1609,8 @@ class UserVaultPrefixCommands(commands.Cog):
         # prefix commands here so they still work in extension mode.
         lowered = content.lower()
 
-        # ===== ?helping - List all commands =====
-        if lowered == "?helping" or lowered == "?commands":
+        # ===== ?help / ?helping - List all commands =====
+        if lowered in {"?help", "?helping", "?commands"}:
             try:
                 result = await self.client.api.get_bot_commands()  # type: ignore[attr-defined]
             except Exception as e:
@@ -1708,6 +1710,10 @@ class UserVaultPrefixCommands(commands.Cog):
                 # Clear the flag so the cog gets re-added on reload
                 if hasattr(self.client, "_uservault_prefix_cog_loaded"):
                     del self.client._uservault_prefix_cog_loaded
+
+                # Clear cached implemented command set so unknown-command detection stays accurate
+                if hasattr(self.client, "_uservault_implemented_prefix_cmds"):
+                    del self.client._uservault_implemented_prefix_cmds
                 
                 # Cancel notification task if running (will restart on reload)
                 if hasattr(self.client, "_uservault_notification_task"):
@@ -1991,19 +1997,42 @@ class UserVaultPrefixCommands(commands.Cog):
             # Extract command name
             cmd_part = lowered[1:].split()[0] if lowered[1:] else ""
             if cmd_part:
-                # Auto-detect implemented commands from on_message handlers above
-                # This list is auto-generated based on the if-statements in this handler
-                # Pattern: if lowered.startswith("?commandname") or lowered == "?commandname"
-                known_cmds = {
-                    # Core utility
-                    "helping", "commands", "help", "reload", "lookup", "apistats", "ping",
-                    # Economy
-                    "balance", "bal", "daily", "link", "unlink", "profile", "delete",
-                    # Games
-                    "slots", "coin", "coinflip", "rps", "blackjack", "bj",
-                    "guess", "trivia", "mines", "higherlower", "hl", "roulette",
-                }
-                if cmd_part not in known_cmds:
+                # Build implemented command set dynamically (so new commands work after ?reload
+                # without updating a hardcoded list).
+                implemented_cmds = getattr(self.client, "_uservault_implemented_prefix_cmds", None)
+                if implemented_cmds is None:
+                    implemented: set[str] = set()
+
+                    # 1) Commands registered with discord.py's command system
+                    try:
+                        for cmd in getattr(self.client, "commands", []):
+                            name = getattr(cmd, "name", None)
+                            if name:
+                                implemented.add(str(name).lower())
+                            for alias in getattr(cmd, "aliases", []) or []:
+                                implemented.add(str(alias).lower())
+                    except Exception:
+                        pass
+
+                    # 2) Commands handled manually in THIS on_message via string checks
+                    # Patterns we support:
+                    #   lowered.startswith("?foo")
+                    #   lowered == "?foo"
+                    try:
+                        src = inspect.getsource(self.__class__.on_message)
+                        for pat in (
+                            r"lowered\\.startswith\\(\\s*['\"]\\?([a-z0-9]+)",
+                            r"lowered\\s*==\\s*['\"]\\?([a-z0-9]+)",
+                        ):
+                            for m in re.finditer(pat, src, flags=re.IGNORECASE):
+                                implemented.add(m.group(1).lower())
+                    except Exception:
+                        pass
+
+                    implemented_cmds = implemented
+                    self.client._uservault_implemented_prefix_cmds = implemented_cmds
+
+                if cmd_part not in implemented_cmds:
                     # Check if it's in the database
                     try:
                         result = await self.client.api.get_bot_commands()  # type: ignore[attr-defined]
