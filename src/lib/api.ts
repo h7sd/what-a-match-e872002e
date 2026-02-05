@@ -54,6 +54,17 @@ export async function getFeaturedProfiles(limit = 50): Promise<FeaturedProfile[]
   return result || [];
 }
 
+// Featured profiles with full data (for card swap - single request)
+export interface FeaturedProfileFull {
+  profile: PublicProfile;
+  badges: PublicBadge[];
+}
+
+export async function getFeaturedProfilesFull(limit = 15): Promise<FeaturedProfileFull[]> {
+  const result = await callApi<FeaturedProfileFull[]>('get_featured_profiles_full', { limit });
+  return result || [];
+}
+
 // Public profile data
 export interface PublicProfile {
   id: string;

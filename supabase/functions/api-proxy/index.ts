@@ -57,6 +57,7 @@ async function hashIP(ip: string): Promise<string> {
 const ALLOWED_ACTIONS = [
   'get_stats',
   'get_featured_profiles',
+  'get_featured_profiles_full', // NEW: batch endpoint with profile+badges in one call
   'get_public_profile',
   'get_profile_links',
   'get_profile_badges',
@@ -154,6 +155,141 @@ Deno.serve(async (req) => {
           u: p.username,
           d: p.display_name,
           n: p.uid_number // uid_number
+        }));
+        break;
+      }
+
+      case 'get_featured_profiles_full': {
+        // BATCH endpoint: returns profiles with background + badges in ONE request
+        // This replaces 60+ separate API calls with a single call
+        const limit = Math.min(params?.limit || 15, 30); // Cap at 30 for performance
+        
+        // Get profiles that have backgrounds (required for card swap display)
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select(`
+            id, username, display_name, bio, avatar_url, background_url,
+            background_video_url, background_color, accent_color, card_color,
+            views_count, uid_number, avatar_shape, name_font, text_font,
+            text_color, show_username, show_display_name, show_badges,
+            show_views, show_avatar, show_description, card_border_enabled,
+            card_border_width, card_border_color, transparent_badges, is_premium,
+            display_name_animation
+          `)
+          .or('background_url.neq.,background_video_url.neq.')
+          .order('uid_number', { ascending: true })
+          .limit(limit * 2); // Fetch more to have buffer after filtering
+        
+        if (profilesError) throw profilesError;
+        
+        // Filter to only profiles with actual backgrounds
+        const validProfiles = (profiles || []).filter(p => 
+          p.background_url || p.background_video_url
+        ).slice(0, limit);
+        
+        if (validProfiles.length === 0) {
+          result = [];
+          break;
+        }
+        
+        // Get all badges for these profiles in ONE query
+        const profileIds = validProfiles.map(p => p.id);
+        
+        // Get user badges (global badges assigned to users)
+        const { data: userBadges } = await supabase
+          .from('user_badges')
+          .select(`
+            user_id,
+            display_order,
+            custom_color,
+            is_enabled,
+            global_badges:badge_id (
+              id, name, description, icon_url, color, rarity
+            )
+          `)
+          .in('user_id', profileIds)
+          .eq('is_enabled', true);
+        
+        // Get friend badges for these profiles
+        const { data: friendBadges } = await supabase
+          .from('friend_badges')
+          .select('recipient_id, id, name, description, icon_url, color, display_order, is_enabled')
+          .in('recipient_id', profileIds)
+          .eq('is_enabled', true);
+        
+        // Build badge map by profile ID
+        const badgesByProfileId = new Map<string, any[]>();
+        
+        // Process user badges
+        for (const ub of (userBadges || [])) {
+          if (!ub.global_badges) continue;
+          const badge = ub.global_badges as any;
+          const badges = badgesByProfileId.get(ub.user_id) || [];
+          badges.push({
+            id: badge.id,
+            name: badge.name,
+            description: badge.description,
+            icon_url: badge.icon_url,
+            color: ub.custom_color || badge.color,
+            rarity: badge.rarity,
+            display_order: ub.display_order,
+            badge_type: 'global'
+          });
+          badgesByProfileId.set(ub.user_id, badges);
+        }
+        
+        // Process friend badges
+        for (const fb of (friendBadges || [])) {
+          const badges = badgesByProfileId.get(fb.recipient_id) || [];
+          badges.push({
+            id: fb.id,
+            name: fb.name,
+            description: fb.description,
+            icon_url: fb.icon_url,
+            color: fb.color,
+            display_order: fb.display_order,
+            badge_type: 'friend'
+          });
+          badgesByProfileId.set(fb.recipient_id, badges);
+        }
+        
+        // Sort badges by display_order
+        for (const [profileId, badges] of badgesByProfileId) {
+          badges.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+        }
+        
+        // Build final result - profile + badges combined
+        result = validProfiles.map(p => ({
+          profile: {
+            username: p.username,
+            display_name: p.display_name,
+            bio: p.bio,
+            avatar_url: p.avatar_url,
+            background_url: p.background_url,
+            background_video_url: p.background_video_url,
+            background_color: p.background_color,
+            accent_color: p.accent_color,
+            card_color: p.card_color,
+            views_count: p.views_count,
+            uid_number: p.uid_number,
+            avatar_shape: p.avatar_shape,
+            name_font: p.name_font,
+            text_font: p.text_font,
+            text_color: p.text_color,
+            show_username: p.show_username,
+            show_display_name: p.show_display_name,
+            show_badges: p.show_badges,
+            show_views: p.show_views,
+            show_avatar: p.show_avatar,
+            show_description: p.show_description,
+            card_border_enabled: p.card_border_enabled,
+            card_border_width: p.card_border_width,
+            card_border_color: p.card_border_color,
+            transparent_badges: p.transparent_badges,
+            is_premium: p.is_premium,
+            display_name_animation: p.display_name_animation
+          },
+          badges: badgesByProfileId.get(p.id) || []
         }));
         break;
       }

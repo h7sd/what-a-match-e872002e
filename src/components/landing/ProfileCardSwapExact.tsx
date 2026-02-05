@@ -7,18 +7,10 @@ import { Sparkles } from "lucide-react";
 import CardSwap, { Card } from "@/components/ui/CardSwap";
 import { ProfileCard } from "@/components/profile/ProfileCard";
 import {
-  getFeaturedProfiles,
-  getProfileBadges,
-  getPublicProfile,
-  type FeaturedProfile,
-  type PublicBadge,
+  getFeaturedProfilesFull,
+  type FeaturedProfileFull,
   type PublicProfile,
 } from "@/lib/api";
-
-type SwapProfile = {
-  profile: PublicProfile;
-  badges: PublicBadge[];
-};
 
 // Fixed number of card slots
 const CARD_SLOTS = 5;
@@ -32,38 +24,18 @@ function shuffle<T>(arr: T[]): T[] {
   return result;
 }
 
-// Check if profile has a valid background
-function hasBackground(profile: PublicProfile): boolean {
-  return !!(profile.background_url || profile.background_video_url);
-}
-
-// Load a single profile with background check
-async function loadProfile(username: string): Promise<SwapProfile | null> {
-  try {
-    const [profile, badges] = await Promise.all([
-      getPublicProfile(username),
-      getProfileBadges(username),
-    ]);
-    if (!profile || !hasBackground(profile)) return null;
-    return { profile, badges };
-  } catch {
-    return null;
-  }
-}
-
 // Hook to manage profile queue with preloading
 function useProfileQueue() {
-  const poolRef = useRef<FeaturedProfile[]>([]);
+  const poolRef = useRef<FeaturedProfileFull[]>([]);
   const poolIndexRef = useRef(0);
   const usedUsernames = useRef<Set<string>>(new Set());
-  const preloadedRef = useRef<SwapProfile | null>(null);
-  const isPreloadingRef = useRef(false);
 
-  // Load the pool of featured profiles - reduced to 30 for faster initial load
-  const { data: pool } = useQuery({
-    queryKey: ["landing", "card-swap", "pool"],
+  // Load the pool of featured profiles - SINGLE REQUEST with all data
+  const { data: pool, isLoading } = useQuery({
+    queryKey: ["landing", "card-swap", "pool-full"],
     queryFn: async () => {
-      const featured = await getFeaturedProfiles(30);
+      // Single API call replaces 60+ separate calls!
+      const featured = await getFeaturedProfilesFull(20);
       return shuffle(featured);
     },
     staleTime: 120_000,
@@ -79,107 +51,63 @@ function useProfileQueue() {
     }
   }, [pool]);
 
-  // State: array of CARD_SLOTS slots, each containing a profile or null
-  const [slots, setSlots] = useState<(SwapProfile | null)[]>(
+  // State: array of CARD_SLOTS slots
+  const [slots, setSlots] = useState<(FeaturedProfileFull | null)[]>(
     Array(CARD_SLOTS).fill(null)
   );
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Get next valid profile from pool (without adding to used yet)
-  const getNextFromPool = useCallback(async (): Promise<SwapProfile | null> => {
+  // Get next valid profile from pool
+  const getNextFromPool = useCallback((): FeaturedProfileFull | null => {
     const pool = poolRef.current;
     if (pool.length === 0) return null;
 
-    // Try up to pool.length candidates
     for (let attempts = 0; attempts < pool.length; attempts++) {
       const candidate = pool[poolIndexRef.current % pool.length];
       poolIndexRef.current++;
 
-      // Skip if already in use
-      if (usedUsernames.current.has(candidate.u)) continue;
-
-      const loaded = await loadProfile(candidate.u);
-      if (loaded) return loaded;
+      if (usedUsernames.current.has(candidate.profile.username)) continue;
+      return candidate;
     }
 
     return null;
   }, []);
 
-  // Preload next profile in background
-  const preloadNext = useCallback(async () => {
-    if (isPreloadingRef.current || preloadedRef.current) return;
-    
-    isPreloadingRef.current = true;
-    try {
-      const next = await getNextFromPool();
-      if (next) {
-        preloadedRef.current = next;
-      }
-    } finally {
-      isPreloadingRef.current = false;
-    }
-  }, [getNextFromPool]);
-
-  // Initial load - fill all slots
+  // Initial load - fill all slots from pool (no additional API calls)
   useEffect(() => {
     if (!pool || pool.length === 0) return;
 
-    const loadInitial = async () => {
-      setIsLoading(true);
-      const loadedSlots: (SwapProfile | null)[] = [];
+    const loadedSlots: (FeaturedProfileFull | null)[] = [];
 
-      for (let i = 0; i < CARD_SLOTS; i++) {
-        const profile = await getNextFromPool();
-        if (profile) {
-          usedUsernames.current.add(profile.profile.username);
-        }
-        loadedSlots.push(profile);
+    for (let i = 0; i < CARD_SLOTS; i++) {
+      const profile = getNextFromPool();
+      if (profile) {
+        usedUsernames.current.add(profile.profile.username);
       }
+      loadedSlots.push(profile);
+    }
 
-      setSlots(loadedSlots);
-      setIsLoading(false);
-      
-      // Start preloading the next profile
-      preloadNext();
-    };
+    setSlots(loadedSlots);
+  }, [pool, getNextFromPool]);
 
-    loadInitial();
-  }, [pool, getNextFromPool, preloadNext]);
-
-  // Replace profile at a specific slot index.
-  // Important: Keep the 5 card DOM nodes stable; only swap the *content* after the card reached the back.
+  // Replace profile at a specific slot index (no API call needed)
   const replaceSlot = useCallback(
     (slotIndex: number) => {
-      void (async () => {
-        // Prefer preloaded profile (loaded during the 5s display time)
-        let next = preloadedRef.current;
-        preloadedRef.current = null;
+      const next = getNextFromPool();
+      if (!next) return;
 
-        if (!next) {
-          // Fallback: load on-demand so we never "stall" visually
-          next = await getNextFromPool();
-        }
+      setSlots((prev) => {
+        const updated = [...prev];
+        const old = updated[slotIndex];
+        if (old) usedUsernames.current.delete(old.profile.username);
 
-        // Always start preloading the next one for the next swap
-        preloadNext();
+        if (usedUsernames.current.has(next.profile.username)) return updated;
 
-        if (!next) return;
-
-        setSlots((prev) => {
-          const updated = [...prev];
-          const old = updated[slotIndex];
-          if (old) usedUsernames.current.delete(old.profile.username);
-
-          // If the candidate is (now) already used, skip to avoid duplicates
-          if (usedUsernames.current.has(next.profile.username)) return updated;
-
-          usedUsernames.current.add(next.profile.username);
-          updated[slotIndex] = next;
-          return updated;
-        });
-      })();
+        usedUsernames.current.add(next.profile.username);
+        updated[slotIndex] = next;
+        return updated;
+      });
     },
-    [getNextFromPool, preloadNext]
+    [getNextFromPool]
   );
 
   const hasProfiles = useMemo(() => slots.some(Boolean), [slots]);
@@ -232,7 +160,7 @@ function ProfilePreviewBackground({ profile }: { profile: PublicProfile }) {
   );
 }
 
-function ProfilePageCardPreview({ data }: { data: SwapProfile }) {
+function ProfilePageCardPreview({ data }: { data: FeaturedProfileFull }) {
   const { profile, badges } = data;
   const accentColor = profile.accent_color || "#8B5CF6";
 
@@ -287,7 +215,6 @@ export function ProfileCardSwapExact() {
 
   const { slots, isLoading, replaceSlot, hasProfiles } = useProfileQueue();
 
-  // CardSwap calls back with the stable child index (slot index).
   const handleCardSwap = useCallback(
     (slotIndex: number) => {
       replaceSlot(slotIndex);
