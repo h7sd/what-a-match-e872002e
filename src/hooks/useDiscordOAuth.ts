@@ -22,9 +22,8 @@ export function useDiscordOAuth() {
   const { toast } = useToast();
 
   const getRedirectUri = useCallback(() => {
-    // Use the Supabase functions URL for the callback
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    return `${supabaseUrl}/functions/v1/discord-oauth-callback`;
+    // Use the proxy URL for the callback to hide Supabase project ID
+    return `https://api.uservault.cc/functions/v1/discord-oauth-callback`;
   }, []);
 
   const initiateDiscordLogin = useCallback(async () => {
