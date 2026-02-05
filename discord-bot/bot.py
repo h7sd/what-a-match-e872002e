@@ -1112,8 +1112,8 @@ class UserVaultPrefixCommands(commands.Cog):
         content = (message.content or "").strip()
         lowered = content.lower()
 
-        # ===== ?help - List all commands =====
-        if lowered == "?help" or lowered == "?commands":
+        # ===== ?helping - List all commands =====
+        if lowered == "?helping" or lowered == "?commands":
             try:
                 result = await self.client.api.get_bot_commands()  # type: ignore[attr-defined]
             except Exception as e:
@@ -1281,7 +1281,7 @@ class UserVaultPrefixCommands(commands.Cog):
             if cmd_part:
                 # Known built-in commands (don't warn for these)
                 known_cmds = {
-                    "help", "commands", "reload", "lookup", "apistats",
+                    "helping", "commands", "reload", "lookup", "apistats",
                     "balance", "daily", "slots", "coin", "rps", "blackjack",
                     "guess", "trivia", "link", "unlink", "profile"
                 }
