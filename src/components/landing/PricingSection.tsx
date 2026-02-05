@@ -7,19 +7,6 @@ import { getPublicStats } from '@/lib/api';
 import { GradientText } from './GradientText';
 import { Magnet } from './Magnet';
 
-function useStats() {
-  return useQuery({
-    queryKey: ['pricing-section-stats'],
-    queryFn: async () => {
-      const stats = await getPublicStats();
-      return {
-        users: stats.totalUsers,
-      };
-    },
-    staleTime: 60000,
-  });
-}
-
 const freeFeatures = [
   'Basic Customization',
   'Profile Analytics',
@@ -40,7 +27,11 @@ const premiumFeatures = [
 export function PricingSection() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
-  const { data: stats } = useStats();
+  const { data: stats } = useQuery({
+    queryKey: ['public-stats'],
+    queryFn: getPublicStats,
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <section ref={ref} className="py-32 px-6 relative overflow-hidden">
@@ -70,7 +61,7 @@ export function PricingSection() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Join{' '}
             <GradientText colors={['#00D9A5', '#00B4D8', '#0077B6', '#00D9A5']}>
-              {(stats?.users || 0).toLocaleString()}+
+              {(stats?.totalUsers || 0).toLocaleString()}+
             </GradientText>
             {' '}users already using UserVault
           </p>

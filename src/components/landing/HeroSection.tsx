@@ -1,33 +1,31 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Play } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { getHeroAvatars, getPublicStats } from '@/lib/api';
 import { BlurText } from './BlurText';
 import { GradientText } from './GradientText';
-import { supabase } from '@/integrations/supabase/client';
 
 export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const [userCount, setUserCount] = useState<number | null>(null);
-  const [heroAvatars, setHeroAvatars] = useState<string[]>([]);
 
-  useEffect(() => {
-    // Batch both requests into a single Promise.all to reduce waterfall
-    Promise.all([
-      supabase.functions.invoke('api-proxy', { body: { action: 'get_stats' } }),
-      supabase.functions.invoke('api-proxy', { body: { action: 'get_hero_avatars' } }),
-    ]).then(([statsRes, avatarsRes]) => {
-      if (statsRes.data?.data?.totalUsers) {
-        setUserCount(statsRes.data.data.totalUsers);
-      }
-      if (Array.isArray(avatarsRes.data?.data)) {
-        setHeroAvatars(avatarsRes.data.data);
-      }
-    }).catch(() => {});
-  }, []);
-  
+  const { data: stats } = useQuery({
+    queryKey: ['public-stats'],
+    queryFn: getPublicStats,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: heroAvatars = [] } = useQuery({
+    queryKey: ['hero-avatars'],
+    queryFn: getHeroAvatars,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const userCount = stats?.totalUsers ?? null;
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start start', 'end start'],

@@ -11,23 +11,6 @@ interface StatItem {
   color: string;
 }
 
-function useStats() {
-  return useQuery({
-    queryKey: ['landing-stats'],
-    queryFn: async () => {
-      // Use secure API proxy
-      const stats = await getPublicStats();
-      return {
-        views: stats.totalViews,
-        users: stats.totalUsers,
-        links: 0, // Not exposed via API for security
-        badges: 0, // Not exposed via API for security
-      };
-    },
-    staleTime: 60000,
-  });
-}
-
 function formatNumber(num: number): string {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -69,17 +52,21 @@ function StatCard({ stat, index }: { stat: StatItem; index: number }) {
 }
 
 export function StatsSection() {
-  const { data: stats } = useStats();
+  const { data: stats } = useQuery({
+    queryKey: ['public-stats'],
+    queryFn: getPublicStats,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const statItems: StatItem[] = [
     {
-      value: formatNumber(stats?.views || 0),
+      value: formatNumber(stats?.totalViews || 0),
       label: 'Profile Views',
       icon: Eye,
       color: '#a855f7',
     },
     {
-      value: formatNumber(stats?.users || 0),
+      value: formatNumber(stats?.totalUsers || 0),
       label: 'Users',
       icon: Users,
       color: '#8b5cf6',
@@ -90,7 +77,7 @@ export function StatsSection() {
     <section className="py-20">
       <FadeIn className="text-center mb-12">
         <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
-          Join <span className="text-primary">{formatNumber(stats?.users || 0)}</span> people using UserVault
+          Join <span className="text-primary">{formatNumber(stats?.totalUsers || 0)}</span> people using UserVault
         </h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           Create feature-rich, customizable and modern link-in-bio pages with stunning effects and live integrations.

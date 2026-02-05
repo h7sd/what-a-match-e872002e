@@ -9,20 +9,6 @@ import { CountUp } from './CountUp';
 import { GradientText } from './GradientText';
 import { Magnet } from './Magnet';
 
-function useStats() {
-  return useQuery({
-    queryKey: ['claim-section-stats'],
-    queryFn: async () => {
-      const stats = await getPublicStats();
-      return {
-        views: stats.totalViews,
-        users: stats.totalUsers,
-      };
-    },
-    staleTime: 60000,
-  });
-}
-
 interface StatCardProps {
   value: number;
   label: string;
@@ -64,8 +50,12 @@ export function ClaimSection() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
   const navigate = useNavigate();
-  const { data: stats } = useStats();
-  
+  const { data: stats } = useQuery({
+    queryKey: ['public-stats'],
+    queryFn: getPublicStats,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [username, setUsername] = useState('');
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
@@ -99,8 +89,8 @@ export function ClaimSection() {
     }
   };
 
-  const userCount = stats?.users || 0;
-  const viewCount = stats?.views || 0;
+  const userCount = stats?.totalUsers || 0;
+  const viewCount = stats?.totalViews || 0;
 
   return (
     <section ref={ref} className="py-32 px-6 relative">

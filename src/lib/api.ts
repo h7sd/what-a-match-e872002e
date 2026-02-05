@@ -42,6 +42,11 @@ export async function getPublicStats(): Promise<PublicStats> {
   return result || { totalViews: 0, totalUsers: 0 };
 }
 
+export async function getHeroAvatars(): Promise<string[]> {
+  const result = await callApi<string[]>('get_hero_avatars');
+  return Array.isArray(result) ? result : [];
+}
+
 // Featured profiles (for sidebar)
 export interface FeaturedProfile {
   u: string; // username

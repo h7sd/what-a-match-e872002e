@@ -55,17 +55,45 @@ Deno.serve(async (req) => {
       frontend_origin = extractOriginFromState(state);
       console.log('GET callback - redirecting to:', frontend_origin);
       
-      // For GET requests, redirect to frontend with the code
+      // IMPORTANT: return an HTML redirect page instead of a 302.
+      // Some proxies (e.g. Worker fetch with redirect: "follow") can swallow 302s and
+      // return the frontend HTML under the proxy origin, which breaks asset loading.
+      const redirectUrl = new URL('/auth', frontend_origin);
       if (code && state) {
-        const redirectUrl = new URL('/auth', frontend_origin);
         redirectUrl.searchParams.set('discord_code', code);
         redirectUrl.searchParams.set('discord_state', state);
-        return Response.redirect(redirectUrl.toString(), 302);
+      } else {
+        redirectUrl.searchParams.set('error', 'No authorization code received');
       }
-      
-      const errorUrl = new URL('/auth', frontend_origin);
-      errorUrl.searchParams.set('error', 'No authorization code received');
-      return Response.redirect(errorUrl.toString(), 302);
+
+      const to = redirectUrl.toString();
+      const html = `<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Discord wird verbunden…</title>
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+  </head>
+  <body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px;">
+    <p>Weiterleitung…</p>
+    <p><a href="${to}">Falls du nicht automatisch weitergeleitet wirst, klicke hier.</a></p>
+    <script>
+      window.location.replace(${JSON.stringify(to)});
+    </script>
+  </body>
+</html>`;
+
+      return new Response(html, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+        },
+      });
       
     } else if (req.method === 'POST') {
       const body = await req.json();
