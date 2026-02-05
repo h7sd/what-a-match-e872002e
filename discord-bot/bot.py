@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-05-crash-v1"
+BOT_CODE_VERSION = "2026-02-05-dice-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -2920,6 +2920,9 @@ async def setup(client: commands.Bot):
     Setup function for loading as a discord.py extension/cog.
     Required when using bot.load_extension('bot') or similar.
     """
+    global _RUNNING_AS_EXTENSION
+    _RUNNING_AS_EXTENSION = True
+
     # ===== CHECK HOST BOT CONFIGURATION =====
     # Prefix commands require the host bot to have:
     # 1. command_prefix set to include "?"
@@ -2996,31 +2999,96 @@ async def setup(client: commands.Bot):
     
     # Start notification polling if not already running
     if not hasattr(client, '_uservault_notification_task') or client._uservault_notification_task is None or client._uservault_notification_task.done():
+        import sys
+        from pathlib import Path as _Path
+
+        def _detect_this_extension_name() -> str:
+            """Best-effort detection of the extension name used by the host bot."""
+            this_file = _Path(__file__).resolve()
+            for ext_name in list(getattr(client, "extensions", {}).keys()):
+                mod = sys.modules.get(ext_name)
+                mod_file = getattr(mod, "__file__", None)
+                if mod_file and _Path(mod_file).resolve() == this_file:
+                    return ext_name
+
+            # Fallback: choose something plausible
+            for ext_name in list(getattr(client, "extensions", {}).keys()):
+                low = ext_name.lower()
+                if "uservault" in low or "api" in low or "bot" in low:
+                    return ext_name
+
+            return "bot"
+
         async def poll_notifications_for_extension():
-            """Poll for command notifications and send to Discord."""
+            """Poll for command notifications and auto-reload extension on changes."""
             await client.wait_until_ready()
-            
+
             channel = client.get_channel(COMMAND_UPDATES_CHANNEL_ID)
             if not channel:
                 print(f"⚠️ [UserVault] Could not find channel {COMMAND_UPDATES_CHANNEL_ID} for command notifications")
                 return
-            
+
             print(f"📢 [UserVault] Sending command updates to #{channel.name}")
-            
+
             while not client.is_closed():
                 try:
                     result = await client.api.get_pending_notifications()
-                    
-                    if result.get("notifications"):
-                        for notif in result["notifications"]:
+                    notifications = result.get("notifications") or []
+                    needs_reload = False
+
+                    if notifications:
+                        for notif in notifications:
                             await send_notification_embed(client, channel, notif)
                             await client.api.mark_notification_processed(notif["id"])
-                            
+                            if notif.get("action") in ("created", "updated"):
+                                needs_reload = True
+
+                    if needs_reload:
+                        ext_name = _detect_this_extension_name()
+                        print(f"🔄 [UserVault] Auto-reloading extension '{ext_name}' due to command update...")
+
+                        try:
+                            await channel.send(
+                                f"🔄 **Auto-Reload**: Neue Commands deployed – reloading Extension `{ext_name}`… (v: `{BOT_CODE_VERSION}`)"
+                            )
+                        except Exception:
+                            pass
+
+                        # Force API client to be recreated on next setup() to avoid stale base URLs/caches
+                        try:
+                            if hasattr(client, "api"):
+                                delattr(client, "api")
+                        except Exception:
+                            pass
+
+                        # Stop this poller before reload to prevent duplicate loops
+                        try:
+                            if hasattr(client, "_uservault_notification_task") and client._uservault_notification_task is not None:
+                                client._uservault_notification_task.cancel()
+                            client._uservault_notification_task = None
+                        except Exception:
+                            pass
+
+                        try:
+                            await client.reload_extension(ext_name)
+                        except Exception as e:
+                            print(f"❌ [UserVault] Auto-reload failed: {e}")
+                            try:
+                                await channel.send(f"❌ Auto-Reload fehlgeschlagen: {e}. Bitte manuell reloaden.")
+                            except Exception:
+                                pass
+
+                        return
+
                 except Exception as e:
                     print(f"❌ [UserVault] Notification poll error: {e}")
-                
+
                 # Poll every 5 seconds
                 await asyncio.sleep(5)
+
+        client._uservault_notification_task = asyncio.create_task(poll_notifications_for_extension())
+        print("📡 [UserVault] Started command notification polling (extension mode)")
+
         
         client._uservault_notification_task = asyncio.create_task(poll_notifications_for_extension())
         print("📡 [UserVault] Started command notification polling (extension mode)")
