@@ -1,88 +1,60 @@
 import { ExternalLink } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 import FuzzyTextEffect from "@/components/profile/FuzzyTextEffect";
-import { SplitText } from "@/components/landing/SplitText";
 
 const MaintenanceOverlay = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-6">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-6 overflow-hidden">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black" />
       
       {/* Content */}
-      <div className="relative z-10 max-w-2xl text-center">
-        {/* Fuzzy 503 */}
-        <div className="mb-8 flex justify-center">
-          <FuzzyTextEffect
-            fontSize="clamp(3rem, 10vw, 6rem)"
-            fontWeight={700}
-            fontFamily="monospace"
-            color="#ffffff"
-            glitchMode={true}
-            glitchInterval={3000}
-            glitchDuration={300}
-            baseIntensity={0.15}
-            hoverIntensity={0.4}
-          >
-            503
-          </FuzzyTextEffect>
+      <div className="relative z-10 max-w-2xl w-full text-center">
+        {/* Fuzzy 503 with extra padding to prevent cutoff */}
+        <div className="mb-6 flex justify-center w-full px-8">
+          <div className="w-full max-w-xs">
+            <FuzzyTextEffect
+              fontSize="clamp(2.5rem, 8vw, 5rem)"
+              fontWeight={700}
+              fontFamily="monospace"
+              color="#ffffff"
+              glitchMode={true}
+              glitchInterval={3000}
+              glitchDuration={300}
+              baseIntensity={0.15}
+              hoverIntensity={0.4}
+              letterSpacing={8}
+            >
+              503
+            </FuzzyTextEffect>
+          </div>
         </div>
 
         {/* Title */}
-        <div className="mb-8">
-          <SplitText
-            text="Database Maintenance in Progress"
-            className="text-xl md:text-2xl font-medium text-white/90 tracking-tight"
-            delay={30}
-            animationFrom={{ opacity: 0, transform: 'translate3d(0,20px,0)' }}
-            animationTo={{ opacity: 1, transform: 'translate3d(0,0,0)' }}
-            threshold={0.1}
-            rootMargin="0px"
-            textAlign="center"
-          />
-        </div>
+        <h1 className="text-xl md:text-2xl font-medium text-white/90 tracking-tight mb-6 animate-fade-in">
+          Database Maintenance in Progress
+        </h1>
         
         {/* Message */}
-        <div className="space-y-4 mb-10">
-          <SplitText
-            text="We are currently restructuring and optimizing our database infrastructure."
-            className="text-base md:text-lg text-white/60 font-light leading-relaxed"
-            delay={20}
-            animationFrom={{ opacity: 0, transform: 'translate3d(0,10px,0)' }}
-            animationTo={{ opacity: 1, transform: 'translate3d(0,0,0)' }}
-            threshold={0.1}
-            rootMargin="0px"
-            textAlign="center"
-          />
+        <div className="space-y-3 mb-10">
+          <p className="text-base md:text-lg text-white/60 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            We are currently restructuring and optimizing our database infrastructure.
+          </p>
           
-          <SplitText
-            text="During this time, some features may be temporarily unavailable or experience minor delays."
-            className="text-sm md:text-base text-white/40 font-light leading-relaxed"
-            delay={15}
-            animationFrom={{ opacity: 0, transform: 'translate3d(0,10px,0)' }}
-            animationTo={{ opacity: 1, transform: 'translate3d(0,0,0)' }}
-            threshold={0.1}
-            rootMargin="0px"
-            textAlign="center"
-          />
+          <p className="text-sm md:text-base text-white/40 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            During this time, some features may be temporarily unavailable or experience minor delays.
+          </p>
           
-          <SplitText
-            text="We appreciate your patience. Normal service will resume shortly."
-            className="text-sm md:text-base text-white/40 font-light leading-relaxed"
-            delay={15}
-            animationFrom={{ opacity: 0, transform: 'translate3d(0,10px,0)' }}
-            animationTo={{ opacity: 1, transform: 'translate3d(0,0,0)' }}
-            threshold={0.1}
-            rootMargin="0px"
-            textAlign="center"
-          />
+          <p className="text-sm md:text-base text-white/40 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            We appreciate your patience. Normal service will resume shortly.
+          </p>
         </div>
         
         {/* Divider */}
-        <div className="w-16 h-px bg-white/10 mx-auto mb-8" />
+        <div className="w-16 h-px bg-white/10 mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.4s' }} />
         
         {/* Buttons */}
-        <div className="flex gap-6 justify-center mb-10">
+        <div className="flex gap-6 justify-center mb-10 animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <a 
             href="https://status.uservault.cc" 
             target="_blank" 
@@ -105,7 +77,7 @@ const MaintenanceOverlay = () => {
         </div>
         
         {/* Team signature */}
-        <p className="text-xs text-white/20 font-light tracking-widest uppercase">
+        <p className="text-xs text-white/20 font-light tracking-widest uppercase animate-fade-in" style={{ animationDelay: '0.6s' }}>
           UserVault Team
         </p>
       </div>
