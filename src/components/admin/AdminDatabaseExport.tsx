@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, Database, FileJson, FileCode } from "lucide-react";
+import { Loader2, Download, Database, FileJson, FileCode, FileType } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ExportSummary {
@@ -18,6 +18,7 @@ export function AdminDatabaseExport() {
   const [summary, setSummary] = useState<ExportSummary | null>(null);
   const [jsonData, setJsonData] = useState<Record<string, any[]> | null>(null);
   const [sqlBackup, setSqlBackup] = useState<string | null>(null);
+  const [schemaBackup, setSchemaBackup] = useState<string | null>(null);
   const { toast } = useToast();
 
   const runExport = async () => {
@@ -25,6 +26,7 @@ export function AdminDatabaseExport() {
     setSummary(null);
     setJsonData(null);
     setSqlBackup(null);
+    setSchemaBackup(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -56,6 +58,7 @@ export function AdminDatabaseExport() {
       setSummary(result.summary);
       setJsonData(result.json_data);
       setSqlBackup(result.sql_backup);
+      setSchemaBackup(result.schema_backup);
 
       toast({
         title: "Export erfolgreich!",
@@ -79,7 +82,7 @@ export function AdminDatabaseExport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `uservault-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `uservault-data-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -90,7 +93,18 @@ export function AdminDatabaseExport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `uservault-backup-${new Date().toISOString().split("T")[0]}.sql`;
+    a.download = `uservault-data-${new Date().toISOString().split("T")[0]}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadSchema = () => {
+    if (!schemaBackup) return;
+    const blob = new Blob([schemaBackup], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `uservault-schema-${new Date().toISOString().split("T")[0]}.sql`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -136,30 +150,45 @@ export function AdminDatabaseExport() {
               </div>
               <div className="bg-card/50 rounded-lg p-3 border border-border/50">
                 <p className="text-xs text-muted-foreground">Datensätze</p>
-                <p className="text-lg font-bold text-green-500">{summary.total_rows.toLocaleString()}</p>
+                <p className="text-lg font-bold text-primary">{summary.total_rows.toLocaleString()}</p>
               </div>
             </div>
 
             {/* Download Buttons */}
-            <div className="flex gap-2">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Downloads:</p>
+              
+              {/* Schema Download - highlighted as first step */}
               <Button
-                onClick={downloadJson}
-                variant="outline"
-                className="flex-1"
-                disabled={!jsonData}
+                onClick={downloadSchema}
+                variant="default"
+                className="w-full bg-warning hover:bg-warning/80 text-warning-foreground"
+                disabled={!schemaBackup}
               >
-                <FileJson className="w-4 h-4 mr-2" />
-                JSON Download
+                <FileType className="w-4 h-4 mr-2" />
+                1. Schema Download (ZUERST ausführen!)
               </Button>
-              <Button
-                onClick={downloadSql}
-                variant="outline"
-                className="flex-1"
-                disabled={!sqlBackup}
-              >
-                <FileCode className="w-4 h-4 mr-2" />
-                SQL Download
-              </Button>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={downloadSql}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={!sqlBackup}
+                >
+                  <FileCode className="w-4 h-4 mr-2" />
+                  2. Daten (SQL)
+                </Button>
+                <Button
+                  onClick={downloadJson}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={!jsonData}
+                >
+                  <FileJson className="w-4 h-4 mr-2" />
+                  JSON Backup
+                </Button>
+              </div>
             </div>
 
             {/* Table Breakdown */}
@@ -194,10 +223,8 @@ export function AdminDatabaseExport() {
             <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
               <p className="text-xs font-medium text-primary mb-2">Migration Steps:</p>
               <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Neues Supabase-Projekt erstellen</li>
-                <li>Alle Migrations aus <code>supabase/migrations/</code> ausführen</li>
-                <li>SQL-Backup importieren</li>
-                <li>Storage-Buckets erstellen (avatars, backgrounds, etc.)</li>
+                <li><strong>Schema-SQL</strong> zuerst im pgAdmin Query Tool ausführen</li>
+                <li><strong>Daten-SQL</strong> danach ausführen</li>
                 <li>Edge Functions deployen</li>
                 <li><code>.env</code> mit neuen Credentials aktualisieren</li>
               </ol>
