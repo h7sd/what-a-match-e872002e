@@ -9,7 +9,7 @@ const MaintenanceOverlay = () => {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Liquid Chrome Background - Red/Black */}
       <LiquidChrome
-        baseColor={[0.6, 0.0, 0.0]}
+        baseColor={[0.3, 0.0, 0.0]}
         speed={0.3}
         amplitude={0.5}
         frequencyX={3}
