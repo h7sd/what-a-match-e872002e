@@ -1,10 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText as GSAPSplitTextPlugin } from 'gsap/SplitText';
 import { useGSAP } from '@gsap/react';
 
-gsap.registerPlugin(ScrollTrigger, GSAPSplitTextPlugin, useGSAP);
+gsap.registerPlugin(GSAPSplitTextPlugin, useGSAP);
 
 export interface GSAPSplitTextProps {
   text: string;
@@ -20,6 +19,8 @@ export interface GSAPSplitTextProps {
   tag?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'span' | 'div';
   textAlign?: React.CSSProperties['textAlign'];
   onLetterAnimationComplete?: () => void;
+  /** Compatibility with the ReactBits example API; no visual effect */
+  showCallback?: boolean;
 }
 
 const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
@@ -35,7 +36,8 @@ const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
   rootMargin = '-100px',
   textAlign = 'center',
   tag = 'p',
-  onLetterAnimationComplete
+  onLetterAnimationComplete,
+  showCallback,
 }) => {
   const ref = useRef<HTMLElement>(null);
   const animationCompletedRef = useRef(false);
@@ -74,17 +76,6 @@ const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
         el._rbsplitInstance = undefined;
       }
 
-      const startPct = (1 - threshold) * 100;
-      const marginMatch = /^(-?\d+(?:\.\d+)?)(px|em|rem|%)?$/.exec(rootMargin);
-      const marginValue = marginMatch ? parseFloat(marginMatch[1]) : 0;
-      const marginUnit = marginMatch ? marginMatch[2] || 'px' : 'px';
-      const sign =
-        marginValue === 0
-          ? ''
-          : marginValue < 0
-            ? `-=${Math.abs(marginValue)}${marginUnit}`
-            : `+=${marginValue}${marginUnit}`;
-      const start = `top ${startPct}%${sign}`;
       let targets: Element[] = [];
       const assignTargets = (self: GSAPSplitTextPlugin) => {
         if (splitType.includes('chars') && self.chars.length) targets = self.chars;
@@ -92,6 +83,8 @@ const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
         if (!targets.length && splitType.includes('lines') && self.lines.length) targets = self.lines;
         if (!targets.length) targets = self.chars || self.words || self.lines;
       };
+
+      // For fixed overlays we want the animation to run immediately (no ScrollTrigger)
       const splitInstance = new GSAPSplitTextPlugin(el, {
         type: splitType,
         smartWrap: true,
@@ -102,6 +95,12 @@ const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
         reduceWhiteSpace: false,
         onSplit: (self: GSAPSplitTextPlugin) => {
           assignTargets(self);
+
+          // Prevent shrink-to-fit wrapping where every char/word becomes its own line
+          gsap.set(self.chars, { display: 'inline-block' });
+          gsap.set(self.words, { display: 'inline-block' });
+          gsap.set(self.lines, { display: 'block' });
+
           return gsap.fromTo(
             targets,
             { ...from },
@@ -110,28 +109,23 @@ const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
               duration,
               ease,
               stagger: delay / 1000,
-              scrollTrigger: {
-                trigger: el,
-                start,
-                once: true,
-                fastScrollEnd: true,
-                anticipatePin: 0.4
-              },
               onComplete: () => {
                 animationCompletedRef.current = true;
+                if (showCallback) {
+                  // eslint-disable-next-line no-console
+                  console.log('All letters have animated!');
+                }
                 onCompleteRef.current?.();
               },
               willChange: 'transform, opacity',
-              force3D: true
+              force3D: true,
             }
           );
-        }
+        },
       });
+
       el._rbsplitInstance = splitInstance;
       return () => {
-        ScrollTrigger.getAll().forEach(st => {
-          if (st.trigger === el) st.kill();
-        });
         try {
           splitInstance.revert();
         } catch (_) {}
@@ -158,10 +152,11 @@ const GSAPSplitText: React.FC<GSAPSplitTextProps> = ({
   const style: React.CSSProperties = {
     textAlign,
     overflow: 'hidden',
-    display: 'inline-block',
+    display: 'block',
+    width: '100%',
     whiteSpace: 'normal',
     wordWrap: 'break-word',
-    willChange: 'transform, opacity'
+    willChange: 'transform, opacity',
   };
   
   const Tag = tag as React.ElementType;
