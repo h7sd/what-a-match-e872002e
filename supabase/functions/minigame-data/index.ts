@@ -796,8 +796,213 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ============ Server Info (Stats) ============
+      case "serverinfo": {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // Get total users
+        const { count: totalUsers } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true });
+        
+        // Get linked users (with Discord)
+        const { count: linkedUsers } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .not("discord_user_id", "is", null);
+        
+        // Get premium users
+        const { count: premiumUsers } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("is_premium", true);
+        
+        // Get total UC in circulation
+        const { data: balanceData } = await supabase
+          .from("user_balances")
+          .select("balance");
+        
+        let totalUC = 0;
+        if (balanceData) {
+          for (const b of balanceData) {
+            const bal = typeof b.balance === "string" ? parseFloat(b.balance) : (b.balance || 0);
+            totalUC += Math.floor(bal);
+          }
+        }
+        
+        // Get total games played
+        const { count: gamesPlayed } = await supabase
+          .from("minigame_stats")
+          .select("*", { count: "exact", head: true });
+        
+        // Get banned users count
+        const { count: bannedUsers } = await supabase
+          .from("banned_users")
+          .select("*", { count: "exact", head: true });
+        
+        // Get bot commands count
+        const { count: commandCount } = await supabase
+          .from("bot_commands")
+          .select("*", { count: "exact", head: true })
+          .eq("is_enabled", true);
+        
+        responseData = {
+          success: true,
+          total_users: totalUsers || 0,
+          linked_users: linkedUsers || 0,
+          premium_users: premiumUsers || 0,
+          total_uc: totalUC,
+          games_played: gamesPlayed || 0,
+          banned_users: bannedUsers || 0,
+          command_count: commandCount || 0,
+          uptime: "Online",
+          version: "2.1.0",
+        };
+        break;
+      }
+
+      // ============ User Info ============
+      case "userinfo": {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        const discordId = params.discord_user_id || params.discordUserId;
+        const targetId = params.target_user_id || params.targetUserId || discordId;
+        
+        if (!targetId) {
+          responseData = { error: "target_user_id is required" };
+          break;
+        }
+        
+        // Normalize Discord ID (remove mentions)
+        const normalizedId = targetId.toString().replace(/[^\d]/g, "");
+        
+        // Try to find profile by Discord ID first
+        let profile = null;
+        let profileError = null;
+        
+        const { data: profileByDiscord, error: discordErr } = await supabase
+          .from("profiles")
+          .select("id, user_id, username, display_name, bio, views_count, likes_count, dislikes_count, is_premium, avatar_url, created_at, uid_number, discord_user_id")
+          .eq("discord_user_id", normalizedId)
+          .single();
+        
+        if (profileByDiscord) {
+          profile = profileByDiscord;
+        } else {
+          // Try by username
+          const { data: profileByUsername, error: usernameErr } = await supabase
+            .from("profiles")
+            .select("id, user_id, username, display_name, bio, views_count, likes_count, dislikes_count, is_premium, avatar_url, created_at, uid_number, discord_user_id")
+            .or(`username.ilike.${targetId},alias_username.ilike.${targetId}`)
+            .single();
+          
+          if (profileByUsername) {
+            profile = profileByUsername;
+          } else {
+            profileError = discordErr || usernameErr;
+          }
+        }
+        
+        if (!profile) {
+          responseData = { error: "User not found", linked: false };
+          break;
+        }
+        
+        // Get balance
+        const { data: balanceData } = await supabase
+          .from("user_balances")
+          .select("balance, total_earned, total_spent")
+          .eq("user_id", profile.user_id)
+          .single();
+        
+        const balance = balanceData?.balance || 0;
+        const totalEarned = balanceData?.total_earned || 0;
+        const totalSpent = balanceData?.total_spent || 0;
+        
+        // Get game stats
+        const { data: gameStats } = await supabase
+          .from("minigame_stats")
+          .select("game_type, games_played, games_won, total_earned, total_lost")
+          .eq("user_id", profile.user_id);
+        
+        let totalGames = 0;
+        let totalWins = 0;
+        if (gameStats) {
+          for (const stat of gameStats) {
+            totalGames += stat.games_played || 0;
+            totalWins += stat.games_won || 0;
+          }
+        }
+        
+        // Get badges
+        let badges: { name: string; color: string | null }[] = [];
+        try {
+          const { data: userBadges } = await supabase
+            .from("user_badges")
+            .select("badge_id, custom_color, is_enabled")
+            .eq("user_id", profile.user_id)
+            .eq("is_enabled", true)
+            .limit(10);
+          
+          if (userBadges && userBadges.length > 0) {
+            const badgeIds = userBadges.map((ub: { badge_id: string }) => ub.badge_id);
+            const { data: globalBadges } = await supabase
+              .from("global_badges")
+              .select("id, name, color")
+              .in("id", badgeIds);
+            
+            if (globalBadges) {
+              const badgeMap = new Map(globalBadges.map((b: { id: string; name: string; color: string | null }) => [b.id, b]));
+              badges = userBadges.map((ub: { badge_id: string; custom_color: string | null }) => {
+                const gb = badgeMap.get(ub.badge_id) as { name: string; color: string | null } | undefined;
+                return gb ? { name: gb.name, color: ub.custom_color || gb.color } : null;
+              }).filter(Boolean) as { name: string; color: string | null }[];
+            }
+          }
+        } catch {
+          // Ignore badge fetch errors
+        }
+        
+        // Check if banned
+        const { data: banData } = await supabase
+          .from("banned_users")
+          .select("banned_at, reason")
+          .eq("user_id", profile.user_id)
+          .single();
+        
+        responseData = {
+          success: true,
+          linked: !!profile.discord_user_id,
+          username: profile.username,
+          display_name: profile.display_name,
+          uid: profile.uid_number,
+          bio: profile.bio,
+          avatar_url: profile.avatar_url,
+          is_premium: profile.is_premium || false,
+          balance: typeof balance === "string" ? parseInt(balance) : balance,
+          total_earned: typeof totalEarned === "string" ? parseInt(totalEarned) : totalEarned,
+          total_spent: typeof totalSpent === "string" ? parseInt(totalSpent) : totalSpent,
+          views_count: profile.views_count || 0,
+          likes_count: profile.likes_count || 0,
+          dislikes_count: profile.dislikes_count || 0,
+          games_played: totalGames,
+          games_won: totalWins,
+          win_rate: totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0,
+          badges,
+          is_banned: !!banData,
+          ban_reason: banData?.reason || null,
+          created_at: profile.created_at,
+          discord_user_id: profile.discord_user_id,
+        };
+        break;
+      }
+
       default:
-        responseData = { error: "Unknown action" };
+        responseData = { error: `Unknown action: ${action}` };
     }
 
     return new Response(JSON.stringify(responseData), {
