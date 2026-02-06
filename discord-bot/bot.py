@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-06-admin-cmds-webhook-v1"
+BOT_CODE_VERSION = "2026-02-06-hump-game-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -3094,7 +3094,131 @@ class UserVaultPrefixCommands(commands.Cog):
             await message.reply(embed=embed)
             return
 
-        if lowered.startswith("?lookup"):
+        # ── ?hump ── Camel Race Game 🐫
+        if lowered.startswith("?hump"):
+            parts = content.split()
+            bet = 50  # Default bet
+            
+            if len(parts) >= 2 and parts[1].isdigit():
+                bet = int(parts[1])
+            
+            if bet < 10:
+                await message.reply("❌ Minimum bet is 10 UC!")
+                return
+            
+            if bet > 10000:
+                await message.reply("❌ Maximum bet is 10,000 UC!")
+                return
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
+            if current_balance < bet:
+                await message.reply(f"❌ Not enough UC! You have **{current_balance:,} UC**.")
+                return
+            
+            # 5 Camels racing
+            camels = ["🐫", "🐪", "🦙", "🐎", "🦌"]
+            camel_names = ["Sahara Sam", "Desert Duke", "Llama Larry", "Speedy Steve", "Antler Andy"]
+            
+            # Player picks a random camel
+            player_camel = random.randint(0, 4)
+            
+            # Race animation frames
+            race_length = 15
+            positions = [0, 0, 0, 0, 0]
+            
+            # Create initial embed
+            embed = discord.Embed(
+                title="🏁 Camel Race - HUMP!",
+                description=f"**Your camel:** {camels[player_camel]} {camel_names[player_camel]}\n**Bet:** {bet:,} UC\n\n🏁 Race starting...",
+                color=discord.Color.gold()
+            )
+            race_msg = await message.reply(embed=embed)
+            
+            # Run the race with animation
+            winner = None
+            frame_count = 0
+            max_frames = 8
+            
+            while winner is None and frame_count < max_frames:
+                frame_count += 1
+                await asyncio.sleep(0.8)
+                
+                # Move camels randomly
+                for i in range(5):
+                    positions[i] += random.randint(1, 4)
+                    if positions[i] >= race_length:
+                        positions[i] = race_length
+                        if winner is None:
+                            winner = i
+                
+                # Build race track display
+                track_display = ""
+                for i in range(5):
+                    track = "▪️" * positions[i] + camels[i] + "▫️" * (race_length - positions[i]) + " 🏁"
+                    track_display += f"{track}\n"
+                
+                embed.description = (
+                    f"**Your camel:** {camels[player_camel]} {camel_names[player_camel]}\n"
+                    f"**Bet:** {bet:,} UC\n\n"
+                    f"```\n{track_display}```"
+                )
+                
+                try:
+                    await race_msg.edit(embed=embed)
+                except Exception:
+                    pass
+            
+            # If no winner yet, force finish
+            if winner is None:
+                winner = max(range(5), key=lambda x: positions[x])
+            
+            # Calculate result
+            won = winner == player_camel
+            
+            if won:
+                # Win multiplier based on odds (5 camels = ~4x feels fair, but 2.5x for balance)
+                multiplier = 2.5
+                payout = int(bet * multiplier)
+                net = payout - bet
+                
+                embed.color = discord.Color.green()
+                embed.add_field(
+                    name="🎉 YOU WON!",
+                    value=f"Your camel {camels[player_camel]} **{camel_names[player_camel]}** crossed first!\n\n"
+                          f"**Payout:** +{net:,} UC (x{multiplier})",
+                    inline=False
+                )
+                
+                # Award winnings
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), net, "hump", f"Hump race win (x{multiplier})"
+                )
+            else:
+                embed.color = discord.Color.red()
+                embed.add_field(
+                    name="💀 YOU LOST!",
+                    value=f"Winner: {camels[winner]} **{camel_names[winner]}**\n"
+                          f"Your camel {camels[player_camel]} didn't make it!\n\n"
+                          f"**Lost:** -{bet:,} UC",
+                    inline=False
+                )
+                
+                # Deduct loss
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), -bet, "hump", "Hump race loss"
+                )
+            
+            embed.set_footer(text="🐫 HUMP! - Camel Racing")
+            
+            try:
+                await race_msg.edit(embed=embed)
+            except Exception:
+                await message.reply(embed=embed)
+            return
+
+
             parts = content.split(maxsplit=1)
             if len(parts) < 2 or not parts[1].strip():
                 await message.reply("❌ Usage: `?lookup <username>` or `?lookup #UID`")
