@@ -13,3 +13,5 @@ const projectId = (import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefine
 export const PUBLIC_API_URL = projectId && /^[a-z0-9]+$/i.test(projectId)
   ? `https://${projectId}.supabase.co`
   : (import.meta.env.VITE_SUPABASE_URL as string);
+
+

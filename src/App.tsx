@@ -1,30 +1,313 @@
-export default function App() {
+import { Suspense, lazy, useState, useEffect } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import Index from "./pages/Index";
+import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
+import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
+import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
+import { GlobalAdminNotification } from "@/components/notifications/GlobalAdminNotification";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MaintenanceOverlay from "@/components/landing/MaintenanceOverlay";
+import { supabase } from "@/integrations/supabase/client";
+
+// Maintenance mode flag - set to false to disable
+const MAINTENANCE_MODE = true;
+
+const Auth = lazy(() => import("./pages/Auth"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Imprint = lazy(() => import("./pages/Imprint"));
+const ShareRedirect = lazy(() => import("./pages/ShareRedirect"));
+const Status = lazy(() => import("./pages/Status"));
+const AliasRespond = lazy(() => import("./pages/AliasRespond"));
+const Premium = lazy(() => import("./pages/Premium"));
+const Marketplace = lazy(() => import("./pages/Marketplace"));
+const PublishBookmarklet = lazy(() => import("./pages/PublishBookmarklet"));
+const SecretDatabaseViewer = lazy(() => import("./pages/SecretDatabaseViewer"));
+const DiscordOAuthCallback = lazy(() => import("./pages/DiscordOAuthCallback"));
+
+const queryClient = new QueryClient();
+
+function RouteFallback() {
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "hsl(200 25% 3%)",
-      color: "hsl(0 0% 98%)",
-      fontFamily: "Inter, system-ui, sans-serif",
-    }}>
-      <div style={{ textAlign: "center", maxWidth: 500, padding: 32 }}>
-        <h1 style={{ fontSize: 48, fontWeight: 700, marginBottom: 16, background: "linear-gradient(135deg, hsl(160 85% 45%), hsl(195 90% 55%))", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          What A Match
-        </h1>
-        <p style={{ fontSize: 18, color: "hsl(195 15% 55%)", marginBottom: 32, lineHeight: 1.6 }}>
-          Find your perfect match and connect with people who share your interests.
-        </p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-          <a href="/dashboard" style={{ padding: "12px 24px", borderRadius: 12, background: "hsl(160 85% 45%)", color: "white", textDecoration: "none", fontWeight: 600 }}>
-            Get Started
-          </a>
-          <a href="/auth" style={{ padding: "12px 24px", borderRadius: 12, border: "1px solid hsl(195 20% 15%)", color: "hsl(0 0% 98%)", textDecoration: "none", fontWeight: 600 }}>
-            Sign In
-          </a>
-        </div>
-      </div>
+    <div className="min-h-[60vh] flex items-center justify-center bg-background text-muted-foreground">
+      Loading…
     </div>
   );
 }
+
+// Component that conditionally renders the popup based on route
+function GlobalPopups() {
+  const location = useLocation();
+
+  // List of paths where the popup should NOT appear (profile pages)
+  const isProfilePage =
+    location.pathname.match(/^\/[^\/]+$/) &&
+    ![
+      "/",
+      "/auth",
+      "/dashboard",
+      "/terms",
+      "/privacy",
+      "/imprint",
+      "/status",
+      "/alias-respond",
+    ].includes(location.pathname) &&
+    !location.pathname.startsWith("/s/");
+
+  if (isProfilePage) {
+    return null;
+  }
+
+  return <ClaimedUsernamePopup />;
+}
+
+function EventBannerGate() {
+  const location = useLocation();
+  const isMobile = useIsMobile();
+
+  // On landing page, events should only appear via the header dropdown.
+  const isLanding = location.pathname === "/";
+  if (isLanding) return null;
+
+  const isDashboard = location.pathname.startsWith("/dashboard");
+  const isProfilePage =
+    location.pathname.match(/^\/[^\/]+$/) &&
+    ![
+      "/",
+      "/auth",
+      "/dashboard",
+      "/terms",
+      "/privacy",
+      "/imprint",
+      "/status",
+      "/alias-respond",
+      "/premium",
+    ].includes(location.pathname) &&
+    !location.pathname.startsWith("/s/");
+
+  // Reserve space below fixed/sticky headers so banners never overlap UI.
+  const top = (() => {
+    if (isDashboard) return "8px";
+    if (isProfilePage) return "8px";
+    return "80px";
+  })();
+
+  // Keep isMobile read to preserve any future conditional logic (avoid lint churn)
+  void isMobile;
+
+  return (
+    <div style={{ ["--event-banner-top" as any]: top }}>
+      <EventAnnouncementBanner />
+    </div>
+  );
+}
+
+// Maintenance wrapper that checks admin status
+function MaintenanceRouter() {
+  const { user, loading: authLoading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        setChecking(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
+
+        if (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data === true);
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        setIsAdmin(false);
+      }
+      setChecking(false);
+    };
+
+    if (!authLoading) {
+      checkAdmin();
+    }
+  }, [user, authLoading]);
+
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/auth';
+
+  // Still loading auth or admin check
+  if (authLoading || checking) {
+    return (
+      <>
+        <Toaster />
+        <Sonner />
+        {/* Don't show overlay on auth page so admins can log in */}
+        {!isAuthPage && <MaintenanceOverlay />}
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/status" element={<Status />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/imprint" element={<Imprint />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </>
+    );
+  }
+
+  // Admin bypasses maintenance - show full app
+  if (isAdmin) {
+    return (
+      <>
+        <Toaster />
+        <Sonner />
+        <WelcomeBackGate />
+        <GlobalPopups />
+        <GlobalAdminNotification />
+        <EventBannerGate />
+
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/functions/v1/discord-oauth-callback"
+              element={<DiscordOAuthCallback />}
+            />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/premium" element={<Premium />} />
+            <Route path="/admin/publish" element={<PublishBookmarklet />} />
+            <Route
+              path="/x7k9m2p4q8r1s5t3u6v0w2y4z7a9b1c3d5e7f0g2h4i6j8k0l2m4n6o8p0q2r4s6t8u0v2w4x6y8z0a1b3c5d7e9f1g3h5i7j9k1l3m5n7o9p1q3r5s7t9u1v3w5x7y9z"
+              element={<SecretDatabaseViewer />}
+            />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/imprint" element={<Imprint />} />
+            <Route path="/status" element={<Status />} />
+            <Route path="/alias-respond" element={<AliasRespond />} />
+            <Route path="/s/:username" element={<ShareRedirect />} />
+            <Route path="/:username" element={<UserProfile />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </>
+    );
+  }
+
+  // Non-admin during maintenance - show limited routes with overlay
+  return (
+    <>
+      <Toaster />
+      <Sonner />
+      {/* Don't show overlay on auth page so admins can log in */}
+      {!isAuthPage && <MaintenanceOverlay />}
+      
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          {/* Landing page still renders (behind overlay) */}
+          <Route path="/" element={<Index />} />
+          {/* Auth page accessible so admins can log in */}
+          <Route path="/auth" element={<Auth />} />
+          {/* Redirect all protected routes to landing */}
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
+          <Route path="/marketplace" element={<Navigate to="/" replace />} />
+          <Route path="/premium" element={<Navigate to="/" replace />} />
+          {/* Status page stays accessible */}
+          <Route path="/status" element={<Status />} />
+          {/* Legal pages stay accessible */}
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/imprint" element={<Imprint />} />
+          {/* Everything else redirects to landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </>
+  );
+}
+
+const App = () => {
+  // During maintenance, use special router that checks admin status
+  if (MAINTENANCE_MODE) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <TooltipProvider>
+              <MaintenanceRouter />
+            </TooltipProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+  }
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <WelcomeBackGate />
+            <GlobalPopups />
+            <GlobalAdminNotification />
+            {/* Global Event Banner (also visible on profile pages) */}
+            <EventBannerGate />
+
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                {/* Fallback: if the Discord redirect hits the SPA instead of the backend proxy */}
+                <Route
+                  path="/functions/v1/discord-oauth-callback"
+                  element={<DiscordOAuthCallback />}
+                />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/premium" element={<Premium />} />
+                <Route path="/admin/publish" element={<PublishBookmarklet />} />
+                <Route
+                  path="/x7k9m2p4q8r1s5t3u6v0w2y4z7a9b1c3d5e7f0g2h4i6j8k0l2m4n6o8p0q2r4s6t8u0v2w4x6y8z0a1b3c5d7e9f1g3h5i7j9k1l3m5n7o9p1q3r5s7t9u1v3w5x7y9z"
+                  element={<SecretDatabaseViewer />}
+                />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/imprint" element={<Imprint />} />
+                <Route path="/status" element={<Status />} />
+                <Route path="/alias-respond" element={<AliasRespond />} />
+                <Route path="/s/:username" element={<ShareRedirect />} />
+                <Route path="/:username" element={<UserProfile />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+};
+
+export default App;
