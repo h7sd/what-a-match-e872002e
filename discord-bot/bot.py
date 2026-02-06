@@ -2477,7 +2477,13 @@ class UserVaultPrefixCommands(commands.Cog):
             try:
                 await self.client.close()
             finally:
-                os._exit(0)
+                # Restart the bot process by re-executing the script
+                import sys
+                python = sys.executable
+                script = os.path.abspath(sys.argv[0])
+                args = sys.argv[1:]
+                print(f"🔄 Restarting: {python} {script} {' '.join(args)}")
+                os.execv(python, [python, script] + args)
 
         # ===== ?ping - Simple connectivity test =====
         if lowered == "?ping":
