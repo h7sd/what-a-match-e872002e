@@ -1763,8 +1763,10 @@ class UserVaultPrefixCommands(commands.Cog):
                 await ctx.send(f"❌ Command `{command_name}` not found. Use `?help` to see all commands.")
                 return
             
+            cmd_name = cmd.get('name', 'unknown')
+            cmd_usage = cmd.get('usage', f'?{cmd_name}')
             embed = discord.Embed(
-                title=f"📖 Command: {cmd.get('usage', f'?{cmd.get(\"name\", \"unknown\")}')}",
+                title=f"📖 Command: {cmd_usage}",
                 description=cmd.get("description", "No description available."),
                 color=discord.Color.blurple()
             )
