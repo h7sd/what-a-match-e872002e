@@ -5,43 +5,44 @@ const MaintenanceOverlay = () => {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-6">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+      <div className="absolute inset-0 bg-black/95" />
       
       {/* Content */}
-      <div className="relative z-10 max-w-lg text-center">
-        {/* Minimal indicator */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-sm text-white/60 font-medium tracking-wide">Maintenance</span>
+      <div className="relative z-10 max-w-md text-center">
+        {/* Pulse dot */}
+        <div className="flex justify-center mb-10">
+          <span className="w-3 h-3 rounded-full bg-amber-400 animate-pulse" />
         </div>
         
         {/* Message */}
-        <p className="text-xl md:text-2xl text-white/90 font-light leading-relaxed mb-4">
-          We are currently restructuring and optimizing our database infrastructure.
+        <p className="text-lg text-white/80 font-light leading-relaxed mb-3">
+          We're optimizing our infrastructure.
         </p>
-        <p className="text-base text-white/50 font-light leading-relaxed mb-10">
-          Some features may be temporarily unavailable. Normal service will resume shortly.
+        <p className="text-sm text-white/40 font-light mb-12">
+          Back shortly.
         </p>
         
         {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex gap-3 justify-center">
           <a 
             href="https://status.uservault.cc" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:text-white transition-colors"
           >
-            <ExternalLink className="w-4 h-4" />
-            Status Page
+            <ExternalLink className="w-3.5 h-3.5" />
+            Status
           </a>
+          
+          <span className="text-white/20">·</span>
           
           <a 
             href="https://discord.com/channels/1464309088736252097/1464321025532629150" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/15 transition-colors border border-white/10"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:text-white transition-colors"
           >
-            <FaDiscord className="w-4 h-4" />
+            <FaDiscord className="w-3.5 h-3.5" />
             Discord
           </a>
         </div>
