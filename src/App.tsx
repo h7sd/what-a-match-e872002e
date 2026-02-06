@@ -148,16 +148,21 @@ function MaintenanceRouter() {
     }
   }, [user, authLoading]);
 
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/auth';
+
   // Still loading auth or admin check
   if (authLoading || checking) {
     return (
       <>
         <Toaster />
         <Sonner />
-        <MaintenanceOverlay />
+        {/* Don't show overlay on auth page so admins can log in */}
+        {!isAuthPage && <MaintenanceOverlay />}
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/status" element={<Status />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
@@ -215,7 +220,8 @@ function MaintenanceRouter() {
     <>
       <Toaster />
       <Sonner />
-      <MaintenanceOverlay />
+      {/* Don't show overlay on auth page so admins can log in */}
+      {!isAuthPage && <MaintenanceOverlay />}
       
       <Suspense fallback={<RouteFallback />}>
         <Routes>
