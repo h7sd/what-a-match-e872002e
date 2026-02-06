@@ -55,17 +55,17 @@ serve(async (req) => {
       });
     }
 
-    // Export all tables
-    const tables = [
-      "global_badges",
-      "profiles",
-      "user_roles",
-      "user_badges",
-      "user_balances",
-      "user_streaks",
-      "social_links",
-      "badges",
-      "friend_badges",
+    // Order matters - parent tables first (used for both export and schema generation)
+    const orderedTables = [
+      "global_badges",      // Base badges (referenced by user_badges)
+      "profiles",           // User profiles (referenced by many)
+      "user_roles",         // User permissions
+      "user_badges",        // Badge assignments
+      "user_balances",      // Coin balances
+      "user_streaks",       // Login streaks
+      "social_links",       // Profile links
+      "badges",             // Custom user badges
+      "friend_badges",      // Friend-given badges
       "discord_integrations",
       "discord_presence",
       "purchases",
@@ -90,6 +90,9 @@ serve(async (req) => {
       "live_chat_messages",
       "user_notifications",
     ];
+
+    // Use orderedTables as the canonical list
+    const tables = orderedTables;
 
     const exportData: Record<string, any[]> = {};
     const errors: string[] = [];
@@ -279,41 +282,7 @@ serve(async (req) => {
 
 `;
 
-    // Order matters - parent tables first
-    const orderedTables = [
-      "global_badges",      // Base badges (referenced by user_badges)
-      "profiles",           // User profiles (referenced by many)
-      "user_roles",         // User permissions
-      "user_badges",        // Badge assignments
-      "user_balances",      // Coin balances
-      "user_streaks",       // Login streaks
-      "social_links",       // Profile links
-      "badges",             // Custom user badges
-      "friend_badges",      // Friend-given badges
-      "discord_integrations",
-      "discord_presence",
-      "purchases",
-      "promo_codes",
-      "promo_code_uses",
-      "bot_commands",
-      "bot_command_notifications",
-      "daily_rewards",
-      "minigame_stats",
-      "badge_events",
-      "badge_steals",
-      "badge_requests",
-      "admin_webhooks",
-      "admin_notifications",
-      "admin_discord_roles",
-      "alias_requests",
-      "marketplace_items",
-      "marketplace_purchases",
-      "support_tickets",
-      "support_messages",
-      "live_chat_conversations",
-      "live_chat_messages",
-      "user_notifications",
-    ];
+    // Use the orderedTables defined at the top
 
     for (const table of orderedTables) {
       if (exportData[table]) {
