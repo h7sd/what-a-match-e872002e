@@ -43,12 +43,17 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-05-plinko-v2"
+BOT_CODE_VERSION = "2026-02-05-dynamic-commands-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
 # Flag to check if we're being loaded as extension vs standalone
 _RUNNING_AS_EXTENSION = False
+
+# Cache for dynamically loaded commands from API
+_CACHED_BOT_COMMANDS: Dict[str, Any] = {}
+_COMMANDS_LAST_FETCHED: float = 0
+_COMMANDS_CACHE_TTL: int = 60  # Refresh commands every 60 seconds
 
 # IMPORTANT:
 # If you run this bot against a different backend (e.g. Lovable Cloud),
@@ -489,6 +494,69 @@ def _ensure_uservault_client_state(client: commands.Bot):
     if not hasattr(client, "active_guess_games"):
         client.active_guess_games = {}
     return client
+
+
+async def fetch_commands_from_api(api: UserVaultAPI, force: bool = False) -> Dict[str, Any]:
+    """
+    Fetch all commands from the API and cache them.
+    
+    This is the CENTRAL function for loading commands dynamically.
+    Commands are cached for _COMMANDS_CACHE_TTL seconds to avoid excessive API calls.
+    Use force=True to bypass the cache (e.g., after ?refresh).
+    """
+    global _CACHED_BOT_COMMANDS, _COMMANDS_LAST_FETCHED
+    
+    now = time.time()
+    
+    # Return cached commands if still valid
+    if not force and _CACHED_BOT_COMMANDS and (now - _COMMANDS_LAST_FETCHED) < _COMMANDS_CACHE_TTL:
+        return _CACHED_BOT_COMMANDS
+    
+    try:
+        result = await api.get_bot_commands()
+        if result.get("error"):
+            print(f"⚠️ [UserVault] Error fetching commands from API: {result.get('error')}")
+            # Return cached commands on error
+            return _CACHED_BOT_COMMANDS or {"commands": []}
+        
+        commands_list = result.get("commands", [])
+        
+        # Build a dict keyed by command name for fast lookup
+        commands_by_name: Dict[str, Any] = {}
+        for cmd in commands_list:
+            name = cmd.get("name", "").lower()
+            if name:
+                commands_by_name[name] = cmd
+        
+        _CACHED_BOT_COMMANDS = {
+            "commands": commands_list,
+            "by_name": commands_by_name,
+            "fetched_at": now,
+        }
+        _COMMANDS_LAST_FETCHED = now
+        
+        print(f"✅ [UserVault] Loaded {len(commands_list)} commands from API")
+        return _CACHED_BOT_COMMANDS
+        
+    except Exception as e:
+        print(f"❌ [UserVault] Failed to fetch commands from API: {e}")
+        return _CACHED_BOT_COMMANDS or {"commands": []}
+
+
+def get_cached_commands() -> List[Dict[str, Any]]:
+    """Get the cached command list (synchronous access)."""
+    return _CACHED_BOT_COMMANDS.get("commands", [])
+
+
+def get_command_by_name(name: str) -> Optional[Dict[str, Any]]:
+    """Get a specific command by name from cache."""
+    by_name = _CACHED_BOT_COMMANDS.get("by_name", {})
+    return by_name.get(name.lower())
+
+
+def is_command_registered(name: str) -> bool:
+    """Check if a command is registered in the database."""
+    return get_command_by_name(name) is not None
 
 
 class TriviaView(discord.ui.View):
@@ -1670,20 +1738,135 @@ class UserVaultPrefixCommands(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client = _ensure_uservault_client_state(client)
 
+    async def cog_load(self):
+        """Called when the cog is loaded. Fetch commands from API."""
+        try:
+            await fetch_commands_from_api(self.client.api, force=True)
+            print("✅ [UserVault] Commands loaded from API on cog_load")
+        except Exception as e:
+            print(f"⚠️ [UserVault] Failed to load commands on cog_load: {e}")
+
+    @commands.command(name="help", aliases=["commands", "cmds"])
+    async def help_command(self, ctx: commands.Context, command_name: str = None):
+        """
+        Show all available commands from the database.
+        Usage: ?help [command_name]
+        """
+        # Fetch fresh commands from API
+        cmd_data = await fetch_commands_from_api(self.client.api)
+        commands_list = cmd_data.get("commands", [])
+        
+        if command_name:
+            # Show details for a specific command
+            cmd = get_command_by_name(command_name)
+            if not cmd:
+                await ctx.send(f"❌ Command `{command_name}` not found. Use `?help` to see all commands.")
+                return
+            
+            embed = discord.Embed(
+                title=f"📖 Command: {cmd.get('usage', f'?{cmd.get(\"name\", \"unknown\")}')}",
+                description=cmd.get("description", "No description available."),
+                color=discord.Color.blurple()
+            )
+            embed.add_field(name="Category", value=cmd.get("category", "General"), inline=True)
+            embed.add_field(name="Enabled", value="✅ Yes" if cmd.get("is_enabled") else "❌ No", inline=True)
+            embed.set_footer(text=f"UserVault Bot • v:{BOT_CODE_VERSION}")
+            await ctx.send(embed=embed)
+            return
+        
+        # Group commands by category
+        categories: Dict[str, List[Dict[str, Any]]] = {}
+        for cmd in commands_list:
+            if not cmd.get("is_enabled", True):
+                continue
+            cat = cmd.get("category", "General") or "General"
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(cmd)
+        
+        embed = discord.Embed(
+            title="📋 Available Commands",
+            description=f"Use `?help <command>` for details on a specific command.\n\n**Total:** {len(commands_list)} commands loaded from API",
+            color=discord.Color.blurple()
+        )
+        
+        for cat_name, cat_cmds in sorted(categories.items()):
+            cmd_list = ", ".join([f"`{c.get('name', '?')}`" for c in cat_cmds[:15]])
+            if len(cat_cmds) > 15:
+                cmd_list += f" (+{len(cat_cmds) - 15} more)"
+            embed.add_field(name=f"📁 {cat_name}", value=cmd_list or "No commands", inline=False)
+        
+        embed.set_footer(text=f"UserVault Bot • v:{BOT_CODE_VERSION} • ?refresh to reload commands")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="refresh")
+    async def refresh_commands(self, ctx: commands.Context):
+        """
+        Refresh commands from the API.
+        Usage: ?refresh
+        """
+        msg = await ctx.send("🔄 Refreshing commands from API...")
+        
+        try:
+            # Clear cache and force fetch
+            global _CACHED_BOT_COMMANDS, _COMMANDS_LAST_FETCHED
+            _CACHED_BOT_COMMANDS = {}
+            _COMMANDS_LAST_FETCHED = 0
+            
+            cmd_data = await fetch_commands_from_api(self.client.api, force=True)
+            commands_list = cmd_data.get("commands", [])
+            
+            await msg.edit(content=f"✅ Refreshed! Loaded **{len(commands_list)}** commands from API.\n(v: `{BOT_CODE_VERSION}`)")
+        except Exception as e:
+            await msg.edit(content=f"❌ Error refreshing commands: {e}")
+
     @commands.command(name="apistats")
     async def apistats_prefix(self, ctx: commands.Context):
         logger = request_logger
         total = logger.request_count
         success_rate = (logger.success_count / total * 100) if total > 0 else 0
+        
+        # Add command cache info
+        cached_count = len(get_cached_commands())
+        cache_age = int(time.time() - _COMMANDS_LAST_FETCHED) if _COMMANDS_LAST_FETCHED > 0 else -1
+        
         await ctx.send(
             "📊 **API Request Statistics**\n\n"
             f"📡 Total Requests: **{total}**\n"
             f"✅ Successful: **{logger.success_count}**\n"
             f"❌ Errors: **{logger.error_count}**\n"
-            f"📈 Success Rate: **{success_rate:.1f}%**"
+            f"📈 Success Rate: **{success_rate:.1f}%**\n\n"
+            f"📋 **Command Cache:**\n"
+            f"Commands loaded: **{cached_count}**\n"
+            f"Cache age: **{cache_age}s** (TTL: {_COMMANDS_CACHE_TTL}s)"
         )
 
-    @commands.command(name="balance")
+    @commands.command(name="version", aliases=["ver", "v"])
+    async def version_command(self, ctx: commands.Context):
+        """
+        Show bot version and debug info.
+        Usage: ?version
+        """
+        import sys
+        
+        cached_count = len(get_cached_commands())
+        cache_age = int(time.time() - _COMMANDS_LAST_FETCHED) if _COMMANDS_LAST_FETCHED > 0 else -1
+        
+        embed = discord.Embed(
+            title="🤖 UserVault Bot Info",
+            color=discord.Color.blurple()
+        )
+        embed.add_field(name="Version", value=f"`{BOT_CODE_VERSION}`", inline=True)
+        embed.add_field(name="PID", value=f"`{os.getpid()}`", inline=True)
+        embed.add_field(name="Python", value=f"`{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}`", inline=True)
+        embed.add_field(name="Commands Loaded", value=f"`{cached_count}`", inline=True)
+        embed.add_field(name="Cache Age", value=f"`{cache_age}s`" if cache_age >= 0 else "`Not loaded`", inline=True)
+        embed.add_field(name="Cache TTL", value=f"`{_COMMANDS_CACHE_TTL}s`", inline=True)
+        embed.add_field(name="File", value=f"`{Path(__file__).name}`", inline=False)
+        embed.set_footer(text="Use ?refresh to reload commands from API")
+        
+        await ctx.send(embed=embed)
+
     async def balance_prefix(self, ctx: commands.Context):
         result = await ctx.bot.api.get_balance(str(ctx.author.id))  # type: ignore[attr-defined]
         if result.get("error"):
@@ -2872,19 +3055,15 @@ class UserVaultPrefixCommands(commands.Cog):
                     pass
 
                 if cmd_part not in implemented_cmds:
-                    # Check if it's in the database
-                    try:
-                        result = await self.client.api.get_bot_commands()  # type: ignore[attr-defined]
-                        db_cmds = {c.get("name", "").lower() for c in result.get("commands", [])}
-                        if cmd_part in db_cmds:
-                            await message.reply(
-                                f"⚠️ `?{cmd_part}` is registered but not yet implemented."
-                                f"\n(Version: {BOT_CODE_VERSION})\n"
-                                f"Use `?help` to see available commands."
-                            )
-                            return
-                    except:
-                        pass
+                    # Check if it's in the cached commands from API
+                    # Use the cached commands for faster lookups (no API call needed)
+                    if is_command_registered(cmd_part):
+                        await message.reply(
+                            f"⚠️ `?{cmd_part}` is registered but not yet implemented."
+                            f"\n(Version: {BOT_CODE_VERSION})\n"
+                            f"Use `?help` to see available commands."
+                        )
+                        return
 
         active_guess_games = getattr(self.client, "active_guess_games", {})
         game = active_guess_games.get(message.author.id)
@@ -3112,11 +3291,21 @@ async def setup(client: commands.Bot):
     # If the client has an API attribute, use it; otherwise create one
     _ensure_uservault_client_state(client)
 
+    # ===== FETCH COMMANDS FROM API =====
+    # This is the key step that makes commands dynamic!
+    try:
+        print("📡 [UserVault] Fetching commands from API...")
+        cmd_data = await fetch_commands_from_api(client.api, force=True)
+        cmd_count = len(cmd_data.get("commands", []))
+        print(f"✅ [UserVault] Loaded {cmd_count} commands from API")
+    except Exception as e:
+        print(f"⚠️ [UserVault] Failed to fetch commands from API: {e}")
+
     # Prefix commands + message listener (needed for '?guess')
     # IMPORTANT: Always remove+re-add to guarantee clean state on reload.
     try:
         if client.get_cog("UserVaultPrefixCommands") is not None:
-            client.remove_cog("UserVaultPrefixCommands")
+            await client.remove_cog("UserVaultPrefixCommands")
             print("🔄 [UserVault] Removed old prefix cog")
     except Exception as e:
         print(f"⚠️ [UserVault] Could not remove old prefix cog: {e}")
@@ -3173,6 +3362,16 @@ async def setup(client: commands.Bot):
                                 needs_reload = True
 
                     if needs_reload:
+                        # First, refresh the command cache from API
+                        print("🔄 [UserVault] Refreshing command cache due to notification...")
+                        try:
+                            global _CACHED_BOT_COMMANDS, _COMMANDS_LAST_FETCHED
+                            _CACHED_BOT_COMMANDS = {}
+                            _COMMANDS_LAST_FETCHED = 0
+                            await fetch_commands_from_api(client.api, force=True)
+                        except Exception as e:
+                            print(f"⚠️ [UserVault] Failed to refresh commands: {e}")
+                        
                         ext_name = _detect_this_extension_name()
                         print(f"🔄 [UserVault] Auto-reloading extension '{ext_name}' due to command update...")
 
