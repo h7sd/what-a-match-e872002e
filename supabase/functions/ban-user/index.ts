@@ -7,8 +7,22 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": [
+    "authorization",
+    "x-client-info",
+    "apikey",
+    "content-type",
+    "x-supabase-client-platform",
+    "x-supabase-client-platform-version",
+    "x-supabase-client-runtime",
+    "x-supabase-client-runtime-version",
+    "x-forwarded-for",
+    "x-real-ip",
+    "cf-connecting-ip",
+    "x-client-ip",
+  ].join(", "),
+  "Access-Control-Max-Age": "86400",
 };
 
 async function sendEmail(to: string, subject: string, html: string) {
@@ -71,6 +85,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!userId || !username) {
       throw new Error("Missing user ID or username");
+    }
+
+    // Basic UUID validation (fail-closed)
+    if (typeof userId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      throw new Error('Invalid user ID');
+    }
+
+    if (typeof username !== 'string' || username.trim().length === 0) {
+      throw new Error('Invalid username');
+    }
+
+    // Ensure the user exists and the username matches the profile (prevents banning arbitrary UUIDs)
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('user_id, username')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.username?.toLowerCase() !== username.toLowerCase()) {
+      throw new Error('User not found');
     }
 
     // Get user's email
@@ -184,11 +218,25 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
-    console.error("Error banning user:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    const message = String(error?.message || 'Internal error');
+    console.error("Error banning user:", message);
+
+    const status =
+      message === 'Unauthorized'
+        ? 401
+        : message === 'Admin access required'
+          ? 403
+          : message === 'Missing user ID or username' ||
+              message === 'Invalid user ID' ||
+              message === 'Invalid username' ||
+              message === 'User not found'
+            ? 400
+            : 500;
+
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 
