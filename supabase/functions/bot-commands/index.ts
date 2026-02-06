@@ -5,8 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-signature, x-webhook-timestamp',
 }
 
-// Discord webhook URL for command update notifications (stored in admin_webhooks table)
-
 interface CommandPayload {
   name: string
   description?: string
@@ -17,7 +15,78 @@ interface CommandPayload {
   required_role?: string
 }
 
-// Queue notification for Python bot to pick up
+// Send Discord webhook notification directly
+async function sendDiscordWebhook(
+  supabaseAdmin: any,
+  action: 'created' | 'updated' | 'deleted',
+  commandName: string,
+  changes?: Record<string, unknown>
+) {
+  try {
+    // Get bot webhook from admin_webhooks table
+    const { data: webhookData } = await supabaseAdmin
+      .from('admin_webhooks')
+      .select('webhook_url')
+      .eq('notification_type', 'bot_commands')
+      .maybeSingle()
+
+    if (!webhookData?.webhook_url) {
+      console.log('[bot-commands] No bot_commands webhook configured, skipping Discord notification')
+      return
+    }
+
+    const colors: Record<string, number> = {
+      created: 0x22c55e, // green
+      updated: 0xf59e0b, // amber  
+      deleted: 0xef4444, // red
+    }
+
+    const emojis: Record<string, string> = {
+      created: '✅',
+      updated: '🔄',
+      deleted: '🗑️',
+    }
+
+    const fields = []
+    
+    if (changes && Object.keys(changes).length > 0) {
+      for (const [key, value] of Object.entries(changes)) {
+        fields.push({
+          name: key.charAt(0).toUpperCase() + key.slice(1),
+          value: String(value).substring(0, 1024),
+          inline: true,
+        })
+      }
+    }
+
+    const embed = {
+      title: `${emojis[action]} Command ${action.charAt(0).toUpperCase() + action.slice(1)}`,
+      description: `**\`?${commandName}\`**`,
+      color: colors[action],
+      fields: fields.length > 0 ? fields : undefined,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'UserVault Bot Commands API',
+      },
+    }
+
+    const response = await fetch(webhookData.webhook_url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] }),
+    })
+
+    if (!response.ok) {
+      console.error('[bot-commands] Discord webhook failed:', response.status, await response.text())
+    } else {
+      console.log(`[bot-commands] Discord webhook sent: ${action} ${commandName}`)
+    }
+  } catch (error) {
+    console.error('[bot-commands] Error sending Discord webhook:', error)
+  }
+}
+
+// Queue notification for Python bot to pick up AND send Discord webhook
 async function queueNotification(
   supabaseAdmin: any,
   action: 'created' | 'updated' | 'deleted',
@@ -25,6 +94,7 @@ async function queueNotification(
   changes?: Record<string, unknown>
 ) {
   try {
+    // Insert into notifications table for bot polling
     const { error } = await supabaseAdmin
       .from('bot_command_notifications')
       .insert({
@@ -38,6 +108,9 @@ async function queueNotification(
     } else {
       console.log(`[bot-commands] Queued notification: ${action} ${commandName}`)
     }
+
+    // Also send Discord webhook directly
+    await sendDiscordWebhook(supabaseAdmin, action, commandName, changes)
   } catch (error) {
     console.error('[bot-commands] Error queuing notification:', error)
   }

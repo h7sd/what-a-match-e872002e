@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-06-no-impl-check-v1"
+BOT_CODE_VERSION = "2026-02-06-admin-cmds-webhook-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -1466,7 +1466,7 @@ class UserVaultBot(commands.Bot):
                 pass
 
     async def send_command_notification(self, channel, notif: dict) -> bool:
-        """Send a command notification embed to Discord. Returns True if sent successfully."""
+        """Send a command notification embed to Discord channel AND webhook. Returns True if sent successfully."""
         action = notif.get("action", "unknown")
         command_name = notif.get("command_name", "unknown")
         changes = notif.get("changes") or {}
@@ -1517,13 +1517,83 @@ class UserVaultBot(commands.Bot):
 
         embed.set_footer(text=f"UserVault Command System • {BOT_CODE_VERSION}")
 
+        channel_sent = False
+        webhook_sent = False
+
+        # 1. Try sending to Discord channel
         try:
             await channel.send(embed=embed)
-            print(f"📤 Sent notification: {action} {shown}")
-            return True
+            print(f"📤 Sent notification to channel: {action} {shown}")
+            channel_sent = True
         except Exception as e:
-            print(f"❌ Failed to send notification (will retry): {e}")
-            return False
+            print(f"⚠️ Failed to send to channel (trying webhook): {e}")
+
+        # 2. Also send to webhook from admin_webhooks table
+        try:
+            webhook_url = await self._get_command_webhook_url()
+            if webhook_url:
+                webhook_embed = {
+                    "title": f"{emojis.get(action, '📋')} Command {action.capitalize()}",
+                    "description": f"**`{shown}`** was {action}",
+                    "color": colors.get(action, 0x6366f1),
+                    "fields": [],
+                    "timestamp": discord.utils.utcnow().isoformat(),
+                    "footer": {"text": f"UserVault Command System • {BOT_CODE_VERSION}"},
+                }
+                
+                if changes:
+                    try:
+                        changes_items = changes.items() if isinstance(changes, dict) else [("changes", str(changes))]
+                        for k, v in changes_items:
+                            webhook_embed["fields"].append({
+                                "name": k.replace("_", " ").title(),
+                                "value": str(v)[:1024],
+                                "inline": True,
+                            })
+                    except Exception:
+                        pass
+
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        webhook_url,
+                        json={"embeds": [webhook_embed]},
+                        headers={"Content-Type": "application/json"},
+                    ) as resp:
+                        if resp.status in (200, 204):
+                            print(f"📤 Sent notification to webhook: {action} {shown}")
+                            webhook_sent = True
+                        else:
+                            print(f"⚠️ Webhook failed: {resp.status}")
+        except Exception as e:
+            print(f"⚠️ Webhook error: {e}")
+
+        # Consider success if either channel or webhook succeeded
+        return channel_sent or webhook_sent
+
+    async def _get_command_webhook_url(self) -> str | None:
+        """Fetch the bot_commands webhook URL from admin_webhooks table."""
+        try:
+            payload = {"action": "get_webhook", "notification_type": "bot_commands"}
+            payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+            signature, timestamp = self.api._generate_signature(payload_json)
+            
+            headers = {
+                "Content-Type": "application/json",
+                "x-webhook-signature": signature,
+                "x-webhook-timestamp": timestamp,
+            }
+            
+            # Call a simple API that returns the webhook URL
+            # For now, hardcode fetching from env or use a cached value
+            webhook_url = os.getenv("BOT_COMMANDS_WEBHOOK_URL")
+            if webhook_url:
+                return webhook_url
+            
+            # Fallback: Try to get from API (if we add that endpoint later)
+            return None
+        except Exception as e:
+            print(f"⚠️ Could not get webhook URL: {e}")
+            return None
     
     async def close(self):
         if self.notification_task:
