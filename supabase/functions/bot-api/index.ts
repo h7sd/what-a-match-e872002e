@@ -346,6 +346,169 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ============ ADMIN: UNBAN USER ============
+    if (action === "unban_user") {
+      const adminDiscordId = normalizeDiscordId((data?.adminId ?? discordUserId ?? "").toString());
+      if (!adminDiscordId) {
+        return jsonResponse({ success: false, error: "adminId required" }, 400);
+      }
+
+      const { profile: adminProfile } = await getProfileByDiscord(adminDiscordId);
+      if (!adminProfile || !(await isAdmin(adminProfile.user_id))) {
+        return jsonResponse({ success: false, error: "Admin access required" }, 403);
+      }
+
+      const target = (data?.target_user_id ?? data?.target ?? "").toString().trim();
+      if (!target) {
+        return jsonResponse({ success: false, error: "target required" }, 400);
+      }
+
+      const { error: unbanError } = await supabase
+        .from("banned_users")
+        .delete()
+        .ilike("username", target);
+
+      if (unbanError) {
+        console.error("[bot-api] unban_user error:", unbanError);
+        return jsonResponse({ success: false, error: "Failed to unban user" }, 500);
+      }
+
+      console.log(`[bot-api] ${adminProfile.username} unbanned ${target}`);
+      return jsonResponse({ success: true, message: "User unbanned" });
+    }
+
+    // ============ ADMIN: STATS ============
+    if (action === "stats" || action === "get_stats") {
+      const adminDiscordId = normalizeDiscordId((data?.adminId ?? discordUserId ?? "").toString());
+      if (!adminDiscordId) {
+        return jsonResponse({ success: false, error: "adminId required" }, 400);
+      }
+
+      const { profile: adminProfile } = await getProfileByDiscord(adminDiscordId);
+      if (!adminProfile || !(await isAdmin(adminProfile.user_id))) {
+        return jsonResponse({ success: false, error: "Admin access required" }, 403);
+      }
+
+      const { count: linkedUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .not("discord_user_id", "is", null);
+
+      const { count: totalUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      const { data: totalUCData } = await supabase
+        .from("user_balances")
+        .select("balance");
+
+      const totalUC = totalUCData?.reduce((sum, b) => sum + toBigInt(b.balance), 0n) || 0n;
+
+      const { count: gamesPlayed } = await supabase
+        .from("minigame_stats")
+        .select("*", { count: "exact", head: true });
+
+      const { count: bannedUsers } = await supabase
+        .from("banned_users")
+        .select("*", { count: "exact", head: true });
+
+      return jsonResponse({
+        success: true,
+        linked_users: linkedUsers || 0,
+        total_users: totalUsers || 0,
+        total_uc: safeJsonInt(totalUC),
+        games_played: gamesPlayed || 0,
+        banned_users: bannedUsers || 0,
+      });
+    }
+
+    // ============ ADMIN: USERS LIST ============
+    if (action === "users" || action === "get_users" || action === "get_user_list") {
+      const adminDiscordId = normalizeDiscordId((data?.adminId ?? discordUserId ?? "").toString());
+      if (!adminDiscordId) {
+        return jsonResponse({ success: false, error: "adminId required" }, 400);
+      }
+
+      const { profile: adminProfile } = await getProfileByDiscord(adminDiscordId);
+      if (!adminProfile || !(await isAdmin(adminProfile.user_id))) {
+        return jsonResponse({ success: false, error: "Admin access required" }, 403);
+      }
+
+      const { data: users, count } = await supabase
+        .from("profiles")
+        .select("username, uid_number, discord_user_id, created_at", { count: "exact" })
+        .order("uid_number", { ascending: true })
+        .limit(500);
+
+      return jsonResponse({ success: true, users: users || [], count: count || 0 });
+    }
+
+    // ============ ADMIN: BROADCAST ============
+    if (action === "broadcast") {
+      const adminDiscordId = normalizeDiscordId((data?.adminId ?? discordUserId ?? "").toString());
+      if (!adminDiscordId) {
+        return jsonResponse({ success: false, error: "adminId required" }, 400);
+      }
+
+      const { profile: adminProfile } = await getProfileByDiscord(adminDiscordId);
+      if (!adminProfile || !(await isAdmin(adminProfile.user_id))) {
+        return jsonResponse({ success: false, error: "Admin access required" }, 403);
+      }
+
+      const message = (data?.message ?? "").toString().trim();
+      if (!message) {
+        return jsonResponse({ success: false, error: "message required" }, 400);
+      }
+
+      const { error: notifError } = await supabase.from("admin_notifications").insert({
+        message,
+        type: "broadcast",
+        created_by: adminProfile.user_id,
+        is_active: true,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      if (notifError) {
+        console.error("[bot-api] broadcast error:", notifError);
+        return jsonResponse({ success: false, error: "Failed to create broadcast" }, 500);
+      }
+
+      console.log(`[bot-api] ${adminProfile.username} created broadcast`);
+      return jsonResponse({ success: true, message: "Broadcast created" });
+    }
+
+    // ============ ADMIN: MAINTENANCE ============
+    if (action === "maintenance") {
+      const adminDiscordId = normalizeDiscordId((data?.adminId ?? discordUserId ?? "").toString());
+      if (!adminDiscordId) {
+        return jsonResponse({ success: false, error: "adminId required" }, 400);
+      }
+
+      const { profile: adminProfile } = await getProfileByDiscord(adminDiscordId);
+      if (!adminProfile || !(await isAdmin(adminProfile.user_id))) {
+        return jsonResponse({ success: false, error: "Admin access required" }, 403);
+      }
+
+      const enabled = data?.enabled === true || data?.enabled === "on" || data?.enabled === "true";
+
+      if (enabled) {
+        await supabase.from("admin_notifications").upsert({
+          id: "00000000-0000-0000-0000-000000000001",
+          message: "System is under maintenance. Please try again later.",
+          type: "maintenance",
+          created_by: adminProfile.user_id,
+          is_active: true,
+        }, { onConflict: "id" });
+      } else {
+        await supabase.from("admin_notifications")
+          .update({ is_active: false })
+          .eq("type", "maintenance");
+      }
+
+      console.log(`[bot-api] ${adminProfile.username} set maintenance: ${enabled}`);
+      return jsonResponse({ success: true, maintenance: enabled });
+    }
+
     // ============ GET BALANCE ============
     if (action === "get_balance") {
       if (!discordUserId) {
