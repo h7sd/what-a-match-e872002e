@@ -1,65 +1,122 @@
 import { ExternalLink } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 import FuzzyTextEffect from "@/components/profile/FuzzyTextEffect";
+import { LiquidChrome } from "@/components/ui/LiquidChrome";
+import GSAPSplitText from "@/components/ui/GSAPSplitText";
 
 const MaintenanceOverlay = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-6 overflow-hidden">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* Liquid Chrome Background - Red/Black */}
+      <LiquidChrome
+        baseColor={[0.4, 0.05, 0.05]}
+        speed={0.25}
+        amplitude={0.4}
+        frequencyX={3}
+        frequencyY={2}
+        interactive={true}
+        className="z-0"
+      />
+      
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/40 z-[1]" />
       
       {/* Content */}
-      <div className="relative z-10 max-w-2xl w-full text-center">
-        {/* Fuzzy 503 with extra padding to prevent cutoff */}
-        <div className="mb-6 flex justify-center w-full px-8">
-          <div className="w-full max-w-xs">
-            <FuzzyTextEffect
-              fontSize="clamp(2.5rem, 8vw, 5rem)"
-              fontWeight={700}
-              fontFamily="monospace"
-              color="#ffffff"
-              glitchMode={true}
-              glitchInterval={3000}
-              glitchDuration={300}
-              baseIntensity={0.15}
-              hoverIntensity={0.4}
-              letterSpacing={8}
-            >
-              503
-            </FuzzyTextEffect>
-          </div>
+      <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 max-w-2xl w-full">
+        {/* Fuzzy 503 - Centered */}
+        <div className="mb-10 flex justify-center items-center">
+          <FuzzyTextEffect
+            fontSize="clamp(4rem, 12vw, 8rem)"
+            fontWeight={900}
+            fontFamily="monospace"
+            color="#ff3333"
+            glitchMode={true}
+            glitchInterval={2500}
+            glitchDuration={400}
+            baseIntensity={0.2}
+            hoverIntensity={0.5}
+            letterSpacing={12}
+          >
+            503
+          </FuzzyTextEffect>
         </div>
 
-        {/* Title */}
-        <h1 className="text-xl md:text-2xl font-medium text-white/90 tracking-tight mb-6 animate-fade-in">
-          Database Maintenance in Progress
-        </h1>
+        {/* Title - Centered */}
+        <div className="mb-8 w-full flex justify-center">
+          <GSAPSplitText
+            text="Database Maintenance in Progress"
+            className="text-2xl md:text-3xl font-semibold text-white tracking-tight"
+            delay={40}
+            duration={1}
+            ease="power3.out"
+            splitType="chars"
+            from={{ opacity: 0, y: 30 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.1}
+            rootMargin="0px"
+            textAlign="center"
+            tag="h1"
+          />
+        </div>
         
-        {/* Message */}
-        <div className="space-y-3 mb-10">
-          <p className="text-base md:text-lg text-white/60 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            We are currently restructuring and optimizing our database infrastructure.
-          </p>
+        {/* Messages - Centered */}
+        <div className="space-y-4 mb-10 w-full flex flex-col items-center">
+          <GSAPSplitText
+            text="We are currently restructuring and optimizing our database infrastructure."
+            className="text-base md:text-lg text-white/70 font-light leading-relaxed max-w-xl"
+            delay={25}
+            duration={0.8}
+            ease="power2.out"
+            splitType="words"
+            from={{ opacity: 0, y: 20 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.1}
+            rootMargin="0px"
+            textAlign="center"
+            tag="p"
+          />
           
-          <p className="text-sm md:text-base text-white/40 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            During this time, some features may be temporarily unavailable or experience minor delays.
-          </p>
+          <GSAPSplitText
+            text="During this time, some features may be temporarily unavailable or experience minor delays."
+            className="text-sm md:text-base text-white/50 font-light leading-relaxed max-w-xl"
+            delay={20}
+            duration={0.7}
+            ease="power2.out"
+            splitType="words"
+            from={{ opacity: 0, y: 15 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.1}
+            rootMargin="0px"
+            textAlign="center"
+            tag="p"
+          />
           
-          <p className="text-sm md:text-base text-white/40 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            We appreciate your patience. Normal service will resume shortly.
-          </p>
+          <GSAPSplitText
+            text="We appreciate your patience. Normal service will resume shortly."
+            className="text-sm md:text-base text-white/50 font-light leading-relaxed max-w-xl"
+            delay={20}
+            duration={0.7}
+            ease="power2.out"
+            splitType="words"
+            from={{ opacity: 0, y: 15 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.1}
+            rootMargin="0px"
+            textAlign="center"
+            tag="p"
+          />
         </div>
         
         {/* Divider */}
-        <div className="w-16 h-px bg-white/10 mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.4s' }} />
+        <div className="w-20 h-px bg-white/20 mb-8" />
         
-        {/* Buttons */}
-        <div className="flex gap-6 justify-center mb-10 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+        {/* Buttons - Centered */}
+        <div className="flex gap-8 justify-center mb-10">
           <a 
             href="https://status.uservault.cc" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors duration-300"
+            className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors duration-300"
           >
             <ExternalLink className="w-4 h-4" />
             Status
@@ -69,17 +126,28 @@ const MaintenanceOverlay = () => {
             href="https://discord.com/channels/1464309088736252097/1464321025532629150" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors duration-300"
+            className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors duration-300"
           >
             <FaDiscord className="w-4 h-4" />
             Discord
           </a>
         </div>
         
-        {/* Team signature */}
-        <p className="text-xs text-white/20 font-light tracking-widest uppercase animate-fade-in" style={{ animationDelay: '0.6s' }}>
-          UserVault Team
-        </p>
+        {/* Team signature - Centered */}
+        <GSAPSplitText
+          text="UserVault Team"
+          className="text-xs text-white/30 font-light tracking-[0.3em] uppercase"
+          delay={30}
+          duration={0.6}
+          ease="power2.out"
+          splitType="chars"
+          from={{ opacity: 0, y: 10 }}
+          to={{ opacity: 1, y: 0 }}
+          threshold={0.1}
+          rootMargin="0px"
+          textAlign="center"
+          tag="p"
+        />
       </div>
     </div>
   );
