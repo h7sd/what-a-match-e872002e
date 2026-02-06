@@ -1,166 +1,164 @@
-import { useEffect, useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
 
-interface LiquidChromeProps {
+interface LiquidChromeProps extends React.HTMLAttributes<HTMLDivElement> {
   baseColor?: [number, number, number];
   speed?: number;
   amplitude?: number;
   frequencyX?: number;
   frequencyY?: number;
   interactive?: boolean;
-  className?: string;
 }
 
-const vertexShader = `
-  attribute vec2 uv;
-  attribute vec2 position;
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = vec4(position, 0, 1);
-  }
-`;
-
-const fragmentShader = `
-  precision highp float;
-  uniform float uTime;
-  uniform vec3 uBaseColor;
-  uniform float uAmplitude;
-  uniform float uFrequencyX;
-  uniform float uFrequencyY;
-  uniform vec2 uMouse;
-  uniform float uMouseInfluence;
-  varying vec2 vUv;
-  
-  void main() {
-    vec2 uv = vUv;
-    
-    // Add mouse influence
-    vec2 mouseEffect = (uMouse - 0.5) * uMouseInfluence * 0.1;
-    uv += mouseEffect;
-    
-    // Chrome liquid distortion
-    float distort1 = sin(uv.x * uFrequencyX + uTime) * uAmplitude;
-    float distort2 = cos(uv.y * uFrequencyY + uTime * 0.8) * uAmplitude;
-    float distort3 = sin((uv.x + uv.y) * 3.0 + uTime * 1.2) * uAmplitude * 0.5;
-    
-    vec2 distortedUv = uv + vec2(distort1, distort2 + distort3);
-    
-    // Chrome-like reflections
-    float chrome = sin(distortedUv.x * 10.0 + uTime) * 0.5 + 0.5;
-    chrome *= cos(distortedUv.y * 8.0 - uTime * 0.5) * 0.5 + 0.5;
-    chrome = pow(chrome, 1.5);
-    
-    // Fresnel-like edge effect
-    float fresnel = pow(1.0 - abs(uv.x - 0.5) * 2.0, 2.0);
-    fresnel *= pow(1.0 - abs(uv.y - 0.5) * 2.0, 2.0);
-    
-    // Combine effects
-    vec3 color = uBaseColor;
-    color += vec3(chrome * 0.4);
-    color += vec3(fresnel * 0.2);
-    
-    // Add highlight streaks
-    float streak = sin(distortedUv.x * 20.0 + distortedUv.y * 10.0 + uTime * 2.0);
-    streak = smoothstep(0.8, 1.0, streak);
-    color += vec3(streak * 0.3);
-    
-    // Darken edges
-    float vignette = 1.0 - length((uv - 0.5) * 1.5);
-    vignette = smoothstep(0.0, 1.0, vignette);
-    color *= vignette * 0.5 + 0.5;
-    
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
-
-export function LiquidChrome({
+export const LiquidChrome: React.FC<LiquidChromeProps> = ({
   baseColor = [0.1, 0.1, 0.1],
-  speed = 0.3,
-  amplitude = 0.3,
-  frequencyX = 2.5,
-  frequencyY = 1.5,
+  speed = 0.2,
+  amplitude = 0.5,
+  frequencyX = 3,
+  frequencyY = 2,
   interactive = true,
-  className = ''
-}: LiquidChromeProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mouseRef = useRef({ x: 0.5, y: 0.5 });
-  const targetMouseRef = useRef({ x: 0.5, y: 0.5 });
+  ...props
+}) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const renderer = new Renderer({ 
-      alpha: false,
-      antialias: true,
-      powerPreference: 'high-performance'
-    });
+    const renderer = new Renderer({ antialias: true });
     const gl = renderer.gl;
-    container.appendChild(gl.canvas);
+    gl.clearColor(0, 0, 0, 1);
+
+    const vertexShader = `
+      attribute vec2 position;
+      attribute vec2 uv;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentShader = `
+      precision highp float;
+      uniform float uTime;
+      uniform vec3 uResolution;
+      uniform vec3 uBaseColor;
+      uniform float uAmplitude;
+      uniform float uFrequencyX;
+      uniform float uFrequencyY;
+      uniform vec2 uMouse;
+      varying vec2 vUv;
+
+      vec4 renderImage(vec2 uvCoord) {
+          vec2 fragCoord = uvCoord * uResolution.xy;
+          vec2 uv = (2.0 * fragCoord - uResolution.xy) / min(uResolution.x, uResolution.y);
+
+          for (float i = 1.0; i < 10.0; i++){
+              uv.x += uAmplitude / i * cos(i * uFrequencyX * uv.y + uTime + uMouse.x * 3.14159);
+              uv.y += uAmplitude / i * cos(i * uFrequencyY * uv.x + uTime + uMouse.y * 3.14159);
+          }
+
+          vec2 diff = (uvCoord - uMouse);
+          float dist = length(diff);
+          float falloff = exp(-dist * 20.0);
+          float ripple = sin(10.0 * dist - uTime * 2.0) * 0.03;
+          uv += (diff / (dist + 0.0001)) * ripple * falloff;
+
+          vec3 color = uBaseColor / abs(sin(uTime - uv.y - uv.x));
+          return vec4(color, 1.0);
+      }
+
+      void main() {
+          vec4 col = vec4(0.0);
+          int samples = 0;
+          for (int i = -1; i <= 1; i++){
+              for (int j = -1; j <= 1; j++){
+                  vec2 offset = vec2(float(i), float(j)) * (1.0 / min(uResolution.x, uResolution.y));
+                  col += renderImage(vUv + offset);
+                  samples++;
+              }
+          }
+          gl_FragColor = col / float(samples);
+      }
+    `;
 
     const geometry = new Triangle(gl);
-    
     const program = new Program(gl, {
       vertex: vertexShader,
       fragment: fragmentShader,
       uniforms: {
         uTime: { value: 0 },
-        uBaseColor: { value: baseColor },
+        uResolution: {
+          value: new Float32Array([gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height])
+        },
+        uBaseColor: { value: new Float32Array(baseColor) },
         uAmplitude: { value: amplitude },
         uFrequencyX: { value: frequencyX },
         uFrequencyY: { value: frequencyY },
-        uMouse: { value: [0.5, 0.5] },
-        uMouseInfluence: { value: interactive ? 1.0 : 0.0 }
+        uMouse: { value: new Float32Array([0, 0]) }
       }
     });
 
     const mesh = new Mesh(gl, { geometry, program });
 
-    const resize = () => {
-      renderer.setSize(container.offsetWidth, container.offsetHeight);
-    };
-    
+    function resize() {
+      const scale = 1;
+      renderer.setSize(container.offsetWidth * scale, container.offsetHeight * scale);
+      const resUniform = program.uniforms.uResolution.value as Float32Array;
+      resUniform[0] = gl.canvas.width;
+      resUniform[1] = gl.canvas.height;
+      resUniform[2] = gl.canvas.width / gl.canvas.height;
+    }
+
     window.addEventListener('resize', resize);
     resize();
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!interactive) return;
+    function handleMouseMove(event: MouseEvent) {
       const rect = container.getBoundingClientRect();
-      targetMouseRef.current = {
-        x: (e.clientX - rect.left) / rect.width,
-        y: 1.0 - (e.clientY - rect.top) / rect.height
-      };
-    };
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = 1 - (event.clientY - rect.top) / rect.height;
+      const mouseUniform = program.uniforms.uMouse.value as Float32Array;
+      mouseUniform[0] = x;
+      mouseUniform[1] = y;
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+      if (event.touches.length > 0) {
+        const touch = event.touches[0];
+        const rect = container.getBoundingClientRect();
+        const x = (touch.clientX - rect.left) / rect.width;
+        const y = 1 - (touch.clientY - rect.top) / rect.height;
+        const mouseUniform = program.uniforms.uMouse.value as Float32Array;
+        mouseUniform[0] = x;
+        mouseUniform[1] = y;
+      }
+    }
 
     if (interactive) {
       container.addEventListener('mousemove', handleMouseMove);
+      container.addEventListener('touchmove', handleTouchMove);
     }
 
     let animationId: number;
-    const animate = (time: number) => {
-      animationId = requestAnimationFrame(animate);
-      
-      // Smooth mouse movement
-      mouseRef.current.x += (targetMouseRef.current.x - mouseRef.current.x) * 0.05;
-      mouseRef.current.y += (targetMouseRef.current.y - mouseRef.current.y) * 0.05;
-      
-      program.uniforms.uTime.value = time * 0.001 * speed;
-      program.uniforms.uMouse.value = [mouseRef.current.x, mouseRef.current.y];
-      
+    function update(t: number) {
+      animationId = requestAnimationFrame(update);
+      program.uniforms.uTime.value = t * 0.001 * speed;
       renderer.render({ scene: mesh });
-    };
-    
-    animationId = requestAnimationFrame(animate);
+    }
+
+    animationId = requestAnimationFrame(update);
+    container.appendChild(gl.canvas);
 
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', resize);
       if (interactive) {
         container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('touchmove', handleTouchMove);
       }
-      if (container.contains(gl.canvas)) {
-        container.removeChild(gl.canvas);
+      if (gl.canvas.parentElement) {
+        gl.canvas.parentElement.removeChild(gl.canvas);
       }
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
@@ -169,10 +167,10 @@ export function LiquidChrome({
   return (
     <div 
       ref={containerRef} 
-      className={`absolute inset-0 ${className}`}
-      style={{ overflow: 'hidden' }}
+      style={{ width: '100%', height: '100%' }}
+      {...props} 
     />
   );
-}
+};
 
 export default LiquidChrome;

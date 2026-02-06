@@ -9,13 +9,13 @@ const MaintenanceOverlay = () => {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Liquid Chrome Background - Red/Black */}
       <LiquidChrome
-        baseColor={[0.4, 0.05, 0.05]}
-        speed={0.25}
-        amplitude={0.4}
+        baseColor={[0.6, 0.0, 0.0]}
+        speed={0.3}
+        amplitude={0.5}
         frequencyX={3}
         frequencyY={2}
         interactive={true}
-        className="z-0"
+        className="absolute inset-0 z-0"
       />
       
       {/* Dark overlay for readability */}
