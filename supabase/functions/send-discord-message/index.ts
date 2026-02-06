@@ -26,7 +26,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    const payload: Record<string, unknown> = {}
+    const payload: Record<string, unknown> = {
+      allowed_mentions: {
+        parse: ['everyone', 'roles', 'users']
+      }
+    }
     
     if (message) {
       payload.content = message
