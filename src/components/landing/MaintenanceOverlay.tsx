@@ -24,31 +24,22 @@ const MaintenanceOverlay = () => {
       
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 max-w-2xl w-full">
-        {/* 503 - Mobile-safe fallback + Desktop fuzzy */}
+        {/* 503 - Schwarz/Rot Gradient Text */}
         <div className="mb-10 flex justify-center items-center w-full">
-          {/* Mobile: plain text (canvas effects can be unreliable on some devices) */}
-          <div className="sm:hidden select-none leading-none font-black tracking-[0.18em] text-[clamp(3.5rem,18vw,6rem)] bg-gradient-to-r from-destructive to-background bg-clip-text text-transparent">
+          <h1 
+            className="select-none leading-none font-black tracking-[0.18em] text-[clamp(4rem,15vw,10rem)]"
+            style={{
+              fontFamily: 'monospace',
+              background: 'linear-gradient(135deg, #000000 0%, #ff0000 50%, #000000 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textShadow: '0 0 60px rgba(255,0,0,0.5)',
+              filter: 'drop-shadow(0 0 20px rgba(255,0,0,0.3))'
+            }}
+          >
             503
-          </div>
-
-          {/* Desktop+: fuzzy canvas */}
-          <div className="hidden sm:block">
-            <FuzzyTextEffect
-              fontSize="clamp(4rem, 12vw, 8rem)"
-              fontWeight={900}
-              fontFamily="monospace"
-              gradient={["hsl(var(--destructive))", "hsl(var(--background))"]}
-              glitchMode={true}
-              glitchInterval={2500}
-              glitchDuration={400}
-              baseIntensity={0.2}
-              hoverIntensity={0.5}
-              letterSpacing={12}
-              className="max-w-full"
-            >
-              503
-            </FuzzyTextEffect>
-          </div>
+          </h1>
         </div>
 
         {/* Title - Centered */}
