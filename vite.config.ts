@@ -8,6 +8,10 @@ const projectSrc = fs.existsSync("/vercel/share/v0-project/src")
   ? "/vercel/share/v0-project/src"
   : path.resolve(__dirname, "./src");
 
+console.log("[v0] Vite config __dirname:", __dirname);
+console.log("[v0] Vite config projectSrc:", projectSrc);
+console.log("[v0] /vercel/share/v0-project/src exists:", fs.existsSync("/vercel/share/v0-project/src"));
+
 // Export a plain object so the v0 wrapper can spread it correctly
 export default {
   server: {
@@ -19,15 +23,9 @@ export default {
   },
   plugins: [react()],
   resolve: {
-    alias: [
-      {
-        find: "@/integrations/supabase/client",
-        replacement: path.resolve(projectSrc, "./lib/supabase-proxy-client.ts"),
-      },
-      {
-        find: "@",
-        replacement: projectSrc,
-      },
-    ],
+    alias: {
+      "@/integrations/supabase/client": path.resolve(projectSrc, "./lib/supabase-proxy-client.ts"),
+      "@": projectSrc,
+    },
   },
 };
