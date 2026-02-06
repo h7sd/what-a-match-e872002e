@@ -51,15 +51,31 @@ export async function invokeSecure<T = unknown>(
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
-    // Be tolerant if an upstream returns non-JSON for errors.
+    const contentType = response.headers.get('content-type') || '';
+
+    // Be tolerant if an upstream returns non-JSON for errors, but also detect HTML.
     const raw = await response.text();
-    const data = raw
+    const trimmed = raw.trim();
+    const looksLikeHtml = trimmed.startsWith('<!') || /<html[\s>]/i.test(trimmed);
+
+    if (looksLikeHtml) {
+      return {
+        data: null,
+        error: new Error(`Unexpected HTML response (HTTP ${response.status}). This usually indicates an auth redirect, proxy error, or misconfigured function response.`),
+      };
+    }
+
+    const data = trimmed
       ? (() => {
-          try {
-            return JSON.parse(raw);
-          } catch {
-            return { error: raw };
+          // Some gateways mislabel JSON responses; try parsing anyway.
+          if (contentType.includes('application/json') || trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+              return JSON.parse(trimmed);
+            } catch {
+              // fall through to raw
+            }
           }
+          return { error: trimmed };
         })()
       : null;
 
