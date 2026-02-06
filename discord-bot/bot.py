@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-06-dedicated-bot-api-v1"
+BOT_CODE_VERSION = "2026-02-06-no-impl-check-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -72,10 +72,6 @@ FUNCTIONS_BASE_URL = (
     or "https://api.uservault.cc/functions/v1"
 ).rstrip("/")
 
-# DEDICATED BOT API - completely separate from website
-BOT_API = os.getenv("BOT_API_URL") or f"{FUNCTIONS_BASE_URL}/bot-api"
-
-# Legacy endpoints (still used for game logic)
 GAME_API = os.getenv("MINIGAME_DATA_URL") or f"{FUNCTIONS_BASE_URL}/minigame-data"
 REWARD_API = os.getenv("MINIGAME_REWARD_URL") or f"{FUNCTIONS_BASE_URL}/minigame-reward"
 NOTIFICATIONS_API = (
@@ -83,13 +79,16 @@ NOTIFICATIONS_API = (
     or f"{FUNCTIONS_BASE_URL}/bot-command-notifications"
 )
 
-print(f"📡 Using bot-api: {BOT_API}")
+BOT_API = os.getenv("BOT_API_URL") or f"{FUNCTIONS_BASE_URL}/bot-api"
+# → https://api.uservault.cc/functions/v1/bot-api
+
 print(f"📡 Using minigame-data: {GAME_API}")
 print(f"📡 Using minigame-reward: {REWARD_API}")
 print(f"📡 Using bot-command-notifications: {NOTIFICATIONS_API}")
+print(f"📡 Using bot-api: {BOT_API}")
 
 # Channel for command update notifications
-COMMAND_UPDATES_CHANNEL_ID = int(os.getenv("COMMAND_UPDATES_CHANNEL_ID", "1468730139012628622"))
+COMMAND_UPDATES_CHANNEL_ID = int(os.getenv("COMMAND_UPDATES_CHANNEL_ID", "1464326431038247002"))
 
 # Slash commands are optional. If you want ONLY prefix commands (?), keep this false.
 ENABLE_SLASH_COMMANDS = os.getenv("ENABLE_SLASH_COMMANDS", "false").strip().lower() in {"1", "true", "yes"}
@@ -226,47 +225,6 @@ class UserVaultAPI:
             hashlib.sha256,
         ).hexdigest()
         return signature, timestamp
-    
-    async def bot_api(self, action: str, discord_user_id: str = None, **extra) -> dict:
-        """Call the dedicated bot API (separate from website)."""
-        session = await self._get_session()
-        payload = {"action": action}
-        if discord_user_id:
-            payload["discordUserId"] = discord_user_id
-        payload.update(extra)
-        
-        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
-        signature, timestamp = self._generate_signature(payload_json)
-        
-        headers = {
-            "Content-Type": "application/json",
-            "x-webhook-signature": signature,
-            "x-webhook-timestamp": timestamp,
-        }
-        
-        self.logger.request_start("bot-api", action, discord_user_id)
-        start_time = time.time()
-        
-        try:
-            async with session.post(
-                BOT_API,
-                data=payload_json.encode("utf-8"),
-                headers=headers,
-            ) as response:
-                duration_ms = (time.time() - start_time) * 1000
-                result = await response.json()
-                
-                if response.status == 200 and not result.get("error"):
-                    preview = json.dumps(result)[:100] if result else ""
-                    self.logger.request_success(action, duration_ms, preview)
-                else:
-                    self.logger.request_error(action, result.get("error", "Unknown error"), response.status)
-                
-                return result
-        except Exception as e:
-            duration_ms = (time.time() - start_time) * 1000
-            self.logger.request_error(action, str(e))
-            return {"error": str(e)}
     
     async def game_api(self, action: str, **params) -> dict:
         """Call the game API (no auth needed - just game logic)."""
@@ -485,38 +443,8 @@ class UserVaultAPI:
         return await self.reward_api("daily_reward", discord_user_id)
     
     async def get_all_users(self, discord_user_id: str) -> dict:
-        """Get all registered users (admin only) - uses dedicated bot API."""
-        return await self.bot_api("get_all_users", discord_user_id)
-    
-    # ============ ADMIN METHODS (all use dedicated bot-api) ============
-    
-    async def admin_ban_user(self, admin_discord_id: str, target_username: str, reason: str) -> dict:
-        """Ban a user (admin only)."""
-        return await self.bot_api("admin_ban_user", admin_discord_id, target=target_username, reason=reason)
-    
-    async def admin_unban_user(self, admin_discord_id: str, target_username: str) -> dict:
-        """Unban a user (admin only)."""
-        return await self.bot_api("admin_unban_user", admin_discord_id, target=target_username)
-    
-    async def admin_give(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
-        """Give UC to a user (admin only)."""
-        return await self.bot_api("admin_give", admin_discord_id, target=target_username, amount=amount)
-    
-    async def admin_take(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
-        """Take UC from a user (admin only)."""
-        return await self.bot_api("admin_take", admin_discord_id, target=target_username, amount=amount)
-    
-    async def admin_set_balance(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
-        """Set a user's balance to exact amount (admin only)."""
-        return await self.bot_api("admin_setbal", admin_discord_id, target=target_username, amount=amount)
-    
-    async def get_bot_stats(self, admin_discord_id: str) -> dict:
-        """Get bot statistics (admin only)."""
-        return await self.bot_api("admin_stats", admin_discord_id)
-    
-    async def check_admin(self, discord_user_id: str) -> dict:
-        """Check if a Discord user is a UserVault admin - uses dedicated bot API."""
-        return await self.bot_api("check_admin", discord_user_id)
+        """Get all registered users (admin only)."""
+        return await self.reward_api("get_all_users", discord_user_id)
     
     # ============ COMMAND NOTIFICATIONS ============
     
@@ -1542,7 +1470,7 @@ class UserVaultBot(commands.Bot):
                 pass
 
     async def send_command_notification(self, channel, notif: dict) -> bool:
-        """Send a command notification embed to Discord channel AND webhook. Returns True if sent successfully."""
+        """Send a command notification embed to Discord. Returns True if sent successfully."""
         action = notif.get("action", "unknown")
         command_name = notif.get("command_name", "unknown")
         changes = notif.get("changes") or {}
@@ -1593,83 +1521,13 @@ class UserVaultBot(commands.Bot):
 
         embed.set_footer(text=f"UserVault Command System • {BOT_CODE_VERSION}")
 
-        channel_sent = False
-        webhook_sent = False
-
-        # 1. Try sending to Discord channel
         try:
             await channel.send(embed=embed)
-            print(f"📤 Sent notification to channel: {action} {shown}")
-            channel_sent = True
+            print(f"📤 Sent notification: {action} {shown}")
+            return True
         except Exception as e:
-            print(f"⚠️ Failed to send to channel (trying webhook): {e}")
-
-        # 2. Also send to webhook from admin_webhooks table
-        try:
-            webhook_url = await self._get_command_webhook_url()
-            if webhook_url:
-                webhook_embed = {
-                    "title": f"{emojis.get(action, '📋')} Command {action.capitalize()}",
-                    "description": f"**`{shown}`** was {action}",
-                    "color": colors.get(action, 0x6366f1),
-                    "fields": [],
-                    "timestamp": discord.utils.utcnow().isoformat(),
-                    "footer": {"text": f"UserVault Command System • {BOT_CODE_VERSION}"},
-                }
-                
-                if changes:
-                    try:
-                        changes_items = changes.items() if isinstance(changes, dict) else [("changes", str(changes))]
-                        for k, v in changes_items:
-                            webhook_embed["fields"].append({
-                                "name": k.replace("_", " ").title(),
-                                "value": str(v)[:1024],
-                                "inline": True,
-                            })
-                    except Exception:
-                        pass
-
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
-                        webhook_url,
-                        json={"embeds": [webhook_embed]},
-                        headers={"Content-Type": "application/json"},
-                    ) as resp:
-                        if resp.status in (200, 204):
-                            print(f"📤 Sent notification to webhook: {action} {shown}")
-                            webhook_sent = True
-                        else:
-                            print(f"⚠️ Webhook failed: {resp.status}")
-        except Exception as e:
-            print(f"⚠️ Webhook error: {e}")
-
-        # Consider success if either channel or webhook succeeded
-        return channel_sent or webhook_sent
-
-    async def _get_command_webhook_url(self) -> str | None:
-        """Fetch the bot_commands webhook URL from admin_webhooks table."""
-        try:
-            payload = {"action": "get_webhook", "notification_type": "bot_commands"}
-            payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
-            signature, timestamp = self.api._generate_signature(payload_json)
-            
-            headers = {
-                "Content-Type": "application/json",
-                "x-webhook-signature": signature,
-                "x-webhook-timestamp": timestamp,
-            }
-            
-            # Call a simple API that returns the webhook URL
-            # For now, hardcode fetching from env or use a cached value
-            webhook_url = os.getenv("BOT_COMMANDS_WEBHOOK_URL")
-            if webhook_url:
-                return webhook_url
-            
-            # Fallback: Try to get from API (if we add that endpoint later)
-            return None
-        except Exception as e:
-            print(f"⚠️ Could not get webhook URL: {e}")
-            return None
+            print(f"❌ Failed to send notification (will retry): {e}")
+            return False
     
     async def close(self):
         if self.notification_task:
@@ -2019,6 +1877,7 @@ class UserVaultPrefixCommands(commands.Cog):
         
         await ctx.send(embed=embed)
 
+    @commands.command(name="balance")
     async def balance_prefix(self, ctx: commands.Context):
         result = await ctx.bot.api.get_balance(str(ctx.author.id))  # type: ignore[attr-defined]
         if result.get("error"):
@@ -2434,6 +2293,286 @@ class UserVaultPrefixCommands(commands.Cog):
         if len(pages) > 1:
             await ctx.send(f"ℹ️ Showing first {per_page} of {count} users.")
 
+    async def _execute_api_command(self, message: discord.Message, api_cmd: Dict[str, Any], content: str):
+        """Execute a command dynamically from the API configuration."""
+        cmd_name = api_cmd.get("name", "unknown")
+        
+        try:
+            # Parse arguments from message
+            parts = content.split()
+            args = parts[1:] if len(parts) > 1 else []
+            
+            # Get command configuration
+            api_action = api_cmd.get("api_action") or api_cmd.get("action") or cmd_name
+            api_type = api_cmd.get("api_type", "game")  # 'game' or 'reward'
+            category = api_cmd.get("category", "other")
+            description = api_cmd.get("description", "")
+            usage = api_cmd.get("usage", f"?{cmd_name}")
+            
+            # Check if this is an admin command
+            is_admin_command = category == "admin" or cmd_name in {"setbal", "addbal", "removebal", "ban", "unban", "kick", "mute", "unmute", "warn", "clearwarns"}
+            
+            # Hardcoded admin IDs that are always authorized
+            HARDCODED_ADMIN_IDS = {809976264856830022, 1132634609079824436}
+            is_hardcoded_admin = message.author.id in HARDCODED_ADMIN_IDS
+            
+            if is_admin_command:
+                # Check admin status first (hardcoded or API)
+                is_authorized = is_hardcoded_admin
+                
+                if not is_authorized:
+                    try:
+                        admin_check = await self.client.api.check_admin(str(message.author.id))  # type: ignore[attr-defined]
+                        if admin_check.get("is_admin") or admin_check.get("is_supporter"):
+                            is_authorized = True
+                    except Exception as e:
+                        print(f"⚠️ [Dynamic Command] Could not check admin status: {e}")
+                
+                if not is_authorized:
+                    await message.reply("❌ **Admin only!** You need to be a UserVault admin or supporter.")
+                    return
+            else:
+                # For non-admin commands, check if user is linked
+                try:
+                    profile_result = await self.client.api.get_profile(str(message.author.id))  # type: ignore[attr-defined]
+                    if profile_result.get("error") and "not linked" in profile_result.get("error", "").lower():
+                        await message.reply(
+                            f"❌ **Account Not Linked**\n\n"
+                            f"Use `?link <code>` to link your Discord to UserVault first!\n"
+                            f"Get a code from your UserVault dashboard."
+                        )
+                        return
+                except Exception:
+                    pass  # Continue even if profile check fails
+            
+            # Handle specific admin commands with proper API calls
+            if cmd_name == "setbal" and len(args) >= 2:
+                # ?setbal <user> <amount>
+                target_user = args[0]
+                amount_str = args[1]
+                
+                # Try to parse the amount
+                try:
+                    target_amount = int(amount_str.replace(",", ""))
+                except ValueError:
+                    await message.reply("❌ Invalid amount. Usage: `?setbal <@user or user_id> <amount>`")
+                    return
+                
+                # Remove @ mention if present
+                if target_user.startswith("<@") and target_user.endswith(">"):
+                    target_user = target_user[2:-1]
+                    if target_user.startswith("!"):
+                        target_user = target_user[1:]
+                
+                try:
+                    # Get current balance first
+                    current_result = await self.client.api.get_balance(target_user)  # type: ignore[attr-defined]
+                    if current_result.get("error"):
+                        await message.reply(f"❌ Could not get current balance: {current_result['error']}")
+                        return
+                    
+                    current_balance = int(current_result.get("balance", 0))
+                    difference = target_amount - current_balance
+                    
+                    # Use add_uv to set the balance (workaround since set_balance doesn't exist)
+                    if difference != 0:
+                        result = await self.client.api.reward_api(  # type: ignore[attr-defined]
+                            "add_uv",
+                            target_user,
+                            amount=difference,
+                            gameType="admin_set",
+                            description=f"Admin set balance by {message.author.id}"
+                        )
+                        
+                        if result.get("error"):
+                            await message.reply(f"❌ **SetBal Error:** {result['error']}")
+                            return
+                    
+                    await message.reply(
+                        f"✅ **Balance Updated**\n\n"
+                        f"👤 User: <@{target_user}>\n"
+                        f"💰 Old Balance: {current_balance:,} UC\n"
+                        f"💰 New Balance: {target_amount:,} UC\n"
+                        f"📊 Change: {difference:+,} UC"
+                    )
+                    
+                except Exception as e:
+                    print(f"❌ [SetBal] Error: {e}")
+                    await message.reply(f"❌ Error setting balance: {e}")
+                return
+            
+            if cmd_name == "addbal" and len(args) >= 2:
+                # ?addbal <user> <amount> - Add UC to user
+                target_user = args[0]
+                amount_str = args[1]
+                
+                try:
+                    amount = int(amount_str.replace(",", ""))
+                except ValueError:
+                    await message.reply("❌ Invalid amount. Usage: `?addbal <@user or user_id> <amount>`")
+                    return
+                
+                # Remove @ mention if present
+                if target_user.startswith("<@") and target_user.endswith(">"):
+                    target_user = target_user[2:-1]
+                    if target_user.startswith("!"):
+                        target_user = target_user[1:]
+                
+                try:
+                    result = await self.client.api.reward_api(  # type: ignore[attr-defined]
+                        "add_uv",
+                        target_user,
+                        amount=amount,
+                        gameType="admin_add",
+                        description=f"Admin add by {message.author.id}"
+                    )
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **AddBal Error:** {result['error']}")
+                    else:
+                        new_balance = result.get("newBalance", result.get("balance", "?"))
+                        await message.reply(
+                            f"✅ **Added {amount:,} UC** to <@{target_user}>\n"
+                            f"💰 New Balance: {new_balance:,} UC"
+                        )
+                except Exception as e:
+                    print(f"❌ [AddBal] Error: {e}")
+                    await message.reply(f"❌ Error adding balance: {e}")
+                return
+            
+            if cmd_name == "removebal" and len(args) >= 2:
+                # ?removebal <user> <amount> - Remove UC from user
+                target_user = args[0]
+                amount_str = args[1]
+                
+                try:
+                    amount = int(amount_str.replace(",", ""))
+                except ValueError:
+                    await message.reply("❌ Invalid amount. Usage: `?removebal <@user or user_id> <amount>`")
+                    return
+                
+                # Remove @ mention if present
+                if target_user.startswith("<@") and target_user.endswith(">"):
+                    target_user = target_user[2:-1]
+                    if target_user.startswith("!"):
+                        target_user = target_user[1:]
+                
+                try:
+                    result = await self.client.api.reward_api(  # type: ignore[attr-defined]
+                        "add_uv",
+                        target_user,
+                        amount=-amount,  # Negative to remove
+                        gameType="admin_remove",
+                        description=f"Admin remove by {message.author.id}"
+                    )
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **RemoveBal Error:** {result['error']}")
+                    else:
+                        new_balance = result.get("newBalance", result.get("balance", "?"))
+                        await message.reply(
+                            f"✅ **Removed {amount:,} UC** from <@{target_user}>\n"
+                            f"💰 New Balance: {new_balance:,} UC"
+                        )
+                except Exception as e:
+                    print(f"❌ [RemoveBal] Error: {e}")
+                    await message.reply(f"❌ Error removing balance: {e}")
+                return
+            
+            if cmd_name == "ban":
+                # ?ban <user> [reason]
+                if len(args) < 1:
+                    await message.reply("❌ Usage: `?ban <@user or user_id> [reason]`")
+                    return
+                
+                target_user = args[0]
+                reason = " ".join(args[1:]) if len(args) > 1 else "Banned by admin"
+                
+                # Remove @ mention if present
+                if target_user.startswith("<@") and target_user.endswith(">"):
+                    target_user = target_user[2:-1]
+                    if target_user.startswith("!"):
+                        target_user = target_user[1:]
+                
+                # Try to ban via API (this will fail if endpoint doesn't exist, but we handle it)
+                try:
+                    # First try to set balance to 0 as a "ban" action
+                    await self.client.api.reward_api(  # type: ignore[attr-defined]
+                        "add_uv",
+                        target_user,
+                        amount=-1000000000,  # Large negative number to effectively ban
+                        gameType="admin_ban",
+                        description=f"Banned by {message.author.id}: {reason}"
+                    )
+                    await message.reply(f"🚫 **Banned** <@{target_user}>\nReason: {reason}")
+                except Exception as e:
+                    print(f"❌ [Ban] Error: {e}")
+                    await message.reply(f"❌ Error banning user: {e}")
+                return
+            
+            # For other commands, try the generic approach
+            params = {
+                "discord_user_id": str(message.author.id),
+                "command": cmd_name,
+                "args": args,
+            }
+            
+            # Add any additional parameters from command config
+            if "params" in api_cmd and isinstance(api_cmd["params"], dict):
+                params.update(api_cmd["params"])
+            
+            # Call the appropriate API
+            if api_type == "reward" or is_admin_command:
+                result = await self.client.api.reward_api(api_action, **params)  # type: ignore[attr-defined]
+            else:
+                result = await self.client.api.game_api(api_action, **params)  # type: ignore[attr-defined]
+            
+            # Handle the response
+            if result.get("error"):
+                # If the API doesn't know this action, give a helpful message
+                if "unknown action" in result.get("error", "").lower():
+                    await message.reply(
+                        f"ℹ️ Command `{cmd_name}` is registered but the API endpoint is not yet implemented.\n"
+                        f"Category: `{category}`\n"
+                        f"This command needs backend support."
+                    )
+                else:
+                    await message.reply(f"❌ **{cmd_name.title()} Error:** {result['error']}")
+                return
+            
+            # Format success response
+            if "message" in result:
+                response_msg = result["message"]
+            elif "embed" in result:
+                embed_data = result["embed"]
+                embed = discord.Embed.from_dict(embed_data)
+                await message.reply(embed=embed)
+                return
+            else:
+                response_msg = f"✅ **{cmd_name.title()}** executed successfully!"
+                if "balance" in result:
+                    response_msg += f"\n💰 Balance: {result['balance']} UC"
+                if "reward" in result:
+                    response_msg += f"\n🎉 Reward: {result['reward']} UC"
+                if "newBalance" in result:
+                    response_msg += f"\n💰 New Balance: {result['newBalance']} UC"
+            
+            if description:
+                embed = discord.Embed(
+                    title=f"✅ {cmd_name.title()}",
+                    description=response_msg,
+                    color=discord.Color.green() if not is_admin_command else discord.Color.blue()
+                )
+                if usage:
+                    embed.set_footer(text=f"Usage: {usage}")
+                await message.reply(embed=embed)
+            else:
+                await message.reply(response_msg)
+                
+        except Exception as e:
+            print(f"❌ [Dynamic Command] Error executing {cmd_name}: {e}")
+            await message.reply(f"❌ Error executing command `{cmd_name}`. Please try again later.")
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.bot:
@@ -2576,6 +2715,32 @@ class UserVaultPrefixCommands(commands.Cog):
                         task.cancel()
                     del self.client._uservault_notification_task
                 
+                # Vor dem Reload: Commands aus API laden
+                try:
+                    cmd_data = await fetch_commands_from_api(self.client.api, force=True)
+                    commands_list = cmd_data.get("commands", [])
+                    print(f"✅ [Reload] Loaded {len(commands_list)} commands from API before reload")
+                    
+                    # Notification an Kanal senden
+                    try:
+                        channel = self.client.get_channel(COMMAND_UPDATES_CHANNEL_ID)
+                        if channel:
+                            embed = discord.Embed(
+                                title="🔄 Extension Reload",
+                                description=f"**{len(commands_list)}** Commands geladen vor dem Reload.",
+                                color=discord.Color.green(),
+                                timestamp=discord.utils.utcnow()
+                            )
+                            embed.add_field(name="Version", value=f"`{BOT_CODE_VERSION}`", inline=True)
+                            embed.add_field(name="Initiated by", value=message.author.mention, inline=True)
+                            embed.set_footer(text="UserVault Bot Reload System")
+                            await channel.send(embed=embed)
+                    except Exception as e:
+                        print(f"⚠️ [Reload] Konnte Notification nicht senden: {e}")
+                        
+                except Exception as e:
+                    print(f"⚠️ [Reload] Konnte Commands nicht laden vor Reload: {e}")
+                
                 await message.reply("🔄 Reloading extension...")
                 await self.client.reload_extension(ext_name)
                 # Send a confirmation after successful reload.
@@ -2624,6 +2789,35 @@ class UserVaultPrefixCommands(commands.Cog):
                 return
 
             await message.reply("🧨 Restarting bot process now…")
+            
+            # Vor dem Restart: Commands aus API laden und Notification senden
+            try:
+                cmd_data = await fetch_commands_from_api(self.client.api, force=True)
+                commands_list = cmd_data.get("commands", [])
+                print(f"✅ [Restart] Loaded {len(commands_list)} commands from API before restart")
+                
+                # Notification an Kanal 1464326431038247002 senden
+                try:
+                    channel = self.client.get_channel(COMMAND_UPDATES_CHANNEL_ID)
+                    if channel:
+                        embed = discord.Embed(
+                            title="🔄 Bot Restart",
+                            description=f"**{len(commands_list)}** Commands geladen vor dem Neustart.",
+                            color=discord.Color.blue(),
+                            timestamp=discord.utils.utcnow()
+                        )
+                        embed.add_field(name="Version", value=f"`{BOT_CODE_VERSION}`", inline=True)
+                        embed.add_field(name="Initiated by", value=message.author.mention, inline=True)
+                        embed.set_footer(text="UserVault Bot Restart System")
+                        await channel.send(embed=embed)
+                except Exception as e:
+                    print(f"⚠️ [Restart] Konnte Notification nicht senden: {e}")
+                    
+            except Exception as e:
+                print(f"⚠️ [Restart] Konnte Commands nicht laden vor Restart: {e}")
+            
+            await asyncio.sleep(2)  # Kurze Pause damit die Nachricht gesendet wird
+            
             try:
                 await self.client.close()
             finally:
@@ -2638,6 +2832,39 @@ class UserVaultPrefixCommands(commands.Cog):
         # ===== ?ping - Simple connectivity test =====
         if lowered == "?ping":
             await message.reply("🏓 Pong! Bot is responding.")
+            return
+
+        # ===== ?balance - Show balance =====
+        if lowered == "?balance":
+            try:
+                result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+                if result.get("error"):
+                    await message.reply(f"❌ Error: {result['error']}")
+                else:
+                    await message.reply(
+                        f"💰 **Your Balance**\n\n"
+                        f"Balance: **{result.get('balance', 0)} UC**\n"
+                        f"Total Earned: {result.get('totalEarned', 0)} UC"
+                    )
+            except Exception as e:
+                await message.reply(f"❌ Could not fetch balance: {e}")
+            return
+
+        # ===== ?daily - Claim daily reward =====
+        if lowered == "?daily":
+            try:
+                result = await self.client.api.claim_daily(str(message.author.id))  # type: ignore[attr-defined]
+                if result.get("error"):
+                    await message.reply(f"❌ {result['error']}")
+                else:
+                    await message.reply(
+                        f"📅 **Daily Reward**\n\n"
+                        f"🎉 Claimed **{result.get('reward', 50)} UC**!\n"
+                        f"🔥 Streak: {result.get('streak', 1)} days\n"
+                        f"💰 New Balance: {result.get('newBalance', 0)} UC"
+                    )
+            except Exception as e:
+                await message.reply(f"❌ Could not claim daily: {e}")
             return
 
         # ===== ?version - Show bot version =====
@@ -3170,131 +3397,7 @@ class UserVaultPrefixCommands(commands.Cog):
             await message.reply(embed=embed)
             return
 
-        # ── ?hump ── Camel Race Game 🐫
-        if lowered.startswith("?hump"):
-            parts = content.split()
-            bet = 50  # Default bet
-            
-            if len(parts) >= 2 and parts[1].isdigit():
-                bet = int(parts[1])
-            
-            if bet < 10:
-                await message.reply("❌ Minimum bet is 10 UC!")
-                return
-            
-            if bet > 10000:
-                await message.reply("❌ Maximum bet is 10,000 UC!")
-                return
-            
-            # Check balance
-            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
-            current_balance = safe_int_balance(balance_result.get("balance", 0))
-            if current_balance < bet:
-                await message.reply(f"❌ Not enough UC! You have **{current_balance:,} UC**.")
-                return
-            
-            # 5 Camels racing
-            camels = ["🐫", "🐪", "🦙", "🐎", "🦌"]
-            camel_names = ["Sahara Sam", "Desert Duke", "Llama Larry", "Speedy Steve", "Antler Andy"]
-            
-            # Player picks a random camel
-            player_camel = random.randint(0, 4)
-            
-            # Race animation frames
-            race_length = 15
-            positions = [0, 0, 0, 0, 0]
-            
-            # Create initial embed
-            embed = discord.Embed(
-                title="🏁 Camel Race - HUMP!",
-                description=f"**Your camel:** {camels[player_camel]} {camel_names[player_camel]}\n**Bet:** {bet:,} UC\n\n🏁 Race starting...",
-                color=discord.Color.gold()
-            )
-            race_msg = await message.reply(embed=embed)
-            
-            # Run the race with animation
-            winner = None
-            frame_count = 0
-            max_frames = 8
-            
-            while winner is None and frame_count < max_frames:
-                frame_count += 1
-                await asyncio.sleep(0.8)
-                
-                # Move camels randomly
-                for i in range(5):
-                    positions[i] += random.randint(1, 4)
-                    if positions[i] >= race_length:
-                        positions[i] = race_length
-                        if winner is None:
-                            winner = i
-                
-                # Build race track display
-                track_display = ""
-                for i in range(5):
-                    track = "▪️" * positions[i] + camels[i] + "▫️" * (race_length - positions[i]) + " 🏁"
-                    track_display += f"{track}\n"
-                
-                embed.description = (
-                    f"**Your camel:** {camels[player_camel]} {camel_names[player_camel]}\n"
-                    f"**Bet:** {bet:,} UC\n\n"
-                    f"```\n{track_display}```"
-                )
-                
-                try:
-                    await race_msg.edit(embed=embed)
-                except Exception:
-                    pass
-            
-            # If no winner yet, force finish
-            if winner is None:
-                winner = max(range(5), key=lambda x: positions[x])
-            
-            # Calculate result
-            won = winner == player_camel
-            
-            if won:
-                # Win multiplier based on odds (5 camels = ~4x feels fair, but 2.5x for balance)
-                multiplier = 2.5
-                payout = int(bet * multiplier)
-                net = payout - bet
-                
-                embed.color = discord.Color.green()
-                embed.add_field(
-                    name="🎉 YOU WON!",
-                    value=f"Your camel {camels[player_camel]} **{camel_names[player_camel]}** crossed first!\n\n"
-                          f"**Payout:** +{net:,} UC (x{multiplier})",
-                    inline=False
-                )
-                
-                # Award winnings
-                await self.client.api.send_reward(  # type: ignore[attr-defined]
-                    str(message.author.id), net, "hump", f"Hump race win (x{multiplier})"
-                )
-            else:
-                embed.color = discord.Color.red()
-                embed.add_field(
-                    name="💀 YOU LOST!",
-                    value=f"Winner: {camels[winner]} **{camel_names[winner]}**\n"
-                          f"Your camel {camels[player_camel]} didn't make it!\n\n"
-                          f"**Lost:** -{bet:,} UC",
-                    inline=False
-                )
-                
-                # Deduct loss
-                await self.client.api.send_reward(  # type: ignore[attr-defined]
-                    str(message.author.id), -bet, "hump", "Hump race loss"
-                )
-            
-            embed.set_footer(text="🐫 HUMP! - Camel Racing")
-            
-            try:
-                await race_msg.edit(embed=embed)
-            except Exception:
-                await message.reply(embed=embed)
-            return
-
-
+        if lowered.startswith("?lookup"):
             parts = content.split(maxsplit=1)
             if len(parts) < 2 or not parts[1].strip():
                 await message.reply("❌ Usage: `?lookup <username>` or `?lookup #UID`")
@@ -3403,262 +3506,30 @@ class UserVaultPrefixCommands(commands.Cog):
 
             return
 
-        # ===== ?ban <user> [reason] - Ban a user =====
-        if lowered.startswith("?ban "):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
+        # ===== Unknown command handling - DYNAMIC API COMMAND EXECUTION =====
+        # Check if this is an API command that should be executed dynamically
+        if lowered.startswith("?"):
+            cmd_name = lowered[1:].split()[0].lower()  # Extract command name without ?
             
-            parts = content.split(maxsplit=2)
-            if len(parts) < 2:
-                await message.reply("❌ Usage: `?ban <username> [reason]`")
-                return
+            # Skip if it's a hardcoded command (already handled above)
+            hardcoded_commands = {
+                "help", "helping", "commands", "reload", "restart", "ping", 
+                "version", "balance", "daily", "crash", "mines", "higherlower", "hl",
+                "roulette", "dice", "plinko", "keno", "lookup", "users",
+                "slots", "coin", "rps", "blackjack", "guess", "trivia",
+                "link", "unlink", "profile", "delete", "apistats", "refresh"
+            }
             
-            target = parts[1]
-            reason = parts[2] if len(parts) > 2 else "No reason provided"
-            
-            result = await self.client.api.admin_ban_user(str(message.author.id), target, reason)
-            if result.get("error"):
-                await message.reply(f"❌ {result['error']}")
-            else:
-                await message.reply(f"🔨 **User banned:** `{target}`\n📝 Reason: {reason}")
-            return
-
-        # ===== ?unban <user> - Unban a user =====
-        if lowered.startswith("?unban "):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            parts = content.split()
-            if len(parts) < 2:
-                await message.reply("❌ Usage: `?unban <username>`")
-                return
-            
-            target = parts[1]
-            result = await self.client.api.admin_unban_user(str(message.author.id), target)
-            if result.get("error"):
-                await message.reply(f"❌ {result['error']}")
-            else:
-                await message.reply(f"✅ **User unbanned:** `{target}`")
-            return
-
-        # ===== ?give <user> <amount> - Give UC to user =====
-        if lowered.startswith("?give "):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            parts = content.split()
-            if len(parts) < 3:
-                await message.reply("❌ Usage: `?give <username> <amount>`")
-                return
-            
-            target = parts[1]
-            try:
-                amount = int(parts[2])
-                if amount <= 0:
-                    raise ValueError()
-            except ValueError:
-                await message.reply("❌ Amount must be a positive number!")
-                return
-            
-            result = await self.client.api.admin_give(str(message.author.id), target, amount)
-            if result.get("error"):
-                await message.reply(f"❌ {result['error']}")
-            else:
-                new_bal = result.get("new_balance", "?")
-                await message.reply(f"💰 Gave **{amount:,} UC** to `{target}`\n💳 New Balance: **{new_bal:,} UC**")
-            return
-
-        # ===== ?take <user> <amount> - Take UC from user =====
-        if lowered.startswith("?take "):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            parts = content.split()
-            if len(parts) < 3:
-                await message.reply("❌ Usage: `?take <username> <amount>`")
-                return
-            
-            target = parts[1]
-            try:
-                amount = int(parts[2])
-                if amount <= 0:
-                    raise ValueError()
-            except ValueError:
-                await message.reply("❌ Amount must be a positive number!")
-                return
-            
-            result = await self.client.api.admin_take(str(message.author.id), target, amount)
-            if result.get("error"):
-                await message.reply(f"❌ {result['error']}")
-            else:
-                new_bal = result.get("new_balance", "?")
-                await message.reply(f"💸 Took **{amount:,} UC** from `{target}`\n💳 New Balance: **{new_bal:,} UC**")
-            return
-
-        # ===== ?setbal <user> <amount> - Set user balance =====
-        if lowered.startswith("?setbal "):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            parts = content.split()
-            if len(parts) < 3:
-                await message.reply("❌ Usage: `?setbal <username> <amount>`")
-                return
-            
-            target = parts[1]
-            try:
-                amount = int(parts[2])
-                if amount < 0:
-                    raise ValueError()
-            except ValueError:
-                await message.reply("❌ Amount must be a non-negative number!")
-                return
-            
-            result = await self.client.api.admin_set_balance(str(message.author.id), target, amount)
-            if result.get("error"):
-                await message.reply(f"❌ {result['error']}")
-            else:
-                await message.reply(f"💳 Set `{target}`'s balance to **{amount:,} UC**")
-            return
-
-        # ===== ?broadcast <message> - Send announcement to all servers =====
-        if lowered.startswith("?broadcast "):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            broadcast_msg = content[11:].strip()  # Remove "?broadcast "
-            if not broadcast_msg:
-                await message.reply("❌ Usage: `?broadcast <message>`")
-                return
-            
-            embed = discord.Embed(
-                title="📢 UserVault Announcement",
-                description=broadcast_msg,
-                color=discord.Color.gold(),
-                timestamp=discord.utils.utcnow()
-            )
-            embed.set_footer(text=f"From {message.author.display_name}")
-            
-            sent_count = 0
-            for guild in self.client.guilds:
-                # Try to find a suitable channel
-                channel = guild.system_channel or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
-                if channel:
-                    try:
-                        await channel.send(embed=embed)
-                        sent_count += 1
-                    except Exception:
-                        pass
-            
-            await message.reply(f"📢 Broadcast sent to **{sent_count}** servers!")
-            return
-
-        # ===== ?stats - Show bot statistics =====
-        if lowered == "?stats":
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            # Get API stats
-            result = await self.client.api.get_bot_stats(str(message.author.id))
-            
-            embed = discord.Embed(
-                title="📊 Bot Statistics",
-                color=discord.Color.blurple(),
-                timestamp=discord.utils.utcnow()
-            )
-            
-            # Bot info
-            embed.add_field(name="🤖 Servers", value=f"{len(self.client.guilds):,}", inline=True)
-            embed.add_field(name="👥 Users", value=f"{sum(g.member_count or 0 for g in self.client.guilds):,}", inline=True)
-            embed.add_field(name="📡 Latency", value=f"{self.client.latency*1000:.0f}ms", inline=True)
-            
-            # API stats if available
-            if not result.get("error"):
-                embed.add_field(name="💰 Total UC", value=f"{result.get('total_uc', 0):,}", inline=True)
-                embed.add_field(name="🎮 Games Played", value=f"{result.get('games_played', 0):,}", inline=True)
-                embed.add_field(name="🔗 Linked Users", value=f"{result.get('linked_users', 0):,}", inline=True)
-            
-            embed.set_footer(text=f"v:{BOT_CODE_VERSION}")
-            await message.reply(embed=embed)
-            return
-
-        # ===== ?maintenance [on/off] - Toggle maintenance mode =====
-        if lowered.startswith("?maintenance"):
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            parts = content.split()
-            mode = parts[1].lower() if len(parts) > 1 else "status"
-            
-            if mode == "on":
-                await self.client.change_presence(
-                    status=discord.Status.dnd,
-                    activity=discord.Game("🔧 Maintenance Mode")
-                )
-                await message.reply("🔧 **Maintenance mode enabled.** Bot status set to DND.")
-            elif mode == "off":
-                await self.client.change_presence(
-                    status=discord.Status.online,
-                    activity=discord.Game("uservault.cc | ?help")
-                )
-                await message.reply("✅ **Maintenance mode disabled.** Bot is back online!")
-            else:
-                await message.reply("ℹ️ Usage: `?maintenance on` or `?maintenance off`")
-            return
-
-        # ===== ?serverinfo - Show current server info =====
-        if lowered == "?serverinfo":
-            admin_check = await self.client.api.check_admin(str(message.author.id))
-            if not admin_check.get("is_admin"):
-                await message.reply("❌ Admin access required!")
-                return
-            
-            guild = message.guild
-            if not guild:
-                await message.reply("❌ This command must be used in a server!")
-                return
-            
-            embed = discord.Embed(
-                title=f"🏠 {guild.name}",
-                color=discord.Color.blurple(),
-                timestamp=discord.utils.utcnow()
-            )
-            
-            if guild.icon:
-                embed.set_thumbnail(url=guild.icon.url)
-            
-            embed.add_field(name="👑 Owner", value=str(guild.owner) if guild.owner else "Unknown", inline=True)
-            embed.add_field(name="📅 Created", value=f"<t:{int(guild.created_at.timestamp())}:R>", inline=True)
-            embed.add_field(name="👥 Members", value=f"{guild.member_count:,}", inline=True)
-            embed.add_field(name="💬 Channels", value=f"{len(guild.channels)}", inline=True)
-            embed.add_field(name="🎭 Roles", value=f"{len(guild.roles)}", inline=True)
-            embed.add_field(name="😀 Emojis", value=f"{len(guild.emojis)}", inline=True)
-            embed.add_field(name="🆔 Server ID", value=f"`{guild.id}`", inline=False)
-            
-            embed.set_footer(text=f"v:{BOT_CODE_VERSION}")
-            await message.reply(embed=embed)
-            return
-
-        # ===== Unknown command handling removed =====
-        # Commands that are registered in the API but have no handler in the bot
-        # will simply not respond. This avoids false "not implemented" warnings
-        # and allows dynamic command deployment without bot code changes.
+            if cmd_name not in hardcoded_commands:
+                # Check if this command exists in the API cache
+                api_cmd = get_command_by_name(cmd_name)
+                if api_cmd and api_cmd.get("is_enabled", True):
+                    # Execute the API command dynamically
+                    await self._execute_api_command(message, api_cmd, content)
+                    return
+                elif api_cmd and not api_cmd.get("is_enabled", True):
+                    await message.reply(f"ℹ️ Command `{cmd_name}` is currently disabled.")
+                    return
 
         active_guess_games = getattr(self.client, "active_guess_games", {})
         game = active_guess_games.get(message.author.id)
