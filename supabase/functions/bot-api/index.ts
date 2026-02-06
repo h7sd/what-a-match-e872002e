@@ -101,7 +101,9 @@ Deno.serve(async (req) => {
     }
 
     const data = JSON.parse(body);
-    const { action, discordUserId } = data;
+    const action = data?.action as string | undefined;
+    const discordUserId =
+      (data?.discordUserId ?? data?.adminId ?? data?.discord_user_id) as string | undefined;
 
     console.log(`[bot-api] Action: ${action} | Discord: ${discordUserId || "N/A"}`);
 
@@ -109,7 +111,7 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // ============ HELPER: Get profile by Discord ID ============
+    // ============ HELPER: Get profile by Discord ID =========
     async function getProfileByDiscord(discordId: string) {
       const { data: profile, error } = await supabase
         .from("profiles")
@@ -117,6 +119,34 @@ Deno.serve(async (req) => {
         .eq("discord_user_id", discordId)
         .single();
       return { profile, error };
+    }
+
+    function normalizeDiscordId(input: string): string {
+      return input.replace(/[^\d]/g, "");
+    }
+
+    async function getProfileByUserId(userId: string) {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("user_id, username, discord_user_id")
+        .eq("user_id", userId)
+        .single();
+      return { profile, error };
+    }
+
+    async function resolveProfile(identifier: string) {
+      const raw = (identifier || "").trim();
+      if (!raw) return { profile: null, error: new Error("Missing identifier") };
+
+      const looksUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+      if (looksUuid) {
+        return await getProfileByUserId(raw);
+      }
+
+      const discordId = normalizeDiscordId(raw);
+      if (!discordId) return { profile: null, error: new Error("Invalid Discord ID") };
+      return await getProfileByDiscord(discordId);
     }
 
     // ============ HELPER: Check if user is admin ============
@@ -170,6 +200,150 @@ Deno.serve(async (req) => {
 
       const admin = await isAdmin(profile.user_id);
       return jsonResponse({ is_admin: admin, username: profile.username });
+    }
+
+    // ============ ADMIN: COMPAT (Discord bot admin commands) ============
+    // Payloads:
+    // { action: "set_balance"|"add_balance"|"remove_balance", adminId, target_user_id, amount }
+    // { action: "ban_user", adminId, target_user_id, reason }
+    if (action === "set_balance" || action === "add_balance" || action === "remove_balance" || action === "ban_user") {
+      const adminDiscordId = normalizeDiscordId((data?.adminId ?? discordUserId ?? "").toString());
+      if (!adminDiscordId) {
+        return jsonResponse({ success: false, error: "adminId required" }, 400);
+      }
+
+      const { profile: adminProfile } = await getProfileByDiscord(adminDiscordId);
+      if (!adminProfile || !(await isAdmin(adminProfile.user_id))) {
+        return jsonResponse({ success: false, error: "Admin access required" }, 403);
+      }
+
+      const targetIdentifier = (data?.target_user_id ?? "").toString();
+      const { profile: targetProfile } = await resolveProfile(targetIdentifier);
+      if (!targetProfile) {
+        return jsonResponse({ success: false, error: "Target user not found" }, 404);
+      }
+
+      if (action === "ban_user") {
+        const reason = (data?.reason ?? "No reason provided").toString();
+
+        const { error: banError } = await supabase.from("banned_users").insert({
+          user_id: targetProfile.user_id,
+          username: targetProfile.username,
+          banned_by: adminProfile.user_id,
+          reason,
+        });
+
+        if (banError) {
+          console.error("[bot-api] ban_user error:", banError);
+          return jsonResponse({ success: false, error: "Failed to ban user" }, 500);
+        }
+
+        return jsonResponse({ success: true, message: "User banned" });
+      }
+
+      if (data?.amount === undefined || data?.amount === null) {
+        return jsonResponse({ success: false, error: "amount required" }, 400);
+      }
+
+      const amountBI = toBigInt(data.amount);
+      if (amountBI < 0n) {
+        return jsonResponse({ success: false, error: "Amount must be non-negative" }, 400);
+      }
+
+      const { data: balanceData } = await supabase
+        .from("user_balances")
+        .select("balance, total_earned")
+        .eq("user_id", targetProfile.user_id)
+        .single();
+
+      const currentBal = toBigInt(balanceData?.balance || 0);
+      let newBalance = currentBal;
+
+      if (action === "set_balance") {
+        newBalance = amountBI;
+
+        if (balanceData) {
+          await supabase
+            .from("user_balances")
+            .update({ balance: newBalance.toString(), updated_at: new Date().toISOString() })
+            .eq("user_id", targetProfile.user_id);
+        } else {
+          await supabase.from("user_balances").insert({
+            user_id: targetProfile.user_id,
+            balance: newBalance.toString(),
+            total_earned: newBalance.toString(),
+            total_spent: "0",
+          });
+        }
+
+        await supabase.from("uv_transactions").insert({
+          user_id: targetProfile.user_id,
+          amount: Number(newBalance),
+          transaction_type: "admin_set",
+          description: `Balance set by ${adminProfile.username}`,
+          reference_type: "admin",
+        });
+
+        return jsonResponse({ success: true, new_balance: safeJsonInt(newBalance), message: "Balance updated" });
+      }
+
+      if (action === "add_balance") {
+        newBalance = currentBal + amountBI;
+
+        if (balanceData) {
+          await supabase
+            .from("user_balances")
+            .update({
+              balance: newBalance.toString(),
+              total_earned: (toBigInt(balanceData?.total_earned || 0) + amountBI).toString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", targetProfile.user_id);
+        } else {
+          await supabase.from("user_balances").insert({
+            user_id: targetProfile.user_id,
+            balance: newBalance.toString(),
+            total_earned: newBalance.toString(),
+            total_spent: "0",
+          });
+        }
+
+        await supabase.from("uv_transactions").insert({
+          user_id: targetProfile.user_id,
+          amount: Number(amountBI),
+          transaction_type: "admin_give",
+          description: `Given by ${adminProfile.username}`,
+          reference_type: "admin",
+        });
+
+        return jsonResponse({ success: true, new_balance: safeJsonInt(newBalance), message: "Balance updated" });
+      }
+
+      if (action === "remove_balance") {
+        if (!balanceData) {
+          return jsonResponse({ success: false, error: "No balance record" }, 404);
+        }
+
+        newBalance = currentBal - amountBI;
+        if (newBalance < 0n) {
+          return jsonResponse({ success: false, error: "Cannot set negative balance" }, 400);
+        }
+
+        await supabase
+          .from("user_balances")
+          .update({ balance: newBalance.toString(), updated_at: new Date().toISOString() })
+          .eq("user_id", targetProfile.user_id);
+
+        await supabase.from("uv_transactions").insert({
+          user_id: targetProfile.user_id,
+          amount: -Number(amountBI),
+          transaction_type: "admin_take",
+          description: `Taken by ${adminProfile.username}`,
+          reference_type: "admin",
+        });
+
+        return jsonResponse({ success: true, new_balance: safeJsonInt(newBalance), message: "Balance updated" });
+      }
     }
 
     // ============ GET BALANCE ============
