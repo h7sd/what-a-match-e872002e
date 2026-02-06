@@ -24,22 +24,31 @@ const MaintenanceOverlay = () => {
       
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 max-w-2xl w-full">
-        {/* Fuzzy 503 - Centered */}
-        <div className="mb-10 flex justify-center items-center">
-          <FuzzyTextEffect
-            fontSize="clamp(4rem, 12vw, 8rem)"
-            fontWeight={900}
-            fontFamily="monospace"
-            color="#ff3333"
-            glitchMode={true}
-            glitchInterval={2500}
-            glitchDuration={400}
-            baseIntensity={0.2}
-            hoverIntensity={0.5}
-            letterSpacing={12}
-          >
+        {/* 503 - Mobile-safe fallback + Desktop fuzzy */}
+        <div className="mb-10 flex justify-center items-center w-full">
+          {/* Mobile: plain text (canvas effects can be unreliable on some devices) */}
+          <div className="sm:hidden select-none leading-none font-black tracking-[0.18em] text-[clamp(3.5rem,18vw,6rem)] bg-gradient-to-r from-destructive to-background bg-clip-text text-transparent">
             503
-          </FuzzyTextEffect>
+          </div>
+
+          {/* Desktop+: fuzzy canvas */}
+          <div className="hidden sm:block">
+            <FuzzyTextEffect
+              fontSize="clamp(4rem, 12vw, 8rem)"
+              fontWeight={900}
+              fontFamily="monospace"
+              gradient={["hsl(var(--destructive))", "hsl(var(--background))"]}
+              glitchMode={true}
+              glitchInterval={2500}
+              glitchDuration={400}
+              baseIntensity={0.2}
+              hoverIntensity={0.5}
+              letterSpacing={12}
+              className="max-w-full"
+            >
+              503
+            </FuzzyTextEffect>
+          </div>
         </div>
 
         {/* Title - Centered */}
