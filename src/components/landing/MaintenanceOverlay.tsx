@@ -6,17 +6,18 @@ import GSAPSplitText from "@/components/ui/GSAPSplitText";
 
 const MaintenanceOverlay = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden">
       {/* Liquid Chrome Background - Red/Black */}
-      <LiquidChrome
-        baseColor={[0.3, 0.0, 0.0]}
-        speed={0.3}
-        amplitude={0.5}
-        frequencyX={3}
-        frequencyY={2}
-        interactive={true}
-        className="absolute inset-0 z-0"
-      />
+      <div className="absolute inset-0 z-0">
+        <LiquidChrome
+          baseColor={[0.3, 0.0, 0.0]}
+          speed={0.3}
+          amplitude={0.5}
+          frequencyX={3}
+          frequencyY={2}
+          interactive={true}
+        />
+      </div>
       
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-black/40 z-[1]" />
