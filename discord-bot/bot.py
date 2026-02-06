@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-05-dynamic-commands-v1"
+BOT_CODE_VERSION = "2026-02-06-keno-fix-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -3170,8 +3170,8 @@ class UserVaultPrefixCommands(commands.Cog):
                         src = inspect.getsource(self.__class__.on_message)
 
                     for pat in (
-                        r"lowered\\.startswith\\(\\s*['\"]\\?([a-z0-9]+)",
-                        r"lowered\\s*==\\s*['\"]\\?([a-z0-9]+)",
+                        r'lowered\.startswith\(\s*[\'\"]\?([a-z0-9]+)',
+                        r'lowered\s*==\s*[\'\"]\?([a-z0-9]+)',
                     ):
                         for m in re.finditer(pat, src, flags=re.IGNORECASE):
                             implemented_cmds.add(m.group(1).lower())
