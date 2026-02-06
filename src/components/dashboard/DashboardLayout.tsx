@@ -17,7 +17,8 @@ import {
   Loader2,
   Sparkles,
   ShoppingBag,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,12 +27,14 @@ import { useState, ReactNode, lazy, Suspense } from 'react';
 import { AliasRequestsBell } from './AliasRequestsBell';
 import { AdminChatNotificationBell } from '@/components/admin/AdminChatNotificationBell';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNotifications } from '@/hooks/useNotifications';
+import { Badge } from '@/components/ui/badge';
 
 // Lazy load heavy components
 const FaultyTerminal = lazy(() => import('@/components/ui/FaultyTerminal'));
 const Aurora = lazy(() => import('@/components/ui/Aurora'));
 
-export type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'marketplace' | 'owner' | 'supporter' | 'settings';
+export type TabType = 'overview' | 'profile' | 'appearance' | 'links' | 'badges' | 'notifications' | 'marketplace' | 'owner' | 'supporter' | 'settings';
 
 const baseNavItems: { icon: React.ElementType; label: string; tab: TabType }[] = [
   { icon: LayoutDashboard, label: 'Overview', tab: 'overview' },
@@ -39,6 +42,7 @@ const baseNavItems: { icon: React.ElementType; label: string; tab: TabType }[] =
   { icon: Palette, label: 'Appearance', tab: 'appearance' },
   { icon: Link2, label: 'Links', tab: 'links' },
   { icon: Award, label: 'Badges', tab: 'badges' },
+  { icon: Bell, label: 'Notifications', tab: 'notifications' },
   { icon: ShoppingBag, label: 'Marketplace', tab: 'marketplace' },
   { icon: Settings, label: 'Settings', tab: 'settings' },
 ];
@@ -70,6 +74,7 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { unreadCount } = useNotifications();
 
   const navItems = [
     ...baseNavItems,
@@ -105,6 +110,7 @@ export function DashboardLayout({
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.tab;
+          const showBadge = item.tab === 'notifications' && unreadCount > 0;
           
           return (
             <button
@@ -154,7 +160,13 @@ export function DashboardLayout({
               
               <span className="relative z-10 font-medium">{item.label}</span>
               
-              {isActive && (
+              {showBadge && (
+                <Badge variant="default" className="relative z-10 ml-auto text-xs py-0 px-2">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
+              
+              {isActive && !showBadge && (
                 <div className="relative z-10 ml-auto flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                 </div>

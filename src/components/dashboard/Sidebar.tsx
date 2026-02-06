@@ -9,10 +9,13 @@ import {
   LogOut,
   Eye,
   Crown,
-  ShoppingBag
+  ShoppingBag,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useNotifications } from '@/hooks/useNotifications';
+import { Badge } from '@/components/ui/badge';
 
 interface SidebarProps {
   username: string;
@@ -26,11 +29,13 @@ const navItems = [
   { icon: Palette, label: 'Appearance', href: '/dashboard', tab: 'appearance' },
   { icon: Link2, label: 'Links', href: '/dashboard', tab: 'links' },
   { icon: Sparkles, label: 'Effects', href: '/dashboard', tab: 'effects' },
+  { icon: Bell, label: 'Notifications', href: '/dashboard', tab: 'notifications' },
   { icon: ShoppingBag, label: 'Marketplace', href: '/dashboard', tab: 'marketplace' },
 ];
 
 export function Sidebar({ username, onSignOut, isPremium = false }: SidebarProps) {
   const location = useLocation();
+  const { unreadCount } = useNotifications();
 
   return (
     <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
@@ -44,12 +49,12 @@ export function Sidebar({ username, onSignOut, isPremium = false }: SidebarProps
         </Link>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.hash === `#${item.tab}` || 
             (location.hash === '' && item.tab === 'overview');
+          const showBadge = item.tab === 'notifications' && unreadCount > 0;
           
           return (
             <Link
@@ -64,6 +69,11 @@ export function Sidebar({ username, onSignOut, isPremium = false }: SidebarProps
             >
               <Icon className="w-5 h-5" />
               {item.label}
+              {showBadge && (
+                <Badge variant="default" className="ml-auto text-xs py-0 px-2">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
             </Link>
           );
         })}

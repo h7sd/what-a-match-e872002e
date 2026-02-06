@@ -24,6 +24,8 @@ import {
 } from 'react-icons/si';
 import type { SocialLink } from '@/hooks/useProfile';
 
+import { Pickaxe } from 'lucide-react';
+
 const platformIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   discord: SiDiscord,
   spotify: SiSpotify,
@@ -46,15 +48,16 @@ const platformIcons: Record<string, React.ComponentType<{ className?: string }>>
   pinterest: SiPinterest,
   facebook: SiFacebook,
   kick: SiKick,
+  namemc: Pickaxe,
 };
 
 const platformColors: Record<string, string> = {
   discord: '#5865F2',
   spotify: '#1DB954',
-  twitter: '#000000',
-  x: '#000000',
+  twitter: '#ffffff',
+  x: '#ffffff',
   instagram: '#E4405F',
-  tiktok: '#000000',
+  tiktok: '#ffffff',
   youtube: '#FF0000',
   twitch: '#9146FF',
   github: '#ffffff',
@@ -70,6 +73,7 @@ const platformColors: Record<string, string> = {
   pinterest: '#BD081C',
   facebook: '#1877F2',
   kick: '#53FC18',
+  namemc: '#8BC34A',
 };
 
 // Auto-detect platform from URL
@@ -95,6 +99,7 @@ function detectPlatform(url: string): string {
   if (urlLower.includes('pinterest.com')) return 'pinterest';
   if (urlLower.includes('facebook.com')) return 'facebook';
   if (urlLower.includes('kick.com')) return 'kick';
+  if (urlLower.includes('namemc.com')) return 'namemc';
   return 'link';
 }
 

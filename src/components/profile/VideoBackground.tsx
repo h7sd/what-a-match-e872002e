@@ -9,11 +9,26 @@ export function VideoBackground({ videoUrl, fallbackColor = '#0a0a0a' }: VideoBa
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    // Ensure video starts from the beginning
+    video.currentTime = 0;
+    video.load();
+    
+    // Play after load is ready
+    const handleCanPlay = () => {
+      video.currentTime = 0;
+      video.play().catch(() => {
         // Autoplay failed, that's okay
       });
-    }
+    };
+    
+    video.addEventListener('canplay', handleCanPlay, { once: true });
+    
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+    };
   }, [videoUrl]);
 
   return (

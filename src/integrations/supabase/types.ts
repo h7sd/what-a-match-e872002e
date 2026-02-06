@@ -1645,6 +1645,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_notifications: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          metadata?: Json | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

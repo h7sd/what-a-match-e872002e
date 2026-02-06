@@ -96,6 +96,7 @@ import { GlobalBadgeColorSettings } from '@/components/dashboard/GlobalBadgeColo
 import { StreakDisplay } from '@/components/dashboard/StreakDisplay';
 import { SupporterPanel } from '@/components/supporter/SupporterPanel';
 import { SupporterManager } from '@/components/admin/SupporterManager';
+import { NotificationsSection } from '@/components/dashboard/NotificationsSection';
 import { cn } from '@/lib/utils';
 
 // Removed local TabType - using exported type from DashboardLayout

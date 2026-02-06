@@ -8,6 +8,7 @@ import { Magnet } from './Magnet';
 import { UVLogo, UVLogoText } from './UVLogo';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LandingEventsPopover } from './LandingEventsPopover';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function ModernHeader() {
   const { user } = useAuth();
@@ -120,15 +121,18 @@ export function ModernHeader() {
               </div>
               
               {user ? (
-                <Magnet magnetStrength={0.2}>
-                  <Link
-                    to="/dashboard"
-                    className="relative text-sm px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00B4D8] to-[#00D9A5] text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-[#00D9A5]/30 overflow-hidden group border border-white/10"
-                  >
-                    <span className="relative z-10">Dashboard</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#00D9A5] to-[#0077B6] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </Link>
-                </Magnet>
+                <div className="flex items-center gap-2">
+                  <NotificationBell />
+                  <Magnet magnetStrength={0.2}>
+                    <Link
+                      to="/dashboard"
+                      className="relative text-sm px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#00B4D8] to-[#00D9A5] text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-[#00D9A5]/30 overflow-hidden group border border-white/10"
+                    >
+                      <span className="relative z-10">Dashboard</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#00D9A5] to-[#0077B6] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </Link>
+                  </Magnet>
+                </div>
               ) : (
                 <div className="hidden md:flex items-center gap-3">
                   <Link
