@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-06-no-impl-check-v1"
+BOT_CODE_VERSION = "2026-02-06-bot-api-routing-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -288,6 +288,43 @@ class UserVaultAPI:
             self.logger.request_error(action, str(e))
             return {"error": str(e)}
     
+    async def bot_api(self, action: str, admin_id: str, **extra) -> dict:
+        """Call the dedicated bot-api endpoint for admin/privileged commands."""
+        session = await self._get_session()
+        payload = {"action": action, "adminId": admin_id, **extra}
+        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        signature, timestamp = self._generate_signature(payload_json)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-webhook-signature": signature,
+            "x-webhook-timestamp": timestamp,
+        }
+        
+        self.logger.request_start("bot-api", action, admin_id)
+        start_time = time.time()
+        
+        try:
+            async with session.post(
+                BOT_API,
+                data=payload_json.encode("utf-8"),
+                headers=headers,
+            ) as response:
+                duration_ms = (time.time() - start_time) * 1000
+                result = await response.json()
+                
+                if response.status == 200 and not result.get("error"):
+                    preview = json.dumps(result)[:100] if result else ""
+                    self.logger.request_success(action, duration_ms, preview)
+                else:
+                    self.logger.request_error(action, result.get("error", "Unknown error"), response.status)
+                
+                return result
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            self.logger.request_error(action, str(e))
+            return {"error": str(e)}
+    
     # ============ GAME METHODS ============
     
     async def get_available_games(self) -> dict:
@@ -364,11 +401,11 @@ class UserVaultAPI:
 
     async def check_admin(self, discord_user_id: str) -> dict:
         """Check if a Discord user is a UserVault admin."""
-        return await self.reward_api("check_admin", discord_user_id)
+        return await self.bot_api("check_admin", discord_user_id)
 
     async def get_bot_commands(self) -> dict:
         """Get all enabled bot commands from database."""
-        return await self.game_api("get_bot_commands")
+        return await self.bot_api("get_bot_commands", "")
     
     async def get_trivia(self) -> dict:
         """Get a trivia question."""
@@ -2365,35 +2402,23 @@ class UserVaultPrefixCommands(commands.Cog):
                         target_user = target_user[1:]
                 
                 try:
-                    # Get current balance first
-                    current_result = await self.client.api.get_balance(target_user)  # type: ignore[attr-defined]
-                    if current_result.get("error"):
-                        await message.reply(f"❌ Could not get current balance: {current_result['error']}")
+                    # Use dedicated bot-api endpoint for admin balance operations
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "set_balance",
+                        str(message.author.id),
+                        target_user_id=target_user,
+                        amount=target_amount
+                    )
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **SetBal Error:** {result['error']}")
                         return
                     
-                    current_balance = int(current_result.get("balance", 0))
-                    difference = target_amount - current_balance
-                    
-                    # Use add_uv to set the balance (workaround since set_balance doesn't exist)
-                    if difference != 0:
-                        result = await self.client.api.reward_api(  # type: ignore[attr-defined]
-                            "add_uv",
-                            target_user,
-                            amount=difference,
-                            gameType="admin_set",
-                            description=f"Admin set balance by {message.author.id}"
-                        )
-                        
-                        if result.get("error"):
-                            await message.reply(f"❌ **SetBal Error:** {result['error']}")
-                            return
-                    
+                    new_balance = result.get("new_balance", target_amount)
                     await message.reply(
-                        f"✅ **Balance Updated**\n\n"
+                        f"✅ **Balance Set**\n\n"
                         f"👤 User: <@{target_user}>\n"
-                        f"💰 Old Balance: {current_balance:,} UC\n"
-                        f"💰 New Balance: {target_amount:,} UC\n"
-                        f"📊 Change: {difference:+,} UC"
+                        f"💰 New Balance: {new_balance:,} UC"
                     )
                     
                 except Exception as e:
@@ -2419,18 +2444,17 @@ class UserVaultPrefixCommands(commands.Cog):
                         target_user = target_user[1:]
                 
                 try:
-                    result = await self.client.api.reward_api(  # type: ignore[attr-defined]
-                        "add_uv",
-                        target_user,
-                        amount=amount,
-                        gameType="admin_add",
-                        description=f"Admin add by {message.author.id}"
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "add_balance",
+                        str(message.author.id),
+                        target_user_id=target_user,
+                        amount=amount
                     )
                     
                     if result.get("error"):
                         await message.reply(f"❌ **AddBal Error:** {result['error']}")
                     else:
-                        new_balance = result.get("newBalance", result.get("balance", "?"))
+                        new_balance = result.get("new_balance", "?")
                         await message.reply(
                             f"✅ **Added {amount:,} UC** to <@{target_user}>\n"
                             f"💰 New Balance: {new_balance:,} UC"
@@ -2458,18 +2482,17 @@ class UserVaultPrefixCommands(commands.Cog):
                         target_user = target_user[1:]
                 
                 try:
-                    result = await self.client.api.reward_api(  # type: ignore[attr-defined]
-                        "add_uv",
-                        target_user,
-                        amount=-amount,  # Negative to remove
-                        gameType="admin_remove",
-                        description=f"Admin remove by {message.author.id}"
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "remove_balance",
+                        str(message.author.id),
+                        target_user_id=target_user,
+                        amount=amount
                     )
                     
                     if result.get("error"):
                         await message.reply(f"❌ **RemoveBal Error:** {result['error']}")
                     else:
-                        new_balance = result.get("newBalance", result.get("balance", "?"))
+                        new_balance = result.get("new_balance", "?")
                         await message.reply(
                             f"✅ **Removed {amount:,} UC** from <@{target_user}>\n"
                             f"💰 New Balance: {new_balance:,} UC"
@@ -2494,20 +2517,92 @@ class UserVaultPrefixCommands(commands.Cog):
                     if target_user.startswith("!"):
                         target_user = target_user[1:]
                 
-                # Try to ban via API (this will fail if endpoint doesn't exist, but we handle it)
                 try:
-                    # First try to set balance to 0 as a "ban" action
-                    await self.client.api.reward_api(  # type: ignore[attr-defined]
-                        "add_uv",
-                        target_user,
-                        amount=-1000000000,  # Large negative number to effectively ban
-                        gameType="admin_ban",
-                        description=f"Banned by {message.author.id}: {reason}"
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "ban_user",
+                        str(message.author.id),
+                        target_user_id=target_user,
+                        reason=reason
                     )
-                    await message.reply(f"🚫 **Banned** <@{target_user}>\nReason: {reason}")
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **Ban Error:** {result['error']}")
+                    else:
+                        await message.reply(f"🚫 **Banned** <@{target_user}>\nReason: {reason}")
                 except Exception as e:
                     print(f"❌ [Ban] Error: {e}")
                     await message.reply(f"❌ Error banning user: {e}")
+                return
+            
+            if cmd_name == "unban":
+                # ?unban <user>
+                if len(args) < 1:
+                    await message.reply("❌ Usage: `?unban <username>`")
+                    return
+                
+                target = args[0]
+                
+                try:
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "unban_user",
+                        str(message.author.id),
+                        target=target
+                    )
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **Unban Error:** {result['error']}")
+                    else:
+                        await message.reply(f"✅ **Unbanned** {target}")
+                except Exception as e:
+                    print(f"❌ [Unban] Error: {e}")
+                    await message.reply(f"❌ Error unbanning user: {e}")
+                return
+            
+            if cmd_name == "stats":
+                # ?stats - Show system statistics
+                try:
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "get_stats",
+                        str(message.author.id)
+                    )
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **Stats Error:** {result['error']}")
+                    else:
+                        embed = discord.Embed(title="📊 UserVault Stats", color=discord.Color.blurple())
+                        embed.add_field(name="👥 Linked Users", value=str(result.get("linked_users", 0)), inline=True)
+                        embed.add_field(name="👤 Total Users", value=str(result.get("total_users", 0)), inline=True)
+                        embed.add_field(name="💰 Total UC", value=f"{result.get('total_uc', 0):,}", inline=True)
+                        embed.add_field(name="🎮 Games Played", value=str(result.get("games_played", 0)), inline=True)
+                        embed.add_field(name="🚫 Banned", value=str(result.get("banned_users", 0)), inline=True)
+                        await message.reply(embed=embed)
+                except Exception as e:
+                    print(f"❌ [Stats] Error: {e}")
+                    await message.reply(f"❌ Error getting stats: {e}")
+                return
+            
+            if cmd_name == "broadcast":
+                # ?broadcast <message>
+                if len(args) < 1:
+                    await message.reply("❌ Usage: `?broadcast <message>`")
+                    return
+                
+                broadcast_msg = " ".join(args)
+                
+                try:
+                    result = await self.client.api.bot_api(  # type: ignore[attr-defined]
+                        "broadcast",
+                        str(message.author.id),
+                        message=broadcast_msg
+                    )
+                    
+                    if result.get("error"):
+                        await message.reply(f"❌ **Broadcast Error:** {result['error']}")
+                    else:
+                        await message.reply(f"📢 **Broadcast Created!**\n\n{broadcast_msg}")
+                except Exception as e:
+                    print(f"❌ [Broadcast] Error: {e}")
+                    await message.reply(f"❌ Error creating broadcast: {e}")
                 return
             
             # For other commands, try the generic approach
