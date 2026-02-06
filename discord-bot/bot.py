@@ -414,6 +414,10 @@ class UserVaultAPI:
         """Play Plinko game."""
         return await self.game_api("play_plinko", risk=risk, bet=bet)
     
+    async def play_keno(self, picks: list, bet: int = 50) -> dict:
+        """Play Keno game."""
+        return await self.game_api("play_keno", picks=picks, bet=bet)
+    
     # ============ REWARD METHODS ============
     
     async def send_reward(self, discord_user_id: str, amount: int, game_type: str, description: str) -> dict:
@@ -2904,6 +2908,118 @@ class UserVaultPrefixCommands(commands.Cog):
             embed.add_field(name="Multiplier", value=f"x{multiplier}", inline=True)
             embed.add_field(name="Result", value=result_text, inline=False)
             embed.set_footer(text=f"Payout: {payout:,} UC • {BOT_CODE_VERSION}")
+            
+            await message.reply(embed=embed)
+            return
+
+        # ── ?keno ── Keno game
+        if lowered.startswith("?keno"):
+            parts = content.split()
+            bet = 50  # Default bet
+            picks: list = []
+            
+            # Parse arguments: ?keno <numbers> <bet>
+            # Example: ?keno 5,12,23,34,40 100
+            # Or: ?keno 5 12 23 34 40 100
+            if len(parts) >= 2:
+                # Check if first arg contains commas (comma-separated numbers)
+                if "," in parts[1]:
+                    try:
+                        picks = [int(x.strip()) for x in parts[1].split(",") if x.strip().isdigit()]
+                    except ValueError:
+                        pass
+                    if len(parts) >= 3 and parts[2].isdigit():
+                        bet = int(parts[2])
+                else:
+                    # Space-separated numbers, last numeric is bet
+                    for p in parts[1:]:
+                        if p.isdigit():
+                            num = int(p)
+                            if 1 <= num <= 40:
+                                picks.append(num)
+                            else:
+                                # Could be bet if > 40
+                                if num > 40:
+                                    bet = num
+            
+            if len(picks) == 0 or len(picks) > 10:
+                await message.reply(
+                    "🎱 **Keno**\n"
+                    "Pick 1-10 numbers between 1-40!\n\n"
+                    "**Usage:** `?keno <numbers> [bet]`\n"
+                    "**Example:** `?keno 5,12,23,34,40 100`\n"
+                    "Or: `?keno 5 12 23 100` (last number > 40 = bet)\n\n"
+                    "**How it works:**\n"
+                    "• 10 numbers are drawn randomly\n"
+                    "• More matches = higher multiplier!\n"
+                    "• Pick 10 & match all = **5000x** 🤑"
+                )
+                return
+            
+            if bet < 10:
+                await message.reply("❌ Minimum bet is 10 UC!")
+                return
+            
+            # Check balance
+            balance_result = await self.client.api.get_balance(str(message.author.id))  # type: ignore[attr-defined]
+            current_balance = safe_int_balance(balance_result.get("balance", 0))
+            if current_balance < bet:
+                await message.reply(f"❌ Not enough UC! You have **{current_balance:,} UC**.")
+                return
+            
+            # Play Keno via API
+            result = await self.client.api.play_keno(picks, bet)  # type: ignore[attr-defined]
+            
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+                return
+            
+            drawn = result.get("drawnNumbers", [])
+            matches = result.get("matches", [])
+            match_count = result.get("matchCount", 0)
+            multiplier = result.get("multiplier", 0)
+            payout = result.get("payout", 0)
+            
+            # Create visual display
+            picks_display = " ".join([f"**{n}**" if n in matches else str(n) for n in sorted(picks)])
+            drawn_display = " ".join([f"🟢{n}" if n in matches else str(n) for n in drawn])
+            
+            # Net profit/loss
+            net = payout - bet
+            won = net > 0
+            
+            if won:
+                result_text = f"🎉 **WIN!** +{net:,} UC (x{multiplier})"
+                color = discord.Color.green()
+                # Award net profit
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), net, "keno", f"Keno win ({match_count} matches, x{multiplier})"
+                )
+            elif payout == bet:
+                result_text = f"🤝 **Break even!** x{multiplier}"
+                color = discord.Color.gold()
+            else:
+                result_text = f"💀 **Lost!** -{bet:,} UC"
+                color = discord.Color.red()
+                # Deduct loss
+                await self.client.api.send_reward(  # type: ignore[attr-defined]
+                    str(message.author.id), -bet, "keno", f"Keno loss ({match_count} matches)"
+                )
+            
+            embed = discord.Embed(
+                title="🎱 Keno",
+                description=(
+                    f"**Your picks:** {picks_display}\n\n"
+                    f"**Drawn:** {drawn_display}\n\n"
+                    f"**Matches:** {match_count}/{len(picks)}"
+                ),
+                color=color
+            )
+            embed.add_field(name="Bet", value=f"{bet:,} UC", inline=True)
+            embed.add_field(name="Multiplier", value=f"x{multiplier}", inline=True)
+            embed.add_field(name="Payout", value=f"{payout:,} UC", inline=True)
+            embed.add_field(name="Result", value=result_text, inline=False)
+            embed.set_footer(text=f"Matched numbers: {', '.join(map(str, matches)) if matches else 'None'}")
             
             await message.reply(embed=embed)
             return

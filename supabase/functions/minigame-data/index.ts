@@ -107,6 +107,14 @@ const gameDefinitions: GameDefinition[] = [
       { name: "High Risk", value: "high" }
     ],
     rewards: { min: 0, max: 1000, currency: "UC" }
+  },
+  {
+    id: "keno",
+    name: "Keno",
+    description: "Pick numbers and match the draw for multiplied winnings!",
+    emoji: "🎱",
+    type: "instant",
+    rewards: { min: 0, max: 10000, currency: "UC" }
   }
 ];
 
@@ -192,6 +200,22 @@ const plinkoMultipliers: Record<string, number[]> = {
   low: [1.5, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.5],    // 9 landing positions
   medium: [3, 1.5, 1.2, 0.7, 0.4, 0.7, 1.2, 1.5, 3],
   high: [10, 3, 1.5, 0.5, 0.2, 0.5, 1.5, 3, 10],
+};
+
+// Keno configuration
+// Payout table based on picks vs matches (multipliers)
+const kenoPayouts: Record<number, Record<number, number>> = {
+  // picks: { matches: multiplier }
+  1: { 1: 3.5 },
+  2: { 1: 1, 2: 9 },
+  3: { 2: 2, 3: 25 },
+  4: { 2: 1, 3: 5, 4: 50 },
+  5: { 3: 2, 4: 12, 5: 100 },
+  6: { 3: 1, 4: 4, 5: 25, 6: 300 },
+  7: { 3: 1, 4: 2, 5: 10, 6: 75, 7: 500 },
+  8: { 4: 2, 5: 5, 6: 25, 7: 150, 8: 1000 },
+  9: { 4: 1, 5: 3, 6: 10, 7: 50, 8: 300, 9: 2000 },
+  10: { 5: 2, 6: 5, 7: 20, 8: 100, 9: 500, 10: 5000 },
 };
 
 // RPS configuration
@@ -356,6 +380,69 @@ function playPlinko(risk: string, bet: number): {
   };
 }
 
+// Keno game logic
+function playKeno(picks: number[], bet: number): {
+  playerPicks: number[];
+  drawnNumbers: number[];
+  matches: number[];
+  matchCount: number;
+  multiplier: number;
+  payout: number;
+  display: string;
+} {
+  // Validate picks (1-40, max 10 picks)
+  const validPicks = picks
+    .filter(n => n >= 1 && n <= 40)
+    .slice(0, 10);
+  
+  if (validPicks.length === 0) {
+    return {
+      playerPicks: [],
+      drawnNumbers: [],
+      matches: [],
+      matchCount: 0,
+      multiplier: 0,
+      payout: 0,
+      display: "❌ No valid picks",
+    };
+  }
+  
+  // Draw 10 random numbers from 1-40
+  const allNumbers = Array.from({ length: 40 }, (_, i) => i + 1);
+  const drawnNumbers: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const idx = Math.floor(Math.random() * allNumbers.length);
+    drawnNumbers.push(allNumbers[idx]);
+    allNumbers.splice(idx, 1);
+  }
+  drawnNumbers.sort((a, b) => a - b);
+  
+  // Find matches
+  const matches = validPicks.filter(n => drawnNumbers.includes(n));
+  const matchCount = matches.length;
+  const pickCount = validPicks.length;
+  
+  // Get multiplier from payout table
+  const payoutTable = kenoPayouts[pickCount] || {};
+  const multiplier = payoutTable[matchCount] || 0;
+  const payout = Math.floor(bet * multiplier);
+  
+  // Create visual display
+  const display = drawnNumbers.map(n => 
+    matches.includes(n) ? `**${n}**` : `${n}`
+  ).join(" ");
+  
+  return {
+    playerPicks: validPicks,
+    drawnNumbers,
+    matches,
+    matchCount,
+    multiplier,
+    payout,
+    display,
+  };
+}
+
 // Blackjack helpers
 const suits = ["♠️", "♥️", "♦️", "♣️"];
 const values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -506,6 +593,14 @@ Deno.serve(async (req) => {
         const risk = params.risk || "medium";
         const bet = params.bet || 50;
         responseData = playPlinko(risk, bet);
+        break;
+      }
+
+      // ============ Keno ============
+      case "play_keno": {
+        const picks = params.picks || [];
+        const bet = params.bet || 50;
+        responseData = playKeno(picks, bet);
         break;
       }
 
