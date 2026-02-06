@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-06-hump-game-v1"
+BOT_CODE_VERSION = "2026-02-06-admin-cmds-impl-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -441,6 +441,28 @@ class UserVaultAPI:
     async def get_all_users(self, discord_user_id: str) -> dict:
         """Get all registered users (admin only)."""
         return await self.reward_api("get_all_users", discord_user_id)
+    
+    # ============ ADMIN METHODS ============
+    
+    async def admin_ban_user(self, admin_discord_id: str, target_username: str, reason: str) -> dict:
+        """Ban a user (admin only)."""
+        return await self.reward_api("admin_ban_user", admin_discord_id, target=target_username, reason=reason)
+    
+    async def admin_unban_user(self, admin_discord_id: str, target_username: str) -> dict:
+        """Unban a user (admin only)."""
+        return await self.reward_api("admin_unban_user", admin_discord_id, target=target_username)
+    
+    async def admin_adjust_balance(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
+        """Adjust a user's balance by amount (admin only). Negative = take, positive = give."""
+        return await self.reward_api("admin_adjust_balance", admin_discord_id, target=target_username, amount=amount)
+    
+    async def admin_set_balance(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
+        """Set a user's balance to exact amount (admin only)."""
+        return await self.reward_api("admin_set_balance", admin_discord_id, target=target_username, amount=amount)
+    
+    async def get_bot_stats(self, admin_discord_id: str) -> dict:
+        """Get bot statistics (admin only)."""
+        return await self.reward_api("get_bot_stats", admin_discord_id)
     
     # ============ COMMAND NOTIFICATIONS ============
     
@@ -3325,6 +3347,258 @@ class UserVaultPrefixCommands(commands.Cog):
             except discord.Forbidden:
                 await message.reply("\n".join(lines))
 
+            return
+
+        # ===== ?ban <user> [reason] - Ban a user =====
+        if lowered.startswith("?ban "):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            parts = content.split(maxsplit=2)
+            if len(parts) < 2:
+                await message.reply("❌ Usage: `?ban <username> [reason]`")
+                return
+            
+            target = parts[1]
+            reason = parts[2] if len(parts) > 2 else "No reason provided"
+            
+            result = await self.client.api.admin_ban_user(str(message.author.id), target, reason)
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+            else:
+                await message.reply(f"🔨 **User banned:** `{target}`\n📝 Reason: {reason}")
+            return
+
+        # ===== ?unban <user> - Unban a user =====
+        if lowered.startswith("?unban "):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            parts = content.split()
+            if len(parts) < 2:
+                await message.reply("❌ Usage: `?unban <username>`")
+                return
+            
+            target = parts[1]
+            result = await self.client.api.admin_unban_user(str(message.author.id), target)
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+            else:
+                await message.reply(f"✅ **User unbanned:** `{target}`")
+            return
+
+        # ===== ?give <user> <amount> - Give UC to user =====
+        if lowered.startswith("?give "):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            parts = content.split()
+            if len(parts) < 3:
+                await message.reply("❌ Usage: `?give <username> <amount>`")
+                return
+            
+            target = parts[1]
+            try:
+                amount = int(parts[2])
+                if amount <= 0:
+                    raise ValueError()
+            except ValueError:
+                await message.reply("❌ Amount must be a positive number!")
+                return
+            
+            result = await self.client.api.admin_adjust_balance(str(message.author.id), target, amount)
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+            else:
+                new_bal = result.get("new_balance", "?")
+                await message.reply(f"💰 Gave **{amount:,} UC** to `{target}`\n💳 New Balance: **{new_bal:,} UC**")
+            return
+
+        # ===== ?take <user> <amount> - Take UC from user =====
+        if lowered.startswith("?take "):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            parts = content.split()
+            if len(parts) < 3:
+                await message.reply("❌ Usage: `?take <username> <amount>`")
+                return
+            
+            target = parts[1]
+            try:
+                amount = int(parts[2])
+                if amount <= 0:
+                    raise ValueError()
+            except ValueError:
+                await message.reply("❌ Amount must be a positive number!")
+                return
+            
+            result = await self.client.api.admin_adjust_balance(str(message.author.id), target, -amount)
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+            else:
+                new_bal = result.get("new_balance", "?")
+                await message.reply(f"💸 Took **{amount:,} UC** from `{target}`\n💳 New Balance: **{new_bal:,} UC**")
+            return
+
+        # ===== ?setbal <user> <amount> - Set user balance =====
+        if lowered.startswith("?setbal "):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            parts = content.split()
+            if len(parts) < 3:
+                await message.reply("❌ Usage: `?setbal <username> <amount>`")
+                return
+            
+            target = parts[1]
+            try:
+                amount = int(parts[2])
+                if amount < 0:
+                    raise ValueError()
+            except ValueError:
+                await message.reply("❌ Amount must be a non-negative number!")
+                return
+            
+            result = await self.client.api.admin_set_balance(str(message.author.id), target, amount)
+            if result.get("error"):
+                await message.reply(f"❌ {result['error']}")
+            else:
+                await message.reply(f"💳 Set `{target}`'s balance to **{amount:,} UC**")
+            return
+
+        # ===== ?broadcast <message> - Send announcement to all servers =====
+        if lowered.startswith("?broadcast "):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            broadcast_msg = content[11:].strip()  # Remove "?broadcast "
+            if not broadcast_msg:
+                await message.reply("❌ Usage: `?broadcast <message>`")
+                return
+            
+            embed = discord.Embed(
+                title="📢 UserVault Announcement",
+                description=broadcast_msg,
+                color=discord.Color.gold(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_footer(text=f"From {message.author.display_name}")
+            
+            sent_count = 0
+            for guild in self.client.guilds:
+                # Try to find a suitable channel
+                channel = guild.system_channel or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
+                if channel:
+                    try:
+                        await channel.send(embed=embed)
+                        sent_count += 1
+                    except Exception:
+                        pass
+            
+            await message.reply(f"📢 Broadcast sent to **{sent_count}** servers!")
+            return
+
+        # ===== ?stats - Show bot statistics =====
+        if lowered == "?stats":
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            # Get API stats
+            result = await self.client.api.get_bot_stats(str(message.author.id))
+            
+            embed = discord.Embed(
+                title="📊 Bot Statistics",
+                color=discord.Color.blurple(),
+                timestamp=discord.utils.utcnow()
+            )
+            
+            # Bot info
+            embed.add_field(name="🤖 Servers", value=f"{len(self.client.guilds):,}", inline=True)
+            embed.add_field(name="👥 Users", value=f"{sum(g.member_count or 0 for g in self.client.guilds):,}", inline=True)
+            embed.add_field(name="📡 Latency", value=f"{self.client.latency*1000:.0f}ms", inline=True)
+            
+            # API stats if available
+            if not result.get("error"):
+                embed.add_field(name="💰 Total UC", value=f"{result.get('total_uc', 0):,}", inline=True)
+                embed.add_field(name="🎮 Games Played", value=f"{result.get('games_played', 0):,}", inline=True)
+                embed.add_field(name="🔗 Linked Users", value=f"{result.get('linked_users', 0):,}", inline=True)
+            
+            embed.set_footer(text=f"v:{BOT_CODE_VERSION}")
+            await message.reply(embed=embed)
+            return
+
+        # ===== ?maintenance [on/off] - Toggle maintenance mode =====
+        if lowered.startswith("?maintenance"):
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            parts = content.split()
+            mode = parts[1].lower() if len(parts) > 1 else "status"
+            
+            if mode == "on":
+                await self.client.change_presence(
+                    status=discord.Status.dnd,
+                    activity=discord.Game("🔧 Maintenance Mode")
+                )
+                await message.reply("🔧 **Maintenance mode enabled.** Bot status set to DND.")
+            elif mode == "off":
+                await self.client.change_presence(
+                    status=discord.Status.online,
+                    activity=discord.Game("uservault.cc | ?help")
+                )
+                await message.reply("✅ **Maintenance mode disabled.** Bot is back online!")
+            else:
+                await message.reply("ℹ️ Usage: `?maintenance on` or `?maintenance off`")
+            return
+
+        # ===== ?serverinfo - Show current server info =====
+        if lowered == "?serverinfo":
+            admin_check = await self.client.api.check_admin(str(message.author.id))
+            if not admin_check.get("is_admin"):
+                await message.reply("❌ Admin access required!")
+                return
+            
+            guild = message.guild
+            if not guild:
+                await message.reply("❌ This command must be used in a server!")
+                return
+            
+            embed = discord.Embed(
+                title=f"🏠 {guild.name}",
+                color=discord.Color.blurple(),
+                timestamp=discord.utils.utcnow()
+            )
+            
+            if guild.icon:
+                embed.set_thumbnail(url=guild.icon.url)
+            
+            embed.add_field(name="👑 Owner", value=str(guild.owner) if guild.owner else "Unknown", inline=True)
+            embed.add_field(name="📅 Created", value=f"<t:{int(guild.created_at.timestamp())}:R>", inline=True)
+            embed.add_field(name="👥 Members", value=f"{guild.member_count:,}", inline=True)
+            embed.add_field(name="💬 Channels", value=f"{len(guild.channels)}", inline=True)
+            embed.add_field(name="🎭 Roles", value=f"{len(guild.roles)}", inline=True)
+            embed.add_field(name="😀 Emojis", value=f"{len(guild.emojis)}", inline=True)
+            embed.add_field(name="🆔 Server ID", value=f"`{guild.id}`", inline=False)
+            
+            embed.set_footer(text=f"v:{BOT_CODE_VERSION}")
+            await message.reply(embed=embed)
             return
 
         # ===== Unknown command handling removed =====

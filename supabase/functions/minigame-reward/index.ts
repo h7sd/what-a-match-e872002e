@@ -775,6 +775,366 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ============ ADMIN: BAN USER ============
+    if (action === "admin_ban_user") {
+      const { target, reason } = JSON.parse(body);
+      
+      // Check if caller is admin
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("discord_user_id", discordUserId)
+        .single();
+      
+      if (!callerProfile) {
+        return new Response(
+          JSON.stringify({ error: "Not linked to UserVault" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerProfile.user_id)
+        .in("role", ["admin", "supporter"])
+        .single();
+      
+      if (!adminRole) {
+        return new Response(
+          JSON.stringify({ error: "Admin access required" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Find target user
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .or(`username.ilike.${target},alias_username.ilike.${target}`)
+        .single();
+      
+      if (!targetProfile) {
+        return new Response(
+          JSON.stringify({ error: `User "${target}" not found` }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Get email from auth
+      const { data: { user: authUser } } = await supabase.auth.admin.getUserById(targetProfile.user_id);
+      
+      // Insert ban record
+      const { error: banError } = await supabase.from("banned_users").insert({
+        user_id: targetProfile.user_id,
+        username: targetProfile.username,
+        email: authUser?.email || null,
+        banned_by: callerProfile.user_id,
+        reason: reason || "No reason provided",
+      });
+      
+      if (banError) {
+        console.error("Ban error:", banError);
+        return new Response(
+          JSON.stringify({ error: "Failed to ban user" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, username: targetProfile.username }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ ADMIN: UNBAN USER ============
+    if (action === "admin_unban_user") {
+      const { target } = JSON.parse(body);
+      
+      // Check admin
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("discord_user_id", discordUserId)
+        .single();
+      
+      if (!callerProfile) {
+        return new Response(
+          JSON.stringify({ error: "Not linked to UserVault" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerProfile.user_id)
+        .in("role", ["admin", "supporter"])
+        .single();
+      
+      if (!adminRole) {
+        return new Response(
+          JSON.stringify({ error: "Admin access required" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Find and delete ban
+      const { error: unbanError } = await supabase
+        .from("banned_users")
+        .delete()
+        .ilike("username", target);
+      
+      if (unbanError) {
+        console.error("Unban error:", unbanError);
+        return new Response(
+          JSON.stringify({ error: "Failed to unban user" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ ADMIN: ADJUST BALANCE ============
+    if (action === "admin_adjust_balance") {
+      const parsedBody = JSON.parse(body);
+      const { target, amount: adjustAmount } = parsedBody;
+      
+      // Check admin
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("discord_user_id", discordUserId)
+        .single();
+      
+      if (!callerProfile) {
+        return new Response(
+          JSON.stringify({ error: "Not linked to UserVault" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerProfile.user_id)
+        .in("role", ["admin", "supporter"])
+        .single();
+      
+      if (!adminRole) {
+        return new Response(
+          JSON.stringify({ error: "Admin access required" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Find target user
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .or(`username.ilike.${target},alias_username.ilike.${target}`)
+        .single();
+      
+      if (!targetProfile) {
+        return new Response(
+          JSON.stringify({ error: `User "${target}" not found` }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Get current balance
+      const { data: balanceData } = await supabase
+        .from("user_balances")
+        .select("balance")
+        .eq("user_id", targetProfile.user_id)
+        .single();
+      
+      const currentBal = toBigInt(balanceData?.balance || 0);
+      const adjustBI = BigInt(adjustAmount);
+      const newBalance = currentBal + adjustBI;
+      
+      if (newBalance < 0n) {
+        return new Response(
+          JSON.stringify({ error: "Cannot set negative balance" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Update balance
+      if (balanceData) {
+        await supabase
+          .from("user_balances")
+          .update({ balance: newBalance.toString(), updated_at: new Date().toISOString() })
+          .eq("user_id", targetProfile.user_id);
+      } else {
+        await supabase.from("user_balances").insert({
+          user_id: targetProfile.user_id,
+          balance: newBalance.toString(),
+          total_earned: adjustBI > 0n ? adjustBI.toString() : "0",
+          total_spent: "0",
+        });
+      }
+      
+      // Log transaction
+      await supabase.from("uv_transactions").insert({
+        user_id: targetProfile.user_id,
+        amount: Number(adjustBI),
+        transaction_type: adjustBI >= 0n ? "admin_give" : "admin_take",
+        description: `Admin adjustment by ${callerProfile.user_id}`,
+        reference_type: "admin",
+      });
+      
+      return new Response(
+        JSON.stringify({ success: true, new_balance: safeJsonInt(newBalance) }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ ADMIN: SET BALANCE ============
+    if (action === "admin_set_balance") {
+      const parsedBody = JSON.parse(body);
+      const { target, amount: setAmount } = parsedBody;
+      
+      // Check admin
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("discord_user_id", discordUserId)
+        .single();
+      
+      if (!callerProfile) {
+        return new Response(
+          JSON.stringify({ error: "Not linked to UserVault" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerProfile.user_id)
+        .in("role", ["admin", "supporter"])
+        .single();
+      
+      if (!adminRole) {
+        return new Response(
+          JSON.stringify({ error: "Admin access required" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Find target user
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .or(`username.ilike.${target},alias_username.ilike.${target}`)
+        .single();
+      
+      if (!targetProfile) {
+        return new Response(
+          JSON.stringify({ error: `User "${target}" not found` }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      const newBalanceBI = BigInt(setAmount);
+      
+      // Upsert balance
+      const { data: existingBal } = await supabase
+        .from("user_balances")
+        .select("id")
+        .eq("user_id", targetProfile.user_id)
+        .single();
+      
+      if (existingBal) {
+        await supabase
+          .from("user_balances")
+          .update({ balance: newBalanceBI.toString(), updated_at: new Date().toISOString() })
+          .eq("user_id", targetProfile.user_id);
+      } else {
+        await supabase.from("user_balances").insert({
+          user_id: targetProfile.user_id,
+          balance: newBalanceBI.toString(),
+          total_earned: newBalanceBI.toString(),
+          total_spent: "0",
+        });
+      }
+      
+      // Log transaction
+      await supabase.from("uv_transactions").insert({
+        user_id: targetProfile.user_id,
+        amount: Number(newBalanceBI),
+        transaction_type: "admin_set",
+        description: `Balance set to ${setAmount} by admin`,
+        reference_type: "admin",
+      });
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ============ ADMIN: GET BOT STATS ============
+    if (action === "get_bot_stats") {
+      // Check admin
+      const { data: callerProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("discord_user_id", discordUserId)
+        .single();
+      
+      if (!callerProfile) {
+        return new Response(
+          JSON.stringify({ error: "Not linked to UserVault" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerProfile.user_id)
+        .in("role", ["admin", "supporter"])
+        .single();
+      
+      if (!adminRole) {
+        return new Response(
+          JSON.stringify({ error: "Admin access required" }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Get stats
+      const { count: linkedUsers } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .not("discord_user_id", "is", null);
+      
+      const { data: totalUCData } = await supabase
+        .from("user_balances")
+        .select("balance");
+      
+      const totalUC = totalUCData?.reduce((sum, b) => sum + toBigInt(b.balance), 0n) || 0n;
+      
+      const { count: gamesPlayed } = await supabase
+        .from("minigame_stats")
+        .select("*", { count: "exact", head: true });
+      
+      return new Response(
+        JSON.stringify({
+          linked_users: linkedUsers || 0,
+          total_uc: safeJsonInt(totalUC),
+          games_played: gamesPlayed || 0,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Unknown action" }),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
