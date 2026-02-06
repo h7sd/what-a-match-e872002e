@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import Index from "./pages/Index";
 import { ClaimedUsernamePopup } from "@/components/landing/ClaimedUsernamePopup";
@@ -11,6 +11,10 @@ import { WelcomeBackGate } from "@/components/auth/WelcomeBackGate";
 import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementBanner";
 import { GlobalAdminNotification } from "@/components/notifications/GlobalAdminNotification";
 import { useIsMobile } from "@/hooks/use-mobile";
+import MaintenanceOverlay from "@/components/landing/MaintenanceOverlay";
+
+// Maintenance mode flag - set to false to disable
+const MAINTENANCE_MODE = true;
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -106,6 +110,44 @@ function EventBannerGate() {
 }
 
 const App = () => {
+  // During maintenance, show overlay on all pages and redirect protected routes
+  if (MAINTENANCE_MODE) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              {/* Global Maintenance Overlay */}
+              <MaintenanceOverlay />
+              
+              <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                  {/* Landing page still renders (behind overlay) */}
+                  <Route path="/" element={<Index />} />
+                  {/* Redirect all protected routes to landing */}
+                  <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                  <Route path="/auth" element={<Navigate to="/" replace />} />
+                  <Route path="/marketplace" element={<Navigate to="/" replace />} />
+                  <Route path="/premium" element={<Navigate to="/" replace />} />
+                  {/* Status page stays accessible */}
+                  <Route path="/status" element={<Status />} />
+                  {/* Legal pages stay accessible */}
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/imprint" element={<Imprint />} />
+                  {/* Everything else redirects to landing */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </TooltipProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

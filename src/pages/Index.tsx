@@ -13,7 +13,7 @@ import { ModernFooter } from "@/components/landing/ModernFooter";
 import { PremiumDialog } from "@/components/landing/PremiumDialog";
 import { LiveChatWidget } from "@/components/chat/LiveChatWidget";
 import { ProfileCardSwapExact } from "@/components/landing/ProfileCardSwapExact";
-import MaintenanceOverlay from "@/components/landing/MaintenanceOverlay";
+
 
 // Lazy load heavy WebGL background to improve initial load time
 const LiquidEther = lazy(() =>
@@ -45,8 +45,6 @@ export default function Index() {
 
   return (
     <div className="min-h-screen relative bg-background overflow-hidden">
-      {/* Maintenance Overlay */}
-      <MaintenanceOverlay />
       {/* Liquid Ether Background - lazy loaded after initial render */}
       <div className="fixed inset-0 z-0">
         {showBackground && (
