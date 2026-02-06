@@ -72,6 +72,13 @@ export default function SecretDatabaseViewer() {
   const [downloadType, setDownloadType] = useState<'sql' | 'all' | 'schema'>('sql');
   const [error, setError] = useState<string | null>(null);
 
+  // Optional server-side export (when current user is allowed). Used to avoid schema inference issues.
+  const [serverExport, setServerExport] = useState<{
+    schema_backup: string;
+    sql_backup: string;
+    json_data: Record<string, unknown[]>;
+  } | null>(null);
+
   // Check authentication and authorization
   useEffect(() => {
     const checkAccess = async () => {
@@ -296,6 +303,9 @@ export default function SecretDatabaseViewer() {
 
   // Generate Schema SQL export (CREATE TABLE statements)
   const generateSchemaExport = (): string => {
+    const uuidLike = (v: unknown) =>
+      typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+
     const lines: string[] = [
       '-- ============================================',
       '-- USERVAULT DATABASE SCHEMA EXPORT',
@@ -306,6 +316,9 @@ export default function SecretDatabaseViewer() {
       '-- This creates all tables, types, functions, and triggers.',
       '-- ============================================',
       '',
+      '-- Extensions (needed for gen_random_uuid in most environments)',
+      'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+      '',
       '-- Create custom types',
       'DO $$ BEGIN',
       "  CREATE TYPE public.app_role AS ENUM ('admin', 'supporter', 'user');",
@@ -314,11 +327,25 @@ export default function SecretDatabaseViewer() {
       '',
     ];
 
-    // Generate CREATE TABLE statements based on existing data structure
+    // Ensure critical auth/role infrastructure exists with correct types
+    lines.push('-- TABLE: user_roles (fixed schema for role-based access control)');
+    lines.push('CREATE TABLE IF NOT EXISTS public.user_roles (');
+    lines.push('  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,');
+    lines.push('  user_id uuid NOT NULL,');
+    lines.push('  role public.app_role NOT NULL,');
+    lines.push('  created_at timestamp with time zone NOT NULL DEFAULT now(),');
+    lines.push('  UNIQUE (user_id, role)');
+    lines.push(');');
+    lines.push('');
+
+    // Generate CREATE TABLE statements based on existing data structure (best-effort fallback)
     for (const tableName of TABLE_NAMES) {
+      if (tableName === 'user_roles') continue; // already handled above
+
       const data = tableData[tableName] || [];
       if (data.length === 0) {
         lines.push(`-- TABLE: ${tableName} (no data to infer schema)`);
+        // Minimal placeholder table for empty tables (no data export will depend on it)
         lines.push(`CREATE TABLE IF NOT EXISTS public.${tableName} (id uuid DEFAULT gen_random_uuid() PRIMARY KEY);`);
         lines.push('');
         continue;
@@ -327,22 +354,40 @@ export default function SecretDatabaseViewer() {
       const firstRow = data[0] as Record<string, unknown>;
       lines.push(`-- TABLE: ${tableName} (inferred from ${data.length} rows)`);
       lines.push(`CREATE TABLE IF NOT EXISTS public.${tableName} (`);
-      
+
       const colDefs = Object.entries(firstRow).map(([col, val]) => {
+        // Primary keys
+        if (col === 'id') {
+          if (typeof val === 'number') return `  ${col} bigint PRIMARY KEY`;
+          if (uuidLike(val)) return `  ${col} uuid DEFAULT gen_random_uuid() PRIMARY KEY`;
+          return `  ${col} text PRIMARY KEY`;
+        }
+
+        // Base type inference
         let type = 'text';
-        if (val === null) type = 'text';
-        else if (typeof val === 'boolean') type = 'boolean DEFAULT false';
-        else if (typeof val === 'number') type = Number.isInteger(val) ? 'integer' : 'numeric';
+        if (val === null || val === undefined) type = 'text';
+        else if (typeof val === 'boolean') type = 'boolean';
+        else if (typeof val === 'number') type = Number.isInteger(val) ? 'bigint' : 'numeric';
         else if (typeof val === 'object') type = 'jsonb';
-        else if (col === 'id') return `  ${col} uuid DEFAULT gen_random_uuid() PRIMARY KEY`;
-        else if (col.endsWith('_id') && col !== 'id') type = 'uuid';
-        else if (col.endsWith('_at') || col === 'created_at' || col === 'updated_at') type = 'timestamp with time zone DEFAULT now()';
-        else if (col === 'email') type = 'text';
-        
-        if (col === 'id') return `  ${col} uuid DEFAULT gen_random_uuid() PRIMARY KEY`;
+        else if (col.endsWith('_at') || col === 'created_at' || col === 'updated_at') type = 'timestamp with time zone';
+
+        // UUID-ish foreign keys (only if value looks like UUID)
+        if (col.endsWith('_id') && col !== 'id' && uuidLike(val)) {
+          type = 'uuid';
+        }
+
+        // Keep emails as text
+        if (col === 'email') type = 'text';
+
+        // Add lightweight defaults where it's safe
+        if (type === 'boolean') return `  ${col} boolean DEFAULT false`;
+        if (type === 'timestamp with time zone' && (col === 'created_at' || col === 'updated_at')) {
+          return `  ${col} timestamp with time zone DEFAULT now()`;
+        }
+
         return `  ${col} ${type}`;
       });
-      
+
       lines.push(colDefs.join(',\n'));
       lines.push(');');
       lines.push('');
@@ -357,7 +402,7 @@ export default function SecretDatabaseViewer() {
 
     // Add essential functions
     lines.push('-- Essential security functions');
-    lines.push('CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)');
+    lines.push('CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role)');
     lines.push('RETURNS boolean');
     lines.push('LANGUAGE sql');
     lines.push('STABLE');
@@ -389,7 +434,7 @@ export default function SecretDatabaseViewer() {
     lines.push('$$;');
     lines.push('');
 
-    // Storage buckets
+    // Storage buckets (best-effort; may not exist in non-cloud Postgres)
     lines.push('-- Storage buckets');
     lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT DO NOTHING;");
     lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('backgrounds', 'backgrounds', true) ON CONFLICT DO NOTHING;");
@@ -409,33 +454,68 @@ export default function SecretDatabaseViewer() {
     return JSON.stringify(exportData, null, 2);
   };
 
+  const downloadTextFile = (content: string, filename: string, mime: string) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const tryFetchServerExport = async (): Promise<{
+    schema_backup: string;
+    sql_backup: string;
+    json_data: Record<string, unknown[]>;
+  } | null> => {
+    if (serverExport) return serverExport;
+
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) return null;
+
+      const response = await supabase.functions.invoke('export-database', {
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`,
+        },
+      });
+
+      if (response.error) return null;
+
+      const result = response.data as any;
+      if (!result?.success) return null;
+      if (!result?.schema_backup || !result?.sql_backup || !result?.json_data) return null;
+
+      const payload = {
+        schema_backup: String(result.schema_backup),
+        sql_backup: String(result.sql_backup),
+        json_data: result.json_data as Record<string, unknown[]>,
+      };
+
+      setServerExport(payload);
+      return payload;
+    } catch {
+      return null;
+    }
+  };
+
   // Create a simple text-based bundle (no external zip library needed)
-  const downloadAllFormats = () => {
+  const downloadAllFormats = (server?: {
+    sql_backup: string;
+    json_data: Record<string, unknown[]>;
+  }) => {
     const timestamp = new Date().toISOString().split('T')[0];
-    
+
     // Download SQL
-    const sqlContent = generateSqlExport();
-    const sqlBlob = new Blob([sqlContent], { type: 'application/sql' });
-    const sqlUrl = URL.createObjectURL(sqlBlob);
-    const sqlLink = document.createElement('a');
-    sqlLink.href = sqlUrl;
-    sqlLink.download = `database-export-${timestamp}.sql`;
-    document.body.appendChild(sqlLink);
-    sqlLink.click();
-    document.body.removeChild(sqlLink);
-    URL.revokeObjectURL(sqlUrl);
+    const sqlContent = server?.sql_backup ?? generateSqlExport();
+    downloadTextFile(sqlContent, `database-export-${timestamp}.sql`, 'application/sql');
 
     // Download JSON
-    const jsonContent = generateJsonExport();
-    const jsonBlob = new Blob([jsonContent], { type: 'application/json' });
-    const jsonUrl = URL.createObjectURL(jsonBlob);
-    const jsonLink = document.createElement('a');
-    jsonLink.href = jsonUrl;
-    jsonLink.download = `database-export-${timestamp}.json`;
-    document.body.appendChild(jsonLink);
-    jsonLink.click();
-    document.body.removeChild(jsonLink);
-    URL.revokeObjectURL(jsonUrl);
+    const jsonContent = server ? JSON.stringify(server.json_data, null, 2) : generateJsonExport();
+    downloadTextFile(jsonContent, `database-export-${timestamp}.json`, 'application/json');
   };
 
   // Verify 2FA and trigger download
@@ -445,7 +525,7 @@ export default function SecretDatabaseViewer() {
     setIsDownloading(true);
     try {
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: mfaFactorId
+        factorId: mfaFactorId,
       });
 
       if (challengeError) throw challengeError;
@@ -453,66 +533,42 @@ export default function SecretDatabaseViewer() {
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: mfaFactorId,
         challengeId: challengeData.id,
-        code: downloadMfaCode
+        code: downloadMfaCode,
       });
 
       if (verifyError) throw verifyError;
 
+      const timestamp = new Date().toISOString().split('T')[0];
+      const server = await tryFetchServerExport();
+
       if (downloadType === 'all') {
         // Download Schema, SQL data, and JSON
-        const timestamp = new Date().toISOString().split('T')[0];
-        
-        // Download Schema first
-        const schemaContent = generateSchemaExport();
-        const schemaBlob = new Blob([schemaContent], { type: 'application/sql' });
-        const schemaUrl = URL.createObjectURL(schemaBlob);
-        const schemaLink = document.createElement('a');
-        schemaLink.href = schemaUrl;
-        schemaLink.download = `schema-export-${timestamp}.sql`;
-        document.body.appendChild(schemaLink);
-        schemaLink.click();
-        document.body.removeChild(schemaLink);
-        URL.revokeObjectURL(schemaUrl);
+        const schemaContent = server?.schema_backup ?? generateSchemaExport();
+        downloadTextFile(schemaContent, `schema-export-${timestamp}.sql`, 'application/sql');
 
-        // Then download data
-        downloadAllFormats();
+        downloadAllFormats(server ?? undefined);
+
         toast({
           title: 'Downloads gestartet',
-          description: 'Schema, SQL-Daten und JSON Dateien werden heruntergeladen.'
+          description: 'Schema, SQL-Daten und JSON Dateien werden heruntergeladen.',
         });
       } else if (downloadType === 'schema') {
-        // Generate and download Schema only
-        const schemaContent = generateSchemaExport();
-        const blob = new Blob([schemaContent], { type: 'application/sql' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `schema-export-${new Date().toISOString().split('T')[0]}.sql`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // Download Schema only
+        const schemaContent = server?.schema_backup ?? generateSchemaExport();
+        downloadTextFile(schemaContent, `schema-export-${timestamp}.sql`, 'application/sql');
 
         toast({
           title: 'Schema Download gestartet',
-          description: 'Die Schema-SQL-Datei wird heruntergeladen. ZUERST ausführen!'
+          description: 'Die Schema-SQL-Datei wird heruntergeladen. ZUERST ausführen!',
         });
       } else {
-        // Generate and download SQL data only
-        const sqlContent = generateSqlExport();
-        const blob = new Blob([sqlContent], { type: 'application/sql' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `data-export-${new Date().toISOString().split('T')[0]}.sql`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // Download SQL data only
+        const sqlContent = server?.sql_backup ?? generateSqlExport();
+        downloadTextFile(sqlContent, `data-export-${timestamp}.sql`, 'application/sql');
 
         toast({
           title: 'Daten Download gestartet',
-          description: 'Die Daten-SQL-Datei wird heruntergeladen.'
+          description: 'Die Daten-SQL-Datei wird heruntergeladen.',
         });
       }
 
@@ -523,7 +579,7 @@ export default function SecretDatabaseViewer() {
       toast({
         title: '2FA-Verifizierung fehlgeschlagen',
         description: errorMessage,
-        variant: 'destructive'
+        variant: 'destructive',
       });
       setDownloadMfaCode('');
     } finally {
