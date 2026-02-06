@@ -43,7 +43,7 @@ print(f"📁 Looking for .env at: {env_path}")
 print(f"📁 .env exists: {env_path.exists()}")
 
 # Configuration
-BOT_CODE_VERSION = "2026-02-06-admin-cmds-impl-v1"
+BOT_CODE_VERSION = "2026-02-06-dedicated-bot-api-v1"
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 WEBHOOK_SECRET = os.getenv("DISCORD_WEBHOOK_SECRET")
 
@@ -72,6 +72,10 @@ FUNCTIONS_BASE_URL = (
     or "https://api.uservault.cc/functions/v1"
 ).rstrip("/")
 
+# DEDICATED BOT API - completely separate from website
+BOT_API = os.getenv("BOT_API_URL") or f"{FUNCTIONS_BASE_URL}/bot-api"
+
+# Legacy endpoints (still used for game logic)
 GAME_API = os.getenv("MINIGAME_DATA_URL") or f"{FUNCTIONS_BASE_URL}/minigame-data"
 REWARD_API = os.getenv("MINIGAME_REWARD_URL") or f"{FUNCTIONS_BASE_URL}/minigame-reward"
 NOTIFICATIONS_API = (
@@ -79,6 +83,7 @@ NOTIFICATIONS_API = (
     or f"{FUNCTIONS_BASE_URL}/bot-command-notifications"
 )
 
+print(f"📡 Using bot-api: {BOT_API}")
 print(f"📡 Using minigame-data: {GAME_API}")
 print(f"📡 Using minigame-reward: {REWARD_API}")
 print(f"📡 Using bot-command-notifications: {NOTIFICATIONS_API}")
@@ -221,6 +226,47 @@ class UserVaultAPI:
             hashlib.sha256,
         ).hexdigest()
         return signature, timestamp
+    
+    async def bot_api(self, action: str, discord_user_id: str = None, **extra) -> dict:
+        """Call the dedicated bot API (separate from website)."""
+        session = await self._get_session()
+        payload = {"action": action}
+        if discord_user_id:
+            payload["discordUserId"] = discord_user_id
+        payload.update(extra)
+        
+        payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+        signature, timestamp = self._generate_signature(payload_json)
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-webhook-signature": signature,
+            "x-webhook-timestamp": timestamp,
+        }
+        
+        self.logger.request_start("bot-api", action, discord_user_id)
+        start_time = time.time()
+        
+        try:
+            async with session.post(
+                BOT_API,
+                data=payload_json.encode("utf-8"),
+                headers=headers,
+            ) as response:
+                duration_ms = (time.time() - start_time) * 1000
+                result = await response.json()
+                
+                if response.status == 200 and not result.get("error"):
+                    preview = json.dumps(result)[:100] if result else ""
+                    self.logger.request_success(action, duration_ms, preview)
+                else:
+                    self.logger.request_error(action, result.get("error", "Unknown error"), response.status)
+                
+                return result
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            self.logger.request_error(action, str(e))
+            return {"error": str(e)}
     
     async def game_api(self, action: str, **params) -> dict:
         """Call the game API (no auth needed - just game logic)."""
@@ -439,30 +485,38 @@ class UserVaultAPI:
         return await self.reward_api("daily_reward", discord_user_id)
     
     async def get_all_users(self, discord_user_id: str) -> dict:
-        """Get all registered users (admin only)."""
-        return await self.reward_api("get_all_users", discord_user_id)
+        """Get all registered users (admin only) - uses dedicated bot API."""
+        return await self.bot_api("get_all_users", discord_user_id)
     
-    # ============ ADMIN METHODS ============
+    # ============ ADMIN METHODS (all use dedicated bot-api) ============
     
     async def admin_ban_user(self, admin_discord_id: str, target_username: str, reason: str) -> dict:
         """Ban a user (admin only)."""
-        return await self.reward_api("admin_ban_user", admin_discord_id, target=target_username, reason=reason)
+        return await self.bot_api("admin_ban_user", admin_discord_id, target=target_username, reason=reason)
     
     async def admin_unban_user(self, admin_discord_id: str, target_username: str) -> dict:
         """Unban a user (admin only)."""
-        return await self.reward_api("admin_unban_user", admin_discord_id, target=target_username)
+        return await self.bot_api("admin_unban_user", admin_discord_id, target=target_username)
     
-    async def admin_adjust_balance(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
-        """Adjust a user's balance by amount (admin only). Negative = take, positive = give."""
-        return await self.reward_api("admin_adjust_balance", admin_discord_id, target=target_username, amount=amount)
+    async def admin_give(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
+        """Give UC to a user (admin only)."""
+        return await self.bot_api("admin_give", admin_discord_id, target=target_username, amount=amount)
+    
+    async def admin_take(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
+        """Take UC from a user (admin only)."""
+        return await self.bot_api("admin_take", admin_discord_id, target=target_username, amount=amount)
     
     async def admin_set_balance(self, admin_discord_id: str, target_username: str, amount: int) -> dict:
         """Set a user's balance to exact amount (admin only)."""
-        return await self.reward_api("admin_set_balance", admin_discord_id, target=target_username, amount=amount)
+        return await self.bot_api("admin_setbal", admin_discord_id, target=target_username, amount=amount)
     
     async def get_bot_stats(self, admin_discord_id: str) -> dict:
         """Get bot statistics (admin only)."""
-        return await self.reward_api("get_bot_stats", admin_discord_id)
+        return await self.bot_api("admin_stats", admin_discord_id)
+    
+    async def check_admin(self, discord_user_id: str) -> dict:
+        """Check if a Discord user is a UserVault admin - uses dedicated bot API."""
+        return await self.bot_api("check_admin", discord_user_id)
     
     # ============ COMMAND NOTIFICATIONS ============
     
@@ -3412,7 +3466,7 @@ class UserVaultPrefixCommands(commands.Cog):
                 await message.reply("❌ Amount must be a positive number!")
                 return
             
-            result = await self.client.api.admin_adjust_balance(str(message.author.id), target, amount)
+            result = await self.client.api.admin_give(str(message.author.id), target, amount)
             if result.get("error"):
                 await message.reply(f"❌ {result['error']}")
             else:
@@ -3441,7 +3495,7 @@ class UserVaultPrefixCommands(commands.Cog):
                 await message.reply("❌ Amount must be a positive number!")
                 return
             
-            result = await self.client.api.admin_adjust_balance(str(message.author.id), target, -amount)
+            result = await self.client.api.admin_take(str(message.author.id), target, amount)
             if result.get("error"):
                 await message.reply(f"❌ {result['error']}")
             else:
