@@ -1290,8 +1290,7 @@ class UserVaultBot(commands.Bot):
         intents.message_content = True
         # Prefix commands are optional, but requested by admins.
         # Note: when loaded as an extension, the host bot's prefix configuration is used.
-        # Disable default help command to use our custom one
-        super().__init__(command_prefix=commands.when_mentioned_or("?"), intents=intents, help_command=None)
+        super().__init__(command_prefix=commands.when_mentioned_or("?"), intents=intents)
         
         self.api = UserVaultAPI(WEBHOOK_SECRET)
         self.active_guess_games: Dict[int, dict] = {}
@@ -1747,11 +1746,11 @@ class UserVaultPrefixCommands(commands.Cog):
         except Exception as e:
             print(f"⚠️ [UserVault] Failed to load commands on cog_load: {e}")
 
-    @commands.command(name="help", aliases=["commands", "cmds"])
+    @commands.command(name="helping", aliases=["cmds"])
     async def help_command(self, ctx: commands.Context, command_name: str = None):
         """
         Show all available commands from the database.
-        Usage: ?help [command_name]
+        Usage: ?helping [command_name]
         """
         # Fetch fresh commands from API
         cmd_data = await fetch_commands_from_api(self.client.api)
