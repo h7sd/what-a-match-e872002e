@@ -43,8 +43,8 @@ nano .env
 Fill in:
 ```
 DISCORD_BOT_TOKEN=your_bot_token
-EDGE_FUNCTION_URL=https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/discord-presence
-BADGE_REQUEST_EDGE_URL=https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/badge-request
+EDGE_FUNCTION_URL=https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/discord-presence
+BADGE_REQUEST_EDGE_URL=https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/badge-request
 GUILD_ID=your_server_id
 DISCORD_WEBHOOK_SECRET=your_webhook_secret
 ADMIN_USER_IDS=your_discord_user_id,other_admin_id
