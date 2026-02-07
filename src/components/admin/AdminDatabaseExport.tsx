@@ -154,6 +154,31 @@ export function AdminDatabaseExport() {
               </div>
             </div>
 
+            {/* Auth Users Highlight */}
+            {authUsers && authUsers.length > 0 && (
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-primary flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      auth.users Export
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {authUsers.length} Accounts inkl. Passwort-Hashes
+                    </p>
+                  </div>
+                  <Button
+                    onClick={downloadAuthUsers}
+                    size="sm"
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    auth.users
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Download Buttons */}
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
@@ -163,7 +188,7 @@ export function AdminDatabaseExport() {
                 disabled={!jsonData}
               >
                 <FileJson className="w-4 h-4 mr-2" />
-                JSON Download
+                JSON
               </Button>
               <Button
                 onClick={downloadSql}
@@ -172,16 +197,7 @@ export function AdminDatabaseExport() {
                 disabled={!sqlBackup}
               >
                 <FileCode className="w-4 h-4 mr-2" />
-                SQL Download
-              </Button>
-              <Button
-                onClick={downloadAuthUsers}
-                variant="outline"
-                className="flex-1"
-                disabled={!authUsers}
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Auth-User
+                SQL
               </Button>
             </div>
 
