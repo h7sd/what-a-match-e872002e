@@ -5,76 +5,39 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": [
-    "authorization",
-    "x-client-info",
-    "apikey",
-    "content-type",
-    "x-supabase-client-platform",
-    "x-supabase-client-platform-version",
-    "x-supabase-client-runtime",
-    "x-supabase-client-runtime-version",
-    "x-forwarded-for",
-    "x-real-ip",
-    "cf-connecting-ip",
-    "x-client-ip",
+    "authorization", "x-client-info", "apikey", "content-type",
+    "x-supabase-client-platform", "x-supabase-client-platform-version",
+    "x-supabase-client-runtime", "x-supabase-client-runtime-version",
+    "x-forwarded-for", "x-real-ip", "cf-connecting-ip", "x-client-ip",
   ].join(", "),
   "Access-Control-Max-Age": "86400",
 };
 
-interface ResetPasswordRequest {
-  email: string;
-  code: string;
-  newPassword: string;
-}
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
 
-// Add random delay to prevent timing attacks (200-400ms)
-const addTimingJitter = async () => {
-  const delay = 200 + Math.random() * 200;
-  await new Promise(resolve => setTimeout(resolve, delay));
-};
-
-// Hash email for logging (privacy)
-const hashEmail = async (email: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(email.toLowerCase());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // Start timing normalization
-  const startTime = Date.now();
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { email, code, newPassword }: ResetPasswordRequest = await req.json();
+    const { email, code, newPassword } = await req.json();
+    if (!email || !code || !newPassword) return json({ error: "Missing required fields" }, 400);
+    if (newPassword.length < 6) return json({ error: "Password must be at least 6 characters" }, 400);
 
-    if (!email || !code || !newPassword) {
-      await addTimingJitter();
-      throw new Error("Missing required fields: email, code, and newPassword");
-    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (newPassword.length < 6) {
-      await addTimingJitter();
-      throw new Error("Password must be at least 6 characters");
-    }
+    const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Create admin client with service role
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    // Verify the reset code
-    const nowISO = new Date().toISOString();
     const normalizedEmail = email.toLowerCase().trim();
     const trimmedCode = code.trim();
-    
+
+    // 1. Verify the reset code exists and is valid
     const { data: codes, error: fetchError } = await supabaseAdmin
       .from("verification_codes")
       .select("*")
@@ -82,121 +45,88 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("code", trimmedCode)
       .eq("type", "password_reset")
       .is("used_at", null)
-      .gt("expires_at", nowISO)
+      .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
       .limit(1);
 
     if (fetchError || !codes || codes.length === 0) {
-      const emailHash = await hashEmail(email);
-      await addTimingJitter();
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired reset code" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      console.error("Code not found:", fetchError?.message);
+      return json({ error: "Invalid or expired reset code" }, 400);
     }
 
-    // Mark code as used
+    // 2. Mark code as used IMMEDIATELY
     await supabaseAdmin
       .from("verification_codes")
       .update({ used_at: new Date().toISOString() })
       .eq("id", codes[0].id);
 
-    // Get user by email - use listUsers with filter for efficiency
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
+    // 3. Find user ID from profiles table (profiles.id = auth.users.id)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    let userId = profile?.id;
+
+    // Fallback: if not in profiles, use Auth Admin REST API directly
+    if (!userId) {
+      console.log("User not in profiles, trying Auth Admin API...");
+      const listRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=50`, {
+        headers: {
+          "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+          "apikey": SERVICE_ROLE_KEY,
+        },
+      });
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const users = listData.users || listData;
+        const found = (Array.isArray(users) ? users : []).find(
+          (u: any) => u.email?.toLowerCase() === normalizedEmail
+        );
+        if (found) userId = found.id;
+      }
+    }
+
+    if (!userId) {
+      console.error("User not found for email");
+      return json({ error: "User not found" }, 400);
+    }
+
+    // 4. Update password via Auth Admin REST API directly (most reliable)
+    console.log("Updating password for user:", userId);
+    const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+        "apikey": SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({ password: newPassword }),
     });
 
-    // Search through users (with timing normalization)
-    let foundUser = null;
-    let page = 1;
-    const perPage = 1000;
-    
-    while (!foundUser) {
-      const { data: pageData, error: pageError } = await supabaseAdmin.auth.admin.listUsers({
-        page,
-        perPage,
-      });
-      
-      if (pageError) {
-        const emailHash = await hashEmail(email);
-        console.error("Error listing users for hash:", emailHash);
-        await addTimingJitter();
-        return new Response(
-          JSON.stringify({ error: "Invalid or expired reset code" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+    const updateBody = await updateRes.text();
+    console.log("Password update response:", updateRes.status, updateBody);
+
+    if (!updateRes.ok) {
+      let errorMsg = "Failed to update password";
+      try {
+        const parsed = JSON.parse(updateBody);
+        errorMsg = parsed.msg || parsed.error || parsed.message || errorMsg;
+      } catch {}
+
+      if (errorMsg.includes("weak") || errorMsg.includes("easy to guess")) {
+        return json({ error: "Password is too weak. Use at least 8 characters with uppercase, lowercase, numbers, and symbols." }, 400);
       }
-      
-      foundUser = pageData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      
-      if (foundUser) break;
-      if (pageData.users.length < perPage) break;
-      page++;
-      if (page > 10) break;
-    }
-    
-    if (!foundUser) {
-      const emailHash = await hashEmail(email);
-      console.log("User not found for email hash:", emailHash);
-      await addTimingJitter();
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired reset code" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-    
-    const user = foundUser;
-
-    // Update password using admin API
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user.id,
-      { password: newPassword }
-    );
-
-    if (updateError) {
-      console.error("Error updating password:", updateError.message);
-      await addTimingJitter();
-      
-      // Check for weak password error and return user-friendly message
-      if (updateError.message.includes("weak") || updateError.message.includes("easy to guess")) {
-        return new Response(
-          JSON.stringify({ error: "Password is too weak. Please choose a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and symbols." }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-      
-      throw new Error("Failed to update password");
+      console.error("Password update failed:", errorMsg);
+      return json({ error: errorMsg }, 500);
     }
 
-    // SECURITY FIX: Invalidate all existing sessions after password reset
-    // This prevents attackers with active sessions from maintaining access
-    try {
-      await supabaseAdmin.auth.admin.signOut(user.id, 'global');
-      console.log("All sessions invalidated for user after password reset");
-    } catch (signOutError) {
-      // Log but don't fail the password reset if session invalidation fails
-      console.error("Warning: Failed to invalidate sessions:", signOutError);
-    }
+    console.log("Password reset successful for user:", userId);
 
-    const emailHash = await hashEmail(email);
-    console.log("Password reset successful for hash:", emailHash);
-
-    // Normalize response time to prevent timing attacks
-    await addTimingJitter();
-
-    return new Response(
-      JSON.stringify({ success: true, message: "Password updated successfully. Please log in with your new password." }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    return json({ success: true, message: "Password updated successfully. Please log in with your new password." });
   } catch (error: any) {
-    console.error("Error in reset-password function:", error.message);
-    await addTimingJitter();
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    console.error("Error in reset-password:", error.message);
+    return json({ error: error.message }, 500);
   }
-};
-
-serve(handler);
+});
