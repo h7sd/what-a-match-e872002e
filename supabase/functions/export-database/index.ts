@@ -93,6 +93,37 @@ serve(async (req) => {
 
     const exportData: Record<string, any[]> = {};
     const errors: string[] = [];
+    const authUsers: any[] = [];
+
+    // Export auth users (login accounts). NOTE: passwords cannot be migrated directly from an export.
+    try {
+      const perPage = 1000;
+      let page = 1;
+
+      while (true) {
+        const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+
+        const users = data?.users ?? [];
+        authUsers.push(
+          ...users.map((u: any) => ({
+            id: u.id,
+            email: u.email ?? null,
+            phone: u.phone ?? null,
+            created_at: u.created_at ?? null,
+            last_sign_in_at: u.last_sign_in_at ?? null,
+            app_metadata: u.app_metadata ?? null,
+            user_metadata: u.user_metadata ?? null,
+          })),
+        );
+
+        const total = typeof data?.total === "number" ? data.total : authUsers.length;
+        if (users.length < perPage || users.length === 0 || page * perPage >= total) break;
+        page++;
+      }
+    } catch (e: any) {
+      errors.push(`auth_users: ${e?.message ?? String(e)}`);
+    }
 
     for (const table of tables) {
       try {
@@ -205,6 +236,7 @@ serve(async (req) => {
       exported_at: new Date().toISOString(),
       tables_exported: Object.keys(exportData).length,
       total_rows: Object.values(exportData).reduce((sum, arr) => sum + (arr?.length || 0), 0),
+      auth_users_exported: authUsers.length,
       table_counts: Object.fromEntries(
         Object.entries(exportData).map(([k, v]) => [k, v?.length || 0])
       ),
@@ -218,6 +250,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         summary,
+        auth_users: authUsers,
         json_data: exportData,
         sql_backup: sqlBackup,
       }),
