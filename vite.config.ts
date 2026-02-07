@@ -5,7 +5,7 @@ import path from "node:path";
 function resolveAtAlias(): Plugin {
   let srcDir = "";
   return {
-    name: "resolve-at-alias",
+    name: "at-alias-v2",
     enforce: "pre",
     configResolved(config) {
       srcDir = path.resolve(config.root, "src");
@@ -36,14 +36,18 @@ export default defineConfig({
       overlay: false,
     },
     watch: {
-      // Ignore env files and non-source files to prevent restart loops
+      // Ignore non-source files to prevent restart loops
       ignored: [
         "**/.env",
         "**/.env.*",
         "**/env/**",
         "**/node_modules/**",
         "**/discord-bot/**",
+        "**/cloudflare-worker/**",
+        "**/supabase/**",
+        "**/backup/**",
         "**/.git/**",
+        "**/public/**",
       ],
     },
   },
