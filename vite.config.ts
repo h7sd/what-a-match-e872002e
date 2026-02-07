@@ -48,4 +48,6 @@ export default defineConfig({
     },
   },
   plugins: [resolveAtAlias(), react()],
+  // Ensure env vars are always available even when .env watching is disabled
+  envPrefix: "VITE_",
 });
