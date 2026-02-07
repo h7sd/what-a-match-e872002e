@@ -1,22 +1,6 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
-
-/* Silent path-alias plugin – no logging, cache-bust v3 */
-function pathAlias(): Plugin {
-  let src = "";
-  return {
-    name: "path-alias-v3",
-    enforce: "pre",
-    configResolved(c) { src = path.resolve(c.root, "src"); },
-    resolveId(id, importer) {
-      if (!id.startsWith("@/")) return null;
-      if (id === "@/integrations/supabase/client")
-        return path.resolve(src, "lib/supabase-proxy-client.ts");
-      return (this as any).resolve(path.join(src, id.slice(2)), importer, { skipSelf: true });
-    },
-  };
-}
 
 export default defineConfig({
   server: {
@@ -32,6 +16,20 @@ export default defineConfig({
       ],
     },
   },
-  plugins: [pathAlias(), react()],
+  plugins: [
+    {
+      name: "src-alias",
+      enforce: "pre" as const,
+      configResolved(c: any) { (this as any)._src = path.resolve(c.root, "src"); },
+      resolveId(id: string, importer: string | undefined) {
+        if (!id.startsWith("@/")) return null;
+        const src = (this as any)._src;
+        if (id === "@/integrations/supabase/client")
+          return path.resolve(src, "lib/supabase-proxy-client.ts");
+        return (this as any).resolve(path.join(src, id.slice(2)), importer, { skipSelf: true });
+      },
+    },
+    react(),
+  ],
   envPrefix: "VITE_",
 });
