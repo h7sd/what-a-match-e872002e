@@ -113,7 +113,7 @@ const signupSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
 });
 
-type AuthStep = 'login' | 'signup' | 'verify' | 'forgot-password' | 'reset-password' | 'mfa-verify';
+type AuthStep = 'login' | 'signup' | 'verify' | 'forgot-password' | 'reset-code' | 'reset-password' | 'mfa-verify';
 
 declare global {
   interface Window {
@@ -325,12 +325,15 @@ export default function Auth() {
     const discordState = searchParams.get('discord_state');
     
     if (type === 'recovery') {
-      // Supabase built-in recovery: user arrives with ?type=recovery and
-      // a #access_token fragment that the Supabase SDK processes automatically.
-      // Legacy custom flow: ?type=recovery&email=...&code=... (kept for backwards compat)
       if (emailParam) setEmail(emailParam);
-      if (codeParam) setVerificationCode(codeParam);
-      setStep('reset-password');
+      if (codeParam) {
+        // Legacy link with code already in URL - go directly to reset-password
+        setVerificationCode(codeParam);
+        setStep('reset-password');
+      } else {
+        // Code-based flow - show code entry form
+        setStep('reset-code');
+      }
     }
     
     // Handle Discord OAuth callback
@@ -593,11 +596,22 @@ export default function Auth() {
         await sendPasswordResetEmail(email);
         
         toast({ 
-          title: 'Email sent!', 
-          description: 'If an account exists, you will receive a reset link.' 
+          title: 'Code sent!', 
+          description: 'Check your email for the 6-digit reset code.' 
         });
         
+        setStep('reset-code');
+        
         setStep('login');
+      } else if (step === 'reset-code') {
+        // User entered the 6-digit code from the email
+        if (!verificationCode || verificationCode.length !== 6) {
+          setErrors({ verificationCode: 'Please enter the 6-digit code from your email' });
+          setLoading(false);
+          return;
+        }
+        // Code is stored in state, move to new password step
+        setStep('reset-password');
       } else if (step === 'reset-password') {
         if (newPassword.length < 6) {
           setErrors({ newPassword: 'Password must be at least 6 characters' });
@@ -605,14 +619,10 @@ export default function Auth() {
           return;
         }
 
-        // Use state values (set when recovery URL was first parsed)
-        const resetCode = verificationCode || searchParams.get('code') || '';
-        const resetEmail = email || searchParams.get('email') || '';
-
-        if (!resetCode || !resetEmail) {
+        if (!verificationCode || !email) {
           toast({
-            title: 'Invalid link',
-            description: 'Please request a new password reset.',
+            title: 'Missing data',
+            description: 'Please start the password reset process again.',
             variant: 'destructive',
           });
           setStep('forgot-password');
@@ -621,7 +631,7 @@ export default function Auth() {
         }
 
         const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
-          body: { email: resetEmail, code: resetCode, newPassword },
+          body: { email, code: verificationCode, newPassword },
         });
 
         if (error || (data as any)?.error) {
@@ -631,8 +641,10 @@ export default function Auth() {
             variant: 'destructive',
           });
         } else {
-          toast({ title: 'Password changed!', description: 'You can now log in.' });
+          toast({ title: 'Password changed!', description: 'You can now log in with your new password.' });
           setStep('login');
+          setVerificationCode('');
+          setNewPassword('');
           navigate('/auth', { replace: true });
         }
       }
@@ -772,6 +784,7 @@ export default function Auth() {
       case 'signup': return 'Create account';
       case 'verify': return 'Verify email';
       case 'forgot-password': return 'Forgot password';
+      case 'reset-code': return 'Enter reset code';
       case 'reset-password': return 'New password';
       case 'mfa-verify': return 'Two-Factor Authentication';
       default: return 'Auth';
@@ -784,6 +797,7 @@ export default function Auth() {
       case 'signup': return 'Create your own personalized bio page';
       case 'verify': return `We sent a 6-digit code to ${email}`;
       case 'forgot-password': return 'Enter your email to reset your password';
+      case 'reset-code': return 'Check your email for the 6-digit code';
       case 'reset-password': return 'Choose a new, secure password';
       case 'mfa-verify': return 'Enter the 6-digit code from your authenticator app';
       default: return '';
@@ -1210,7 +1224,7 @@ export default function Auth() {
                   className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
                 >
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Send reset link
+                  Send reset code
                 </Button>
 
                 <button
@@ -1220,6 +1234,57 @@ export default function Auth() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to login
+                </button>
+              </motion.form>
+            )}
+
+            {/* Enter Reset Code */}
+            {step === 'reset-code' && (
+              <motion.form
+                onSubmit={handleSubmit}
+                className="space-y-5 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <p className="text-white/60 text-sm text-center">
+                  We sent a 6-digit code to <strong className="text-white/80">{email}</strong>
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="resetCode" className="text-white/80 text-sm font-medium">
+                    Reset code
+                  </Label>
+                  <Input
+                    id="resetCode"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="h-12 bg-white/5 border-white/10 text-white text-center text-2xl tracking-[0.3em] font-mono placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.verificationCode && (
+                    <p className="text-sm text-red-400">{errors.verificationCode}</p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || verificationCode.length !== 6}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Verify code
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setStep('forgot-password')}
+                  className="w-full text-sm text-white/50 hover:text-white transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Resend code
                 </button>
               </motion.form>
             )}

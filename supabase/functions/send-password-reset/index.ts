@@ -127,13 +127,13 @@ const handler = async (req: Request): Promise<Response> => {
         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
           <tr>
             <td align="center">
-              <table width="100%" max-width="500" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px;">
                 <!-- Logo -->
                 <tr>
                   <td align="center" style="padding-bottom: 30px;">
                     <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
                       <tr>
-                        <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #8b5cf6, #a855f7); border-radius: 16px;">
+                        <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #14b8a6, #06b6d4); border-radius: 16px;">
                           <span style="color: white; font-weight: bold; font-size: 24px; line-height: 60px;">UV</span>
                         </td>
                       </tr>
@@ -141,45 +141,39 @@ const handler = async (req: Request): Promise<Response> => {
                     <h1 style="color: #ffffff; margin: 20px 0 0 0; font-size: 28px; font-weight: 700; text-align: center;">UserVault</h1>
                   </td>
                 </tr>
-                
                 <!-- Main Card -->
                 <tr>
-                  <td style="background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px;">
-                    <h2 style="color: #ffffff; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
+                  <td style="background-color: #111111; border: 1px solid #222222; border-radius: 16px; padding: 40px 32px;">
+                    <h2 style="color: #ffffff; margin: 0 0 12px 0; font-size: 22px; text-align: center; font-weight: 600;">
                       Reset Your Password
                     </h2>
-                    <p style="color: #a1a1aa; margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; text-align: center;">
-                      You requested to reset your password. Click the button below to create a new password.
+                    <p style="color: #a1a1aa; margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; text-align: center;">
+                      Click the button below to reset your password:
                     </p>
-                    
-                    <!-- CTA Button -->
-                    <div style="text-align: center; margin-bottom: 30px;">
-                      <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+                    <div style="text-align: center; margin-bottom: 28px;">
+                      <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6, #06b6d4); color: #0a0a0a; text-decoration: none; padding: 14px 36px; border-radius: 10px; font-weight: 700; font-size: 15px;">
                         Reset Password
                       </a>
                     </div>
-                    
-                    <p style="color: #71717a; margin: 0 0 20px 0; font-size: 14px; text-align: center;">
-                      This link is valid for <strong style="color: #a1a1aa;">1 hour</strong>.
+                    <p style="color: #71717a; margin: 0 0 20px 0; font-size: 13px; text-align: center;">
+                      This link expires in <strong style="color: #a1a1aa;">1 hour</strong>.
                     </p>
-                    
-                    <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                      <p style="color: #52525b; font-size: 12px; margin: 0; text-align: center;">
-                        If the button doesn't work, copy this link:<br>
-                        <a href="${resetUrl}" style="color: #8b5cf6; word-break: break-all;">${resetUrl}</a>
+                    <div style="border-top: 1px solid #222222; padding-top: 16px;">
+                      <p style="color: #52525b; font-size: 11px; margin: 0; text-align: center;">
+                        Or copy this link:<br>
+                        <a href="${resetUrl}" style="color: #14b8a6; word-break: break-all; font-size: 11px;">${resetUrl}</a>
                       </p>
                     </div>
                   </td>
                 </tr>
-                
                 <!-- Footer -->
                 <tr>
-                  <td style="padding-top: 30px; text-align: center;">
+                  <td style="padding-top: 28px; text-align: center;">
                     <p style="color: #52525b; font-size: 12px; margin: 0;">
-                      If you didn't request this email, you can safely ignore it.
+                      If you didn't request this, you can safely ignore it.
                     </p>
-                    <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
-                      © ${new Date().getFullYear()} UserVault. All rights reserved.
+                    <p style="color: #3f3f46; font-size: 11px; margin: 14px 0 0 0;">
+                      &copy; ${new Date().getFullYear()} UserVault. All rights reserved.
                     </p>
                   </td>
                 </tr>

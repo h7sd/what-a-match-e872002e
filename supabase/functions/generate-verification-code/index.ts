@@ -97,12 +97,13 @@ async function sendSignupEmail(to: string, code: string) {
           <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
             <tr>
               <td align="center">
-                <table width="100%" max-width="500" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+                  <!-- Logo -->
                   <tr>
                     <td align="center" style="padding-bottom: 30px;">
                       <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
                         <tr>
-                          <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #8b5cf6, #a855f7); border-radius: 16px;">
+                          <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #14b8a6, #06b6d4); border-radius: 16px;">
                             <span style="color: white; font-weight: bold; font-size: 24px; line-height: 60px;">UV</span>
                           </td>
                         </tr>
@@ -110,31 +111,32 @@ async function sendSignupEmail(to: string, code: string) {
                       <h1 style="color: #ffffff; margin: 20px 0 0 0; font-size: 28px; font-weight: 700; text-align: center;">UserVault</h1>
                     </td>
                   </tr>
+                  <!-- Main Card -->
                   <tr>
-                    <td style="background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px;">
-                      <h2 style="color: #ffffff; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
+                    <td style="background-color: #111111; border: 1px solid #222222; border-radius: 16px; padding: 40px 32px;">
+                      <h2 style="color: #ffffff; margin: 0 0 12px 0; font-size: 22px; text-align: center; font-weight: 600;">
                         Verify Your Email
                       </h2>
-                      <p style="color: #a1a1aa; margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; text-align: center;">
-                        Enter this code to complete your signup:
+                      <p style="color: #a1a1aa; margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; text-align: center;">
+                        Welcome to UserVault! Enter this code to verify your email:
                       </p>
-                      <div style="text-align: center; margin-bottom: 30px;">
-                        <span style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; padding: 16px 40px; border-radius: 12px; font-weight: 700; font-size: 32px; letter-spacing: 8px;">
-                          ${code}
-                        </span>
+                      <!-- Code Box -->
+                      <div style="background-color: #0a0a0a; border: 2px solid #14b8a6; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 28px;">
+                        <span style="color: #14b8a6; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'SF Mono', Monaco, 'Courier New', monospace;">${code}</span>
                       </div>
-                      <p style="color: #71717a; margin: 0; font-size: 14px; text-align: center;">
+                      <p style="color: #71717a; margin: 0; font-size: 13px; text-align: center;">
                         This code expires in <strong style="color: #a1a1aa;">15 minutes</strong>.
                       </p>
                     </td>
                   </tr>
+                  <!-- Footer -->
                   <tr>
-                    <td style="padding-top: 30px; text-align: center;">
+                    <td style="padding-top: 28px; text-align: center;">
                       <p style="color: #52525b; font-size: 12px; margin: 0;">
                         If you didn't request this email, you can safely ignore it.
                       </p>
-                      <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
-                        © ${new Date().getFullYear()} UserVault. All rights reserved.
+                      <p style="color: #3f3f46; font-size: 11px; margin: 14px 0 0 0;">
+                        &copy; ${new Date().getFullYear()} UserVault. All rights reserved.
                       </p>
                     </td>
                   </tr>
@@ -156,7 +158,7 @@ async function sendSignupEmail(to: string, code: string) {
   return res.json();
 }
 
-async function sendPasswordResetEmail(to: string, code: string, resetUrl: string) {
+async function sendPasswordResetEmail(to: string, code: string) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -178,12 +180,13 @@ async function sendPasswordResetEmail(to: string, code: string, resetUrl: string
           <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
             <tr>
               <td align="center">
-                <table width="100%" max-width="500" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+                  <!-- Logo -->
                   <tr>
                     <td align="center" style="padding-bottom: 30px;">
                       <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
                         <tr>
-                          <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #8b5cf6, #a855f7); border-radius: 16px;">
+                          <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #14b8a6, #06b6d4); border-radius: 16px;">
                             <span style="color: white; font-weight: bold; font-size: 24px; line-height: 60px;">UV</span>
                           </td>
                         </tr>
@@ -191,37 +194,32 @@ async function sendPasswordResetEmail(to: string, code: string, resetUrl: string
                       <h1 style="color: #ffffff; margin: 20px 0 0 0; font-size: 28px; font-weight: 700; text-align: center;">UserVault</h1>
                     </td>
                   </tr>
+                  <!-- Main Card -->
                   <tr>
-                    <td style="background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px;">
-                      <h2 style="color: #ffffff; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
+                    <td style="background-color: #111111; border: 1px solid #222222; border-radius: 16px; padding: 40px 32px;">
+                      <h2 style="color: #ffffff; margin: 0 0 12px 0; font-size: 22px; text-align: center; font-weight: 600;">
                         Reset Your Password
                       </h2>
-                      <p style="color: #a1a1aa; margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; text-align: center;">
-                        Click the button below to reset your password:
+                      <p style="color: #a1a1aa; margin: 0 0 28px 0; font-size: 15px; line-height: 1.6; text-align: center;">
+                        Enter this code on the password reset page:
                       </p>
-                      <div style="text-align: center; margin-bottom: 30px;">
-                        <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-                          Reset Password
-                        </a>
+                      <!-- Code Box -->
+                      <div style="background-color: #0a0a0a; border: 2px solid #14b8a6; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 28px;">
+                        <span style="color: #14b8a6; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'SF Mono', Monaco, 'Courier New', monospace;">${code}</span>
                       </div>
-                      <p style="color: #71717a; margin: 0 0 20px 0; font-size: 14px; text-align: center;">
-                        This link is valid for <strong style="color: #a1a1aa;">1 hour</strong>.
+                      <p style="color: #71717a; margin: 0; font-size: 13px; text-align: center;">
+                        This code expires in <strong style="color: #a1a1aa;">1 hour</strong>. Do not share it with anyone.
                       </p>
-                      <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                        <p style="color: #52525b; font-size: 12px; margin: 0; text-align: center;">
-                          If the button doesn't work, copy this link:<br>
-                          <a href="${resetUrl}" style="color: #8b5cf6; word-break: break-all;">${resetUrl}</a>
-                        </p>
-                      </div>
                     </td>
                   </tr>
+                  <!-- Footer -->
                   <tr>
-                    <td style="padding-top: 30px; text-align: center;">
+                    <td style="padding-top: 28px; text-align: center;">
                       <p style="color: #52525b; font-size: 12px; margin: 0;">
-                        If you didn't request this email, you can safely ignore it.
+                        If you didn't request a password reset, you can safely ignore this email.
                       </p>
-                      <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
-                        © ${new Date().getFullYear()} UserVault. All rights reserved.
+                      <p style="color: #3f3f46; font-size: 11px; margin: 14px 0 0 0;">
+                        &copy; ${new Date().getFullYear()} UserVault. All rights reserved.
                       </p>
                     </td>
                   </tr>
@@ -358,10 +356,7 @@ const handler = async (req: Request): Promise<Response> => {
       await sendSignupEmail(normalizedEmail, code);
       console.log("Signup verification code generated");
     } else {
-      // Get origin from request headers for reset URL
-      const origin = req.headers.get("origin") || "https://uservault.cc";
-      const resetUrl = `${origin}/auth?type=recovery&email=${encodeURIComponent(normalizedEmail)}&code=${code}`;
-      await sendPasswordResetEmail(normalizedEmail, code, resetUrl);
+      await sendPasswordResetEmail(normalizedEmail, code);
       console.log("Password reset code generated");
     }
 
