@@ -450,10 +450,13 @@ export default function Auth() {
   // Generate verification code via backend function
   const generateVerificationCode = async (targetEmail: string, type: 'signup' | 'password_reset') => {
     const normalizedEmail = targetEmail.toLowerCase().trim();
+    console.log("[v0] generateVerificationCode:", { email: normalizedEmail, type });
 
     const { data, error } = await invokeSecure<{ error?: string }>('generate-verification-code', {
       body: { email: normalizedEmail, type },
     });
+
+    console.log("[v0] generateVerificationCode response:", { data: JSON.stringify(data), error: error?.message });
 
     if (error || (data as any)?.error) {
       throw new Error((data as any)?.error || error?.message || 'Error generating verification code');
@@ -628,9 +631,13 @@ export default function Auth() {
           return;
         }
 
+        console.log("[v0] reset-password call:", { email: email.toLowerCase().trim(), code: verificationCode, newPasswordLen: newPassword.length });
+        
         const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
-          body: { email, code: verificationCode, newPassword },
+          body: { email: email.toLowerCase().trim(), code: verificationCode.trim(), newPassword },
         });
+
+        console.log("[v0] reset-password response:", { data: JSON.stringify(data), error: error?.message });
 
         if (error || (data as any)?.error) {
           toast({
