@@ -110,13 +110,13 @@ const handler = async (req: Request): Promise<Response> => {
         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
           <tr>
             <td align="center">
-              <table width="100%" max-width="500" cellpadding="0" cellspacing="0" style="max-width: 500px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px;">
                 <!-- Logo -->
                 <tr>
                   <td align="center" style="padding-bottom: 30px;">
                     <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
                       <tr>
-                        <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #8b5cf6, #a855f7); border-radius: 16px;">
+                        <td align="center" style="width: 60px; height: 60px; background: linear-gradient(135deg, #14b8a6, #06b6d4); border-radius: 16px;">
                           <span style="color: white; font-weight: bold; font-size: 24px; line-height: 60px;">UV</span>
                         </td>
                       </tr>
@@ -124,42 +124,35 @@ const handler = async (req: Request): Promise<Response> => {
                     <h1 style="color: #ffffff; margin: 20px 0 0 0; font-size: 28px; font-weight: 700; text-align: center;">UserVault</h1>
                   </td>
                 </tr>
-                
                 <!-- Main Card -->
                 <tr>
-                  <td style="background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, rgba(0,0,0,0.8) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; padding: 40px;">
-                    <h2 style="color: #ffffff; margin: 0 0 16px 0; font-size: 22px; text-align: center;">
+                  <td style="background-color: #111111; border: 1px solid #222222; border-radius: 16px; padding: 40px 32px;">
+                    <h2 style="color: #ffffff; margin: 0 0 12px 0; font-size: 22px; text-align: center; font-weight: 600;">
                       Email Change Request
                     </h2>
-                    <p style="color: #a1a1aa; margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; text-align: center;">
-                      Someone requested to change your email address to:<br>
-                      <strong style="color: #8b5cf6;">${newEmail}</strong>
+                    <p style="color: #a1a1aa; margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; text-align: center;">
+                      A request was made to change your email to:<br>
+                      <strong style="color: #14b8a6;">${newEmail}</strong>
                     </p>
-                    
-                    <!-- Code Display -->
-                    <div style="text-align: center; margin: 30px 0;">
-                      <div style="display: inline-block; background: rgba(139, 92, 246, 0.2); border: 2px solid rgba(139, 92, 246, 0.5); border-radius: 12px; padding: 20px 40px;">
-                        <span style="color: #ffffff; font-size: 32px; font-weight: bold; letter-spacing: 8px;">${code}</span>
-                      </div>
+                    <!-- Code Box -->
+                    <div style="background-color: #0a0a0a; border: 2px solid #14b8a6; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 28px;">
+                      <span style="color: #14b8a6; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'SF Mono', Monaco, 'Courier New', monospace;">${code}</span>
                     </div>
-                    
-                    <p style="color: #71717a; margin: 0 0 20px 0; font-size: 14px; text-align: center;">
-                      This code is valid for <strong style="color: #a1a1aa;">15 minutes</strong>.
+                    <p style="color: #71717a; margin: 0 0 20px 0; font-size: 13px; text-align: center;">
+                      This code expires in <strong style="color: #a1a1aa;">15 minutes</strong>.
                     </p>
-                    
-                    <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                      <p style="color: #ef4444; font-size: 13px; margin: 0; text-align: center;">
-                        ⚠️ If you didn't request this change, please ignore this email and secure your account.
+                    <div style="border-top: 1px solid #222222; padding-top: 16px;">
+                      <p style="color: #ef4444; font-size: 12px; margin: 0; text-align: center;">
+                        If you didn't request this change, ignore this email and secure your account.
                       </p>
                     </div>
                   </td>
                 </tr>
-                
                 <!-- Footer -->
                 <tr>
-                  <td style="padding-top: 30px; text-align: center;">
-                    <p style="color: #3f3f46; font-size: 11px; margin: 16px 0 0 0;">
-                      © ${new Date().getFullYear()} UserVault. All rights reserved.
+                  <td style="padding-top: 28px; text-align: center;">
+                    <p style="color: #3f3f46; font-size: 11px; margin: 0;">
+                      &copy; ${new Date().getFullYear()} UserVault. All rights reserved.
                     </p>
                   </td>
                 </tr>

@@ -29,7 +29,7 @@ const BOT_PATTERNS = [
 ];
 
 // Edge Function URL for OG HTML generation
-const OG_FUNCTION_URL = "https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/share";
+const OG_FUNCTION_URL = "https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/share";
 
 // Lovable origin URL (where the actual app is hosted)
 const LOVABLE_ORIGIN = "https://what-a-match.lovable.app";

@@ -33,7 +33,7 @@ Nach dem Setup des Workers, ändere die Supabase Client URL in deiner App:
 
 ```typescript
 // VORHER (zeigt Supabase URL in Dev Tools)
-const SUPABASE_URL = "https://cjulgfbmcnmrkvnzkpym.supabase.co";
+const SUPABASE_URL = "https://ksejlspyueghbrhgoqtd.supabase.co";
 
 // NACHHER (versteckt Supabase URL)
 const SUPABASE_URL = "https://api.uservault.cc";

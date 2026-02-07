@@ -113,7 +113,7 @@ const signupSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and underscores'),
 });
 
-type AuthStep = 'login' | 'signup' | 'verify' | 'forgot-password' | 'reset-password' | 'mfa-verify';
+type AuthStep = 'login' | 'signup' | 'verify' | 'forgot-password' | 'reset-code' | 'reset-password' | 'mfa-verify';
 
 declare global {
   interface Window {
@@ -221,8 +221,22 @@ export default function Auth() {
     checkAuthAndMfa();
   }, [user, mfaChallenge, step, mfaJustCompleted, navigate, toast, searchParams]);
 
-  // Load Turnstile script
+  // Check if we're on a production domain where Turnstile is configured
+  const isProductionDomain = typeof window !== 'undefined' && (
+    window.location.hostname === 'what-a-match.me' ||
+    window.location.hostname === 'www.what-a-match.me' ||
+    window.location.hostname.endsWith('.what-a-match.me')
+  );
+
+  // Load Turnstile script (only on production domains)
   useEffect(() => {
+    if (!isProductionDomain) {
+      // Auto-bypass Turnstile on non-production domains (v0 preview, localhost, etc.)
+      setTurnstileToken('BYPASS_DEV');
+      setTurnstileLoaded(true);
+      return;
+    }
+
     if (document.getElementById('turnstile-script')) {
       setTurnstileLoaded(true);
       return;
@@ -246,7 +260,7 @@ export default function Auth() {
         }
       }
     };
-  }, []);
+  }, [isProductionDomain]);
 
   // Render Turnstile widget
   const renderTurnstile = useCallback(() => {
@@ -310,10 +324,16 @@ export default function Auth() {
     const discordCode = searchParams.get('discord_code');
     const discordState = searchParams.get('discord_state');
     
-    if (type === 'recovery' && emailParam && codeParam) {
-      setEmail(emailParam);
-      setVerificationCode(codeParam);
-      setStep('reset-password');
+    if (type === 'recovery') {
+      if (emailParam) setEmail(emailParam);
+      if (codeParam) {
+        // Legacy link with code already in URL - go directly to reset-password
+        setVerificationCode(codeParam);
+        setStep('reset-password');
+      } else {
+        // Code-based flow - show code entry form
+        setStep('reset-code');
+      }
     }
     
     // Handle Discord OAuth callback
@@ -459,7 +479,7 @@ export default function Auth() {
   };
 
   const sendPasswordResetEmail = async (targetEmail: string) => {
-    // Use edge function to generate code and send email
+    // Use edge function to generate code and send email via Resend
     await generateVerificationCode(targetEmail, 'password_reset');
   };
 
@@ -576,11 +596,20 @@ export default function Auth() {
         await sendPasswordResetEmail(email);
         
         toast({ 
-          title: 'Email sent!', 
-          description: 'If an account exists, you will receive a reset link.' 
+          title: 'Code sent!', 
+          description: 'Check your email for the 6-digit reset code.' 
         });
         
-        setStep('login');
+        setStep('reset-code');
+      } else if (step === 'reset-code') {
+        // User entered the 6-digit code from the email
+        if (!verificationCode || verificationCode.length !== 6) {
+          setErrors({ verificationCode: 'Please enter the 6-digit code from your email' });
+          setLoading(false);
+          return;
+        }
+        // Code is stored in state, move to new password step
+        setStep('reset-password');
       } else if (step === 'reset-password') {
         if (newPassword.length < 6) {
           setErrors({ newPassword: 'Password must be at least 6 characters' });
@@ -588,13 +617,10 @@ export default function Auth() {
           return;
         }
 
-        const codeParam = searchParams.get('code');
-        const emailParam = searchParams.get('email');
-        
-        if (!codeParam || !emailParam) {
+        if (!verificationCode || !email) {
           toast({
-            title: 'Invalid link',
-            description: 'Please request a new password reset.',
+            title: 'Missing data',
+            description: 'Please start the password reset process again.',
             variant: 'destructive',
           });
           setStep('forgot-password');
@@ -602,13 +628,14 @@ export default function Auth() {
           return;
         }
 
+        const payload = { email: email.toLowerCase().trim(), code: verificationCode.trim(), newPassword };
+        console.log("[v0] reset-password payload:", JSON.stringify({ email: payload.email, code: payload.code, pwLen: payload.newPassword.length }));
+
         const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
-          body: {
-            email: emailParam,
-            code: codeParam,
-            newPassword
-          },
+          body: payload,
         });
+
+        console.log("[v0] reset-password result:", JSON.stringify({ data, errorMsg: error?.message }));
 
         if (error || (data as any)?.error) {
           toast({
@@ -617,9 +644,11 @@ export default function Auth() {
             variant: 'destructive',
           });
         } else {
-          toast({ title: 'Password changed!', description: 'You can now log in.' });
+          toast({ title: 'Password changed!', description: 'You can now log in with your new password.' });
           setStep('login');
-          navigate('/auth');
+          setVerificationCode('');
+          setNewPassword('');
+          navigate('/auth', { replace: true });
         }
       }
     } catch (err: any) {
@@ -758,6 +787,7 @@ export default function Auth() {
       case 'signup': return 'Create account';
       case 'verify': return 'Verify email';
       case 'forgot-password': return 'Forgot password';
+      case 'reset-code': return 'Enter reset code';
       case 'reset-password': return 'New password';
       case 'mfa-verify': return 'Two-Factor Authentication';
       default: return 'Auth';
@@ -770,6 +800,7 @@ export default function Auth() {
       case 'signup': return 'Create your own personalized bio page';
       case 'verify': return `We sent a 6-digit code to ${email}`;
       case 'forgot-password': return 'Enter your email to reset your password';
+      case 'reset-code': return 'Check your email for the 6-digit code';
       case 'reset-password': return 'Choose a new, secure password';
       case 'mfa-verify': return 'Enter the 6-digit code from your authenticator app';
       default: return '';
@@ -966,10 +997,12 @@ export default function Auth() {
                   )}
                 </div>
 
-                {/* Turnstile Widget */}
-                <div className="flex justify-center py-2">
-                  <div ref={turnstileRef} />
-                </div>
+                {/* Turnstile Widget - only on production domains */}
+                {isProductionDomain && (
+                  <div className="flex justify-center py-2">
+                    <div ref={turnstileRef} />
+                  </div>
+                )}
 
                 <Button
                   type="submit"
@@ -1069,10 +1102,12 @@ export default function Auth() {
                   <PasswordStrengthIndicator password={password} />
                 </div>
 
-                {/* Turnstile Widget */}
-                <div className="flex justify-center py-2">
-                  <div ref={turnstileRef} />
-                </div>
+                {/* Turnstile Widget - only on production domains */}
+                {isProductionDomain && (
+                  <div className="flex justify-center py-2">
+                    <div ref={turnstileRef} />
+                  </div>
+                )}
 
                 <Button
                   type="submit"
@@ -1192,7 +1227,7 @@ export default function Auth() {
                   className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
                 >
                   {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Send reset link
+                  Send reset code
                 </Button>
 
                 <button
@@ -1202,6 +1237,57 @@ export default function Auth() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to login
+                </button>
+              </motion.form>
+            )}
+
+            {/* Enter Reset Code */}
+            {step === 'reset-code' && (
+              <motion.form
+                onSubmit={handleSubmit}
+                className="space-y-5 relative z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <p className="text-white/60 text-sm text-center">
+                  We sent a 6-digit code to <strong className="text-white/80">{email}</strong>
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="resetCode" className="text-white/80 text-sm font-medium">
+                    Reset code
+                  </Label>
+                  <Input
+                    id="resetCode"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="h-12 bg-white/5 border-white/10 text-white text-center text-2xl tracking-[0.3em] font-mono placeholder:text-white/30 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
+                  />
+                  {errors.verificationCode && (
+                    <p className="text-sm text-red-400">{errors.verificationCode}</p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || verificationCode.length !== 6}
+                  className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-primary/20"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Verify code
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setStep('forgot-password')}
+                  className="w-full text-sm text-white/50 hover:text-white transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Resend code
                 </button>
               </motion.form>
             )}

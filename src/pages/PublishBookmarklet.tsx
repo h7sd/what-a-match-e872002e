@@ -336,11 +336,11 @@ export default function PublishBookmarklet() {
     var version=prompt('Version (z.B. 1.2.3):','');
     var changes=prompt('Änderungen (kommagetrennt):','');
     if(!version)return;
-    fetch('https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/publish-notification',{
+    fetch('https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/publish-notification',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
-        'Authorization':'Bearer '+localStorage.getItem('sb-cjulgfbmcnmrkvnzkpym-auth-token')?.split('"access_token":"')[1]?.split('"')[0]
+        'Authorization':'Bearer '+localStorage.getItem('sb-ksejlspyueghbrhgoqtd-auth-token')?.split('"access_token":"')[1]?.split('"')[0]
       },
       body:JSON.stringify({
         version:version,

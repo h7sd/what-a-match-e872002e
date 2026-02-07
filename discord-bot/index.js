@@ -20,13 +20,13 @@ const { handValue, formatHand, createDeck, sendReward, getBalance } = require('.
 // ============================================
 const DISCORD_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const EDGE_FUNCTION_URL = process.env.EDGE_FUNCTION_URL;
-const BADGE_REQUEST_EDGE_URL = process.env.BADGE_REQUEST_EDGE_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/badge-request';
+const BADGE_REQUEST_EDGE_URL = process.env.BADGE_REQUEST_EDGE_URL || 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/badge-request';
 const GUILD_ID = process.env.GUILD_ID;
 const WEBHOOK_SECRET = process.env.DISCORD_WEBHOOK_SECRET;
 const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').filter(Boolean);
 const BADGE_REQUEST_CHANNEL_ID = process.env.BADGE_REQUEST_CHANNEL_ID || '1466581321169240076';
-const BOT_BADGE_REQUESTS_URL = process.env.BOT_BADGE_REQUESTS_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/bot-badge-requests';
-const MINIGAME_EDGE_URL = process.env.MINIGAME_EDGE_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/minigame-reward';
+const BOT_BADGE_REQUESTS_URL = process.env.BOT_BADGE_REQUESTS_URL || 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/bot-badge-requests';
+const MINIGAME_EDGE_URL = process.env.MINIGAME_EDGE_URL || 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/minigame-reward';
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 
 // Track already notified requests to avoid duplicates
@@ -84,9 +84,9 @@ function generateSignature(payload, timestamp) {
 // ============================================
 // HIDDEN ENDPOINT URLS FOR BADGE ACTIONS
 // ============================================
-const APPROVE_ENDPOINT = 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/x98zg89ezhg938g893g9389g3489g3894z';
-const DENY_ENDPOINT = 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/x809guj305gh9i00hezg890zu9ergo9ieuoh';
-const EDIT_APPROVE_ENDPOINT = 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/x67ytf6t9f85hzohjoi90879sft7t623ui23u4g';
+const APPROVE_ENDPOINT = 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/x98zg89ezhg938g893g9389g3489g3894z';
+const DENY_ENDPOINT = 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/x809guj305gh9i00hezg890zu9ergo9ieuoh';
+const EDIT_APPROVE_ENDPOINT = 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/x67ytf6t9f85hzohjoi90879sft7t623ui23u4g';
 
 // ============================================
 // BADGE REQUEST HANDLING
@@ -639,7 +639,7 @@ function getSpotifyImage(spotifyActivity) {
 // ============================================
 // BOOSTER BADGE EDGE FUNCTION
 // ============================================
-const BOOSTER_BADGE_URL = process.env.BOOSTER_BADGE_URL || 'https://cjulgfbmcnmrkvnzkpym.supabase.co/functions/v1/assign-booster-badge';
+const BOOSTER_BADGE_URL = process.env.BOOSTER_BADGE_URL || 'https://ksejlspyueghbrhgoqtd.supabase.co/functions/v1/assign-booster-badge';
 
 async function handleBoosterBadge(discordUserId, action) {
   try {

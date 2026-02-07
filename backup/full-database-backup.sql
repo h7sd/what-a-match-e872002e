@@ -11,18 +11,18 @@
 -- ============================================
 
 INSERT INTO public.global_badges (id, name, description, icon_url, color, rarity, is_limited, max_claims, claims_count, created_by, created_at) VALUES
-('1938f27b-1c01-4c1d-95dc-66de3e6abb05', 'Staff', 'Official UserVault Staff Member', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/badges/staff.png', '#ef4444', 'legendary', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
-('35f16107-9f15-4a93-970a-58afbf1adb63', 'Developer', 'Contributed to UserVault development', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/badges/dev.png', '#3b82f6', 'epic', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
-('66e07af9-0b9f-493e-bfd4-e08b86df1dcb', 'Helper', 'Helps other users in the community', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/badges/helper.png', '#10b981', 'rare', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
-('6f46d387-f220-47ba-82b7-ff16017e7f53', 'Donor', 'Supported UserVault financially', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/badges/donor.png', '#f59e0b', 'rare', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
-('84a6ed80-c4f7-4915-8c80-a6904f48e3ac', 'Early Supporter', 'One of the first 250 users', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/badges/early.png', '#8b5cf6', 'epic', true, 250, 113, NULL, '2025-01-23 16:35:22.915469+00'),
-('d3e9a1b5-7c2f-4e8a-9b6d-1f5c3a2e4d7b', 'UserVault', 'Has a UserVault profile', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/badges/uservault.png', '#a855f7', 'common', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
-('0d87538c-2b79-491b-a2c9-15ac6c28b32a', 'Premium', 'Premium subscriber', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/premium.png', '#FFD700', 'legendary', false, NULL, 0, NULL, '2025-01-25 14:47:00.576193+00'),
-('2a6b0f27-90af-4ca9-b8db-f2dd84be2c71', 'Tester', 'Tested for bugs in the beta version of Uservault!', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/tester.png', '#22c55e', 'rare', true, 20, 3, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-26 11:09:31.898155+00'),
-('08b3418a-e319-4c71-a04d-dd1a1d07cabc', 'Retired Staff', 'Former Staff Member', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/retired-staff.png', '#6b7280', 'legendary', true, 50, 0, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-26 15:15:38.08547+00'),
-('b4fd8c0f-fbaf-4c97-a5d7-2d0ab55df2fc', 'Booster', 'Has boosted the UserVault discord server!', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/boost.png', '#f472b6', 'rare', false, NULL, 4, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-27 18:11:18.89911+00'),
-('4caadf3d-6f3c-42f1-8e08-ecb8b6cddcb6', 'Active Chatter', 'Reached 500 messages in the Uservault Discord', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/active-chatter.png', '#22d3ee', 'rare', false, NULL, 2, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-28 17:55:20.990313+00'),
-('cc1cd97c-2fc0-4f27-a7af-a81fbb62e8d7', 'Valentine', 'Spread the love during Valentine''s Day', 'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/badge-icons/valentine.png', '#ec4899', 'rare', true, 20, 9, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-29 10:07:04.259312+00');
+('1938f27b-1c01-4c1d-95dc-66de3e6abb05', 'Staff', 'Official UserVault Staff Member', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/badges/staff.png', '#ef4444', 'legendary', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
+('35f16107-9f15-4a93-970a-58afbf1adb63', 'Developer', 'Contributed to UserVault development', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/badges/dev.png', '#3b82f6', 'epic', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
+('66e07af9-0b9f-493e-bfd4-e08b86df1dcb', 'Helper', 'Helps other users in the community', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/badges/helper.png', '#10b981', 'rare', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
+('6f46d387-f220-47ba-82b7-ff16017e7f53', 'Donor', 'Supported UserVault financially', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/badges/donor.png', '#f59e0b', 'rare', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
+('84a6ed80-c4f7-4915-8c80-a6904f48e3ac', 'Early Supporter', 'One of the first 250 users', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/badges/early.png', '#8b5cf6', 'epic', true, 250, 113, NULL, '2025-01-23 16:35:22.915469+00'),
+('d3e9a1b5-7c2f-4e8a-9b6d-1f5c3a2e4d7b', 'UserVault', 'Has a UserVault profile', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/badges/uservault.png', '#a855f7', 'common', false, NULL, 0, NULL, '2025-01-23 16:35:22.915469+00'),
+('0d87538c-2b79-491b-a2c9-15ac6c28b32a', 'Premium', 'Premium subscriber', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/premium.png', '#FFD700', 'legendary', false, NULL, 0, NULL, '2025-01-25 14:47:00.576193+00'),
+('2a6b0f27-90af-4ca9-b8db-f2dd84be2c71', 'Tester', 'Tested for bugs in the beta version of Uservault!', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/tester.png', '#22c55e', 'rare', true, 20, 3, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-26 11:09:31.898155+00'),
+('08b3418a-e319-4c71-a04d-dd1a1d07cabc', 'Retired Staff', 'Former Staff Member', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/retired-staff.png', '#6b7280', 'legendary', true, 50, 0, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-26 15:15:38.08547+00'),
+('b4fd8c0f-fbaf-4c97-a5d7-2d0ab55df2fc', 'Booster', 'Has boosted the UserVault discord server!', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/boost.png', '#f472b6', 'rare', false, NULL, 4, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-27 18:11:18.89911+00'),
+('4caadf3d-6f3c-42f1-8e08-ecb8b6cddcb6', 'Active Chatter', 'Reached 500 messages in the Uservault Discord', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/active-chatter.png', '#22d3ee', 'rare', false, NULL, 2, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-28 17:55:20.990313+00'),
+('cc1cd97c-2fc0-4f27-a7af-a81fbb62e8d7', 'Valentine', 'Spread the love during Valentine''s Day', 'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/badge-icons/valentine.png', '#ec4899', 'rare', true, 20, 9, 'ee6ce510-b7fa-4035-be27-20f3f272c699', '2025-01-29 10:07:04.259312+00');
 
 -- ============================================
 -- 2. PROFILES (Haupttabelle)
@@ -44,8 +44,8 @@ INSERT INTO public.profiles (
   'wasgeht',
   'Enes',
   'Your profile',
-  'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/avatars/ee6ce510-b7fa-4035-be27-20f3f272c699/avatar.gif',
-  'https://cjulgfbmcnmrkvnzkpym.supabase.co/storage/v1/object/public/backgrounds/ee6ce510-b7fa-4035-be27-20f3f272c699/background',
+  'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/avatars/ee6ce510-b7fa-4035-be27-20f3f272c699/avatar.gif',
+  'https://ksejlspyueghbrhgoqtd.supabase.co/storage/v1/object/public/backgrounds/ee6ce510-b7fa-4035-be27-20f3f272c699/background',
   '#0a0a0a',
   '#8b5cf6',
   'rgba(0, 0, 0, 0.68)',

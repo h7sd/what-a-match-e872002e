@@ -1,30 +1,43 @@
+/* vite-config-v5 – cache bust */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
+import * as path from "node:path";
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+let resolvedSrc = "";
+
+export default defineConfig({
   server: {
     host: "::",
-    port: 8080,
-    hmr: {
-      overlay: false,
+    port: 3000,
+    hmr: { overlay: false },
+    watch: {
+      ignored: [
+        "**/.env", "**/.env.*", "**/node_modules/**",
+        "**/discord-bot/**", "**/cloudflare-worker/**",
+        "**/supabase/**", "**/backup/**", "**/.git/**",
+        "**/public/**", "**/env/**",
+      ],
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-  resolve: {
-    // IMPORTANT: Ensure all backend traffic goes through the public API domain
-    // so the underlying provider URL is never visible in browser devtools.
-    alias: [
-      {
-        find: "@/integrations/supabase/client",
-        replacement: path.resolve(__dirname, "./src/lib/supabase-proxy-client.ts"),
+  plugins: [
+    {
+      name: "alias-v5",
+      enforce: "pre" as const,
+      configResolved(config: any) {
+        resolvedSrc = path.resolve(config.root, "src");
       },
-      {
-        find: "@",
-        replacement: path.resolve(__dirname, "./src"),
+      async resolveId(source: string, importer: string | undefined) {
+        if (!source.startsWith("@/")) return null;
+        if (source === "@/integrations/supabase/client")
+          return path.resolve(resolvedSrc, "lib/supabase-proxy-client.ts");
+        return (this as any).resolve(
+          path.join(resolvedSrc, source.slice(2)),
+          importer,
+          { skipSelf: true }
+        );
       },
-    ],
-  },
-}));
+    },
+    react(),
+  ],
+  envPrefix: "VITE_",
+});
