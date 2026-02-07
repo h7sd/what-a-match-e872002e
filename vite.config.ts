@@ -35,6 +35,17 @@ export default defineConfig({
     hmr: {
       overlay: false,
     },
+    watch: {
+      // Ignore env files and non-source files to prevent restart loops
+      ignored: [
+        "**/.env",
+        "**/.env.*",
+        "**/env/**",
+        "**/node_modules/**",
+        "**/discord-bot/**",
+        "**/.git/**",
+      ],
+    },
   },
   plugins: [resolveAtAlias(), react()],
 });
