@@ -67,65 +67,18 @@ serve(async (req) => {
 
   try {
     const { messages, conversationId } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
 
-    // Check global concurrent stream limit
-    if (activeStreams >= MAX_CONCURRENT_STREAMS) {
-      console.log("Global stream limit reached");
-      return new Response(
-        JSON.stringify({ error: "Service is busy. Please try again in a moment." }),
-        { 
-          status: 503, 
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "Retry-After": "30"
-          } 
-        }
-      );
-    }
-
-    // Check IP rate limit
-    const ipCheck = checkAndUpdateLimit(clientIp, ipCounts, MAX_MESSAGES_PER_IP);
-    if (!ipCheck.allowed) {
-      console.log("IP rate limit exceeded");
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            "Content-Type": "application/json",
-            "Retry-After": "3600",
-            "X-RateLimit-Remaining": "0"
-          } 
-        }
-      );
-    }
-
-    // Check conversation rate limit (if conversationId provided)
-    if (conversationId) {
-      const convCheck = checkAndUpdateLimit(conversationId, conversationCounts, MAX_MESSAGES_PER_CONVERSATION);
-      if (!convCheck.allowed) {
-        console.log("Conversation rate limit exceeded:", conversationId);
-        return new Response(
-          JSON.stringify({ error: "This conversation has reached its message limit. Please start a new chat or wait an hour." }),
-          { 
-            status: 429, 
-            headers: { 
-              ...corsHeaders, 
-              "Content-Type": "application/json",
-              "Retry-After": "3600",
-              "X-RateLimit-Remaining": "0"
-            } 
-          }
-        );
+    // AI Chat is disabled - return a friendly message
+    return new Response(
+      JSON.stringify({ 
+        error: "AI Chat is currently disabled. Please contact a staff member for support.",
+        code: "AI_DISABLED"
+      }),
+      { 
+        status: 503, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
       }
-    }
+    );
 
     console.log("Processing chat message for conversation:", conversationId);
 
