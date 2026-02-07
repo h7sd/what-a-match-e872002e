@@ -601,8 +601,6 @@ export default function Auth() {
         });
         
         setStep('reset-code');
-        
-        setStep('login');
       } else if (step === 'reset-code') {
         // User entered the 6-digit code from the email
         if (!verificationCode || verificationCode.length !== 6) {
