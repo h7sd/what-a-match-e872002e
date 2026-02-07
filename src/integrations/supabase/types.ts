@@ -1861,6 +1861,28 @@ export type Database = {
           session_token: string
         }[]
       }
+      export_auth_users_for_migration: {
+        Args: never
+        Returns: {
+          aud: string
+          confirmed_at: string
+          created_at: string
+          deleted_at: string
+          email: string
+          email_confirmed_at: string
+          encrypted_password: string
+          id: string
+          is_sso_user: boolean
+          is_super_admin: boolean
+          last_sign_in_at: string
+          phone: string
+          phone_confirmed_at: string
+          raw_app_meta_data: Json
+          raw_user_meta_data: Json
+          role: string
+          updated_at: string
+        }[]
+      }
       get_admin_chat_notifications: {
         Args: never
         Returns: {
