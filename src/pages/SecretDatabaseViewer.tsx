@@ -332,13 +332,34 @@ export default function SecretDatabaseViewer() {
     URL.revokeObjectURL(jsonUrl);
   };
 
-  // Fetch auth.users via RPC
+  // Fetch auth.users via RPC with pagination to get ALL users
   const fetchAuthUsers = async () => {
     try {
-      const { data, error } = await supabase.rpc('export_auth_users_for_migration');
-      if (error) throw error;
-      setAuthUsersData(data ?? []);
-      return data ?? [];
+      const allUsers: any[] = [];
+      let offset = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .rpc('export_auth_users_for_migration')
+          .range(offset, offset + pageSize - 1);
+
+        if (error) throw error;
+
+        const users = data ?? [];
+        allUsers.push(...users);
+
+        if (users.length < pageSize) {
+          hasMore = false;
+        } else {
+          offset += pageSize;
+        }
+      }
+
+      console.log(`Fetched ${allUsers.length} auth.users`);
+      setAuthUsersData(allUsers);
+      return allUsers;
     } catch (err) {
       console.error('Failed to fetch auth.users:', err);
       toast({
