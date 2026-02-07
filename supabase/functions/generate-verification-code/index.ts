@@ -333,17 +333,22 @@ const handler = async (req: Request): Promise<Response> => {
       : new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
     // Insert verification code using service role
-    const { error: insertError } = await supabaseAdmin
+    console.log("DEBUG generate: inserting code", { email: normalizedEmail, code, type, expires_at: expiresAt });
+    
+    const { data: insertData, error: insertError } = await supabaseAdmin
       .from("verification_codes")
       .insert({
         email: normalizedEmail,
         code,
         type,
         expires_at: expiresAt,
-      });
+      })
+      .select();
+
+    console.log("DEBUG generate: insert result", { insertData: JSON.stringify(insertData), insertError: insertError?.message });
 
     if (insertError) {
-      console.error("Error inserting verification code:", insertError);
+      console.error("Error inserting verification code:", insertError.message, insertError.details, insertError.hint);
       await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Failed to create verification code" }),
