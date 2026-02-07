@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Database, Shield, Lock, AlertTriangle, Search, RefreshCw, Download, FileArchive } from 'lucide-react';
+import { Loader2, Database, Shield, Lock, AlertTriangle, Search, RefreshCw, Download, FileArchive, Users } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -69,7 +69,8 @@ export default function SecretDatabaseViewer() {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadMfaCode, setDownloadMfaCode] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadType, setDownloadType] = useState<'sql' | 'all'>('sql');
+  const [downloadType, setDownloadType] = useState<'sql' | 'all' | 'auth'>('sql');
+  const [authUsersData, setAuthUsersData] = useState<any[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Check authentication and authorization
@@ -331,6 +332,38 @@ export default function SecretDatabaseViewer() {
     URL.revokeObjectURL(jsonUrl);
   };
 
+  // Fetch auth.users via RPC
+  const fetchAuthUsers = async () => {
+    try {
+      const { data, error } = await supabase.rpc('export_auth_users_for_migration');
+      if (error) throw error;
+      setAuthUsersData(data ?? []);
+      return data ?? [];
+    } catch (err) {
+      console.error('Failed to fetch auth.users:', err);
+      toast({
+        title: 'auth.users Export fehlgeschlagen',
+        description: err instanceof Error ? err.message : 'Unbekannter Fehler',
+        variant: 'destructive'
+      });
+      return null;
+    }
+  };
+
+  // Download auth.users as JSON
+  const downloadAuthUsers = (users: any[]) => {
+    const timestamp = new Date().toISOString().split('T')[0];
+    const blob = new Blob([JSON.stringify(users, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `auth-users-export-${timestamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Verify 2FA and trigger download
   const handleDownloadWithMfa = async () => {
     if (!mfaFactorId || downloadMfaCode.length !== 6) return;
@@ -358,6 +391,16 @@ export default function SecretDatabaseViewer() {
           title: 'Downloads gestartet',
           description: 'SQL und JSON Dateien werden heruntergeladen.'
         });
+      } else if (downloadType === 'auth') {
+        // Fetch and download auth.users
+        const users = await fetchAuthUsers();
+        if (users && users.length > 0) {
+          downloadAuthUsers(users);
+          toast({
+            title: 'auth.users Download gestartet',
+            description: `${users.length} Accounts werden heruntergeladen.`
+          });
+        }
       } else {
         // Generate and download SQL only
         const sqlContent = generateSqlExport();
@@ -553,6 +596,18 @@ export default function SecretDatabaseViewer() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  setDownloadType('auth');
+                  setShowDownloadModal(true);
+                }}
+                className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                auth.users
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
                   setDownloadType('sql');
                   setShowDownloadModal(true);
                 }}
@@ -706,10 +761,10 @@ export default function SecretDatabaseViewer() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-purple-500" />
-              {downloadType === 'all' ? 'Kompletter Export' : 'SQL Export'} bestätigen
+              {downloadType === 'all' ? 'Kompletter Export' : downloadType === 'auth' ? 'auth.users Export' : 'SQL Export'} bestätigen
             </DialogTitle>
             <DialogDescription className="text-zinc-400">
-              Gib deinen 6-stelligen 2FA-Code ein, um {downloadType === 'all' ? 'SQL + JSON Dateien' : 'die SQL-Datei'} herunterzuladen.
+              Gib deinen 6-stelligen 2FA-Code ein, um {downloadType === 'all' ? 'SQL + JSON Dateien' : downloadType === 'auth' ? 'alle auth.users mit Passwort-Hashes' : 'die SQL-Datei'} herunterzuladen.
             </DialogDescription>
           </DialogHeader>
           
