@@ -176,11 +176,8 @@ serve(async (req) => {
     }
     
     const { messages, conversationId } = requestBody;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    // Use Supabase Anon Key for Lovable AI gateway (automatically available)
+    const API_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
     // Rate limiting checks
     if (activeStreams >= MAX_CONCURRENT_STREAMS) {
@@ -272,7 +269,7 @@ serve(async (req) => {
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
