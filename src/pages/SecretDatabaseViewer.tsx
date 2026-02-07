@@ -69,15 +69,8 @@ export default function SecretDatabaseViewer() {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadMfaCode, setDownloadMfaCode] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadType, setDownloadType] = useState<'sql' | 'all' | 'schema'>('sql');
+  const [downloadType, setDownloadType] = useState<'sql' | 'all'>('sql');
   const [error, setError] = useState<string | null>(null);
-
-  // Optional server-side export (when current user is allowed). Used to avoid schema inference issues.
-  const [serverExport, setServerExport] = useState<{
-    schema_backup: string;
-    sql_backup: string;
-    json_data: Record<string, unknown[]>;
-  } | null>(null);
 
   // Check authentication and authorization
   useEffect(() => {
@@ -265,10 +258,9 @@ export default function SecretDatabaseViewer() {
   // Generate SQL INSERT statements for all data
   const generateSqlExport = (): string => {
     const lines: string[] = [
-      '-- Database Data Export (INSERT STATEMENTS)',
+      '-- Database Export',
       `-- Generated: ${new Date().toISOString()}`,
       '-- Format: PostgreSQL INSERT statements',
-      '-- IMPORTANT: Run the SCHEMA export FIRST before this file!',
       '',
     ];
 
@@ -293,154 +285,10 @@ export default function SecretDatabaseViewer() {
           return `'${String(val).replace(/'/g, "''")}'`;
         });
         
-        lines.push(`INSERT INTO public.${tableName} (${columns.join(', ')}) VALUES (${values.join(', ')}) ON CONFLICT DO NOTHING;`);
+        lines.push(`INSERT INTO public.${tableName} (${columns.join(', ')}) VALUES (${values.join(', ')});`);
       }
       lines.push('');
     }
-
-    return lines.join('\n');
-  };
-
-  // Generate Schema SQL export (CREATE TABLE statements)
-  const generateSchemaExport = (): string => {
-    const uuidLike = (v: unknown) =>
-      typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-
-    const lines: string[] = [
-      '-- ============================================',
-      '-- USERVAULT DATABASE SCHEMA EXPORT',
-      `-- Generated: ${new Date().toISOString()}`,
-      '-- ============================================',
-      '-- ',
-      '-- IMPORTANT: Run this FIRST before importing data!',
-      '-- This creates all tables, types, functions, and triggers.',
-      '-- ============================================',
-      '',
-      '-- Extensions (needed for gen_random_uuid in most environments)',
-      'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
-      '',
-      '-- Create custom types',
-      'DO $$ BEGIN',
-      "  CREATE TYPE public.app_role AS ENUM ('admin', 'supporter', 'user');",
-      'EXCEPTION WHEN duplicate_object THEN NULL;',
-      'END $$;',
-      '',
-    ];
-
-    // Ensure critical auth/role infrastructure exists with correct types
-    lines.push('-- TABLE: user_roles (fixed schema for role-based access control)');
-    lines.push('CREATE TABLE IF NOT EXISTS public.user_roles (');
-    lines.push('  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,');
-    lines.push('  user_id uuid NOT NULL,');
-    lines.push('  role public.app_role NOT NULL,');
-    lines.push('  created_at timestamp with time zone NOT NULL DEFAULT now(),');
-    lines.push('  UNIQUE (user_id, role)');
-    lines.push(');');
-    lines.push('');
-
-    // Generate CREATE TABLE statements based on existing data structure (best-effort fallback)
-    for (const tableName of TABLE_NAMES) {
-      if (tableName === 'user_roles') continue; // already handled above
-
-      const data = tableData[tableName] || [];
-      if (data.length === 0) {
-        lines.push(`-- TABLE: ${tableName} (no data to infer schema)`);
-        // Minimal placeholder table for empty tables (no data export will depend on it)
-        lines.push(`CREATE TABLE IF NOT EXISTS public.${tableName} (id uuid DEFAULT gen_random_uuid() PRIMARY KEY);`);
-        lines.push('');
-        continue;
-      }
-
-      const firstRow = data[0] as Record<string, unknown>;
-      lines.push(`-- TABLE: ${tableName} (inferred from ${data.length} rows)`);
-      lines.push(`CREATE TABLE IF NOT EXISTS public.${tableName} (`);
-
-      const colDefs = Object.entries(firstRow).map(([col, val]) => {
-        // Primary keys
-        if (col === 'id') {
-          if (typeof val === 'number') return `  ${col} bigint PRIMARY KEY`;
-          if (uuidLike(val)) return `  ${col} uuid DEFAULT gen_random_uuid() PRIMARY KEY`;
-          return `  ${col} text PRIMARY KEY`;
-        }
-
-        // Base type inference
-        let type = 'text';
-        if (val === null || val === undefined) type = 'text';
-        else if (typeof val === 'boolean') type = 'boolean';
-        else if (typeof val === 'number') type = Number.isInteger(val) ? 'bigint' : 'numeric';
-        else if (typeof val === 'object') type = 'jsonb';
-        else if (col.endsWith('_at') || col === 'created_at' || col === 'updated_at') type = 'timestamp with time zone';
-
-        // UUID-ish foreign keys (only if value looks like UUID)
-        if (col.endsWith('_id') && col !== 'id' && uuidLike(val)) {
-          type = 'uuid';
-        }
-
-        // Keep emails as text
-        if (col === 'email') type = 'text';
-
-        // Add lightweight defaults where it's safe
-        if (type === 'boolean') return `  ${col} boolean DEFAULT false`;
-        if (type === 'timestamp with time zone' && (col === 'created_at' || col === 'updated_at')) {
-          return `  ${col} timestamp with time zone DEFAULT now()`;
-        }
-
-        return `  ${col} ${type}`;
-      });
-
-      lines.push(colDefs.join(',\n'));
-      lines.push(');');
-      lines.push('');
-    }
-
-    // Add RLS enable statements
-    lines.push('-- Enable Row Level Security on all tables');
-    for (const tableName of TABLE_NAMES) {
-      lines.push(`ALTER TABLE public.${tableName} ENABLE ROW LEVEL SECURITY;`);
-    }
-    lines.push('');
-
-    // Add essential functions
-    lines.push('-- Essential security functions');
-    lines.push('CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role)');
-    lines.push('RETURNS boolean');
-    lines.push('LANGUAGE sql');
-    lines.push('STABLE');
-    lines.push('SECURITY DEFINER');
-    lines.push('SET search_path = public');
-    lines.push('AS $$');
-    lines.push('  SELECT EXISTS (');
-    lines.push('    SELECT 1');
-    lines.push('    FROM public.user_roles');
-    lines.push('    WHERE user_id = _user_id');
-    lines.push('      AND role = _role');
-    lines.push('  )');
-    lines.push('$$;');
-    lines.push('');
-
-    lines.push('CREATE OR REPLACE FUNCTION public.is_profile_owner(profile_id uuid)');
-    lines.push('RETURNS boolean');
-    lines.push('LANGUAGE sql');
-    lines.push('STABLE');
-    lines.push('SECURITY DEFINER');
-    lines.push('SET search_path = public');
-    lines.push('AS $$');
-    lines.push('  SELECT EXISTS (');
-    lines.push('    SELECT 1');
-    lines.push('    FROM public.profiles p');
-    lines.push('    WHERE p.id = profile_id');
-    lines.push('      AND p.user_id = auth.uid()');
-    lines.push('  )');
-    lines.push('$$;');
-    lines.push('');
-
-    // Storage buckets (best-effort; may not exist in non-cloud Postgres)
-    lines.push('-- Storage buckets');
-    lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT DO NOTHING;");
-    lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('backgrounds', 'backgrounds', true) ON CONFLICT DO NOTHING;");
-    lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('badge-icons', 'badge-icons', true) ON CONFLICT DO NOTHING;");
-    lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('audio', 'audio', true) ON CONFLICT DO NOTHING;");
-    lines.push("INSERT INTO storage.buckets (id, name, public) VALUES ('profile-assets', 'profile-assets', true) ON CONFLICT DO NOTHING;");
 
     return lines.join('\n');
   };
@@ -454,68 +302,33 @@ export default function SecretDatabaseViewer() {
     return JSON.stringify(exportData, null, 2);
   };
 
-  const downloadTextFile = (content: string, filename: string, mime: string) => {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const tryFetchServerExport = async (): Promise<{
-    schema_backup: string;
-    sql_backup: string;
-    json_data: Record<string, unknown[]>;
-  } | null> => {
-    if (serverExport) return serverExport;
-
-    try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      if (!currentSession?.access_token) return null;
-
-      const response = await supabase.functions.invoke('export-database', {
-        headers: {
-          Authorization: `Bearer ${currentSession.access_token}`,
-        },
-      });
-
-      if (response.error) return null;
-
-      const result = response.data as any;
-      if (!result?.success) return null;
-      if (!result?.schema_backup || !result?.sql_backup || !result?.json_data) return null;
-
-      const payload = {
-        schema_backup: String(result.schema_backup),
-        sql_backup: String(result.sql_backup),
-        json_data: result.json_data as Record<string, unknown[]>,
-      };
-
-      setServerExport(payload);
-      return payload;
-    } catch {
-      return null;
-    }
-  };
-
   // Create a simple text-based bundle (no external zip library needed)
-  const downloadAllFormats = (server?: {
-    sql_backup: string;
-    json_data: Record<string, unknown[]>;
-  }) => {
+  const downloadAllFormats = () => {
     const timestamp = new Date().toISOString().split('T')[0];
-
+    
     // Download SQL
-    const sqlContent = server?.sql_backup ?? generateSqlExport();
-    downloadTextFile(sqlContent, `database-export-${timestamp}.sql`, 'application/sql');
+    const sqlContent = generateSqlExport();
+    const sqlBlob = new Blob([sqlContent], { type: 'application/sql' });
+    const sqlUrl = URL.createObjectURL(sqlBlob);
+    const sqlLink = document.createElement('a');
+    sqlLink.href = sqlUrl;
+    sqlLink.download = `database-export-${timestamp}.sql`;
+    document.body.appendChild(sqlLink);
+    sqlLink.click();
+    document.body.removeChild(sqlLink);
+    URL.revokeObjectURL(sqlUrl);
 
     // Download JSON
-    const jsonContent = server ? JSON.stringify(server.json_data, null, 2) : generateJsonExport();
-    downloadTextFile(jsonContent, `database-export-${timestamp}.json`, 'application/json');
+    const jsonContent = generateJsonExport();
+    const jsonBlob = new Blob([jsonContent], { type: 'application/json' });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    const jsonLink = document.createElement('a');
+    jsonLink.href = jsonUrl;
+    jsonLink.download = `database-export-${timestamp}.json`;
+    document.body.appendChild(jsonLink);
+    jsonLink.click();
+    document.body.removeChild(jsonLink);
+    URL.revokeObjectURL(jsonUrl);
   };
 
   // Verify 2FA and trigger download
@@ -525,7 +338,7 @@ export default function SecretDatabaseViewer() {
     setIsDownloading(true);
     try {
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: mfaFactorId,
+        factorId: mfaFactorId
       });
 
       if (challengeError) throw challengeError;
@@ -533,42 +346,34 @@ export default function SecretDatabaseViewer() {
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: mfaFactorId,
         challengeId: challengeData.id,
-        code: downloadMfaCode,
+        code: downloadMfaCode
       });
 
       if (verifyError) throw verifyError;
 
-      const timestamp = new Date().toISOString().split('T')[0];
-      const server = await tryFetchServerExport();
-
       if (downloadType === 'all') {
-        // Download Schema, SQL data, and JSON
-        const schemaContent = server?.schema_backup ?? generateSchemaExport();
-        downloadTextFile(schemaContent, `schema-export-${timestamp}.sql`, 'application/sql');
-
-        downloadAllFormats(server ?? undefined);
-
+        // Download both SQL and JSON
+        downloadAllFormats();
         toast({
           title: 'Downloads gestartet',
-          description: 'Schema, SQL-Daten und JSON Dateien werden heruntergeladen.',
-        });
-      } else if (downloadType === 'schema') {
-        // Download Schema only
-        const schemaContent = server?.schema_backup ?? generateSchemaExport();
-        downloadTextFile(schemaContent, `schema-export-${timestamp}.sql`, 'application/sql');
-
-        toast({
-          title: 'Schema Download gestartet',
-          description: 'Die Schema-SQL-Datei wird heruntergeladen. ZUERST ausführen!',
+          description: 'SQL und JSON Dateien werden heruntergeladen.'
         });
       } else {
-        // Download SQL data only
-        const sqlContent = server?.sql_backup ?? generateSqlExport();
-        downloadTextFile(sqlContent, `data-export-${timestamp}.sql`, 'application/sql');
+        // Generate and download SQL only
+        const sqlContent = generateSqlExport();
+        const blob = new Blob([sqlContent], { type: 'application/sql' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `database-export-${new Date().toISOString().split('T')[0]}.sql`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
 
         toast({
-          title: 'Daten Download gestartet',
-          description: 'Die Daten-SQL-Datei wird heruntergeladen.',
+          title: 'Download gestartet',
+          description: 'Die SQL-Datei wird heruntergeladen.'
         });
       }
 
@@ -579,7 +384,7 @@ export default function SecretDatabaseViewer() {
       toast({
         title: '2FA-Verifizierung fehlgeschlagen',
         description: errorMessage,
-        variant: 'destructive',
+        variant: 'destructive'
       });
       setDownloadMfaCode('');
     } finally {
@@ -733,17 +538,16 @@ export default function SecretDatabaseViewer() {
                 AAL2 Verified
               </div>
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
                 onClick={() => {
-                  setDownloadType('schema');
+                  setDownloadType('all');
                   setShowDownloadModal(true);
                 }}
                 disabled={isLoading || Object.keys(tableData).length === 0}
               >
                 <FileArchive className="h-4 w-4 mr-1" />
-                1. Schema
+                Alles downloaden
               </Button>
               <Button
                 variant="outline"
@@ -755,19 +559,7 @@ export default function SecretDatabaseViewer() {
                 disabled={isLoading || Object.keys(tableData).length === 0}
               >
                 <Download className="h-4 w-4 mr-1" />
-                2. Daten
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDownloadType('all');
-                  setShowDownloadModal(true);
-                }}
-                disabled={isLoading || Object.keys(tableData).length === 0}
-              >
-                <FileArchive className="h-4 w-4 mr-1" />
-                Alles
+                SQL Export
               </Button>
               <Button
                 variant="outline"
@@ -914,14 +706,10 @@ export default function SecretDatabaseViewer() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-purple-500" />
-              {downloadType === 'all' ? 'Kompletter Export' : downloadType === 'schema' ? 'Schema Export' : 'Daten Export'} bestätigen
+              {downloadType === 'all' ? 'Kompletter Export' : 'SQL Export'} bestätigen
             </DialogTitle>
             <DialogDescription className="text-zinc-400">
-              {downloadType === 'all' 
-                ? 'Gib deinen 6-stelligen 2FA-Code ein, um Schema + SQL + JSON Dateien herunterzuladen.'
-                : downloadType === 'schema'
-                ? 'Gib deinen 2FA-Code ein, um das Schema (CREATE TABLE) herunterzuladen. ZUERST ausführen!'
-                : 'Gib deinen 2FA-Code ein, um die Daten (INSERT) herunterzuladen. NACH dem Schema ausführen!'}
+              Gib deinen 6-stelligen 2FA-Code ein, um {downloadType === 'all' ? 'SQL + JSON Dateien' : 'die SQL-Datei'} herunterzuladen.
             </DialogDescription>
           </DialogHeader>
           
@@ -946,9 +734,7 @@ export default function SecretDatabaseViewer() {
 
             <div className="text-xs text-zinc-500 text-center">
               {downloadType === 'all' 
-                ? `Export enthält alle ${TABLE_NAMES.length} Tabellen als Schema + SQL + JSON Dateien.`
-                : downloadType === 'schema'
-                ? `Erstellt CREATE TABLE Statements für alle ${TABLE_NAMES.length} Tabellen + RLS + Storage Buckets.`
+                ? `Export enthält alle ${TABLE_NAMES.length} Tabellen als SQL + JSON Dateien.`
                 : `Die exportierte Datei enthält alle ${TABLE_NAMES.length} Tabellen als PostgreSQL INSERT-Statements.`
               }
             </div>
