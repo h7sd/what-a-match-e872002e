@@ -176,11 +176,23 @@ serve(async (req) => {
     }
     
     const { messages, conversationId } = requestBody;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    // AI Chat is disabled - return a friendly message
+    const errorData = { 
+      error: "AI Chat is currently disabled. Please contact a staff member for support.",
+      code: "AI_DISABLED"
+    };
+    if (isEncrypted) {
+      const encrypted = await encryptResponse(errorData, encryptionKey);
+      return new Response(JSON.stringify(encrypted), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-encrypted": "true" }
+      });
     }
+    return new Response(JSON.stringify(errorData), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
 
     // Rate limiting checks
     if (activeStreams >= MAX_CONCURRENT_STREAMS) {
