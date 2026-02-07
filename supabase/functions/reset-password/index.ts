@@ -75,20 +75,6 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedEmail = email.toLowerCase().trim();
     const trimmedCode = code.trim();
     
-    console.log("DEBUG reset-password: checking code", { normalizedEmail, trimmedCode, nowISO });
-    
-    // First: check ALL codes for this email to debug
-    const { data: allCodes, error: debugError } = await supabaseAdmin
-      .from("verification_codes")
-      .select("id, email, code, type, used_at, expires_at, created_at")
-      .eq("email", normalizedEmail)
-      .eq("type", "password_reset")
-      .order("created_at", { ascending: false })
-      .limit(5);
-    
-    console.log("DEBUG all codes for email:", JSON.stringify(allCodes));
-    console.log("DEBUG fetch error:", debugError?.message);
-    
     const { data: codes, error: fetchError } = await supabaseAdmin
       .from("verification_codes")
       .select("*")
@@ -100,12 +86,8 @@ const handler = async (req: Request): Promise<Response> => {
       .order("created_at", { ascending: false })
       .limit(1);
 
-    console.log("DEBUG matched codes:", JSON.stringify(codes));
-    console.log("DEBUG fetchError:", fetchError?.message);
-
     if (fetchError || !codes || codes.length === 0) {
       const emailHash = await hashEmail(email);
-      console.error("Code verification failed for email hash:", emailHash, "fetchError:", fetchError?.message, "codesCount:", codes?.length);
       await addTimingJitter();
       return new Response(
         JSON.stringify({ error: "Invalid or expired reset code" }),
