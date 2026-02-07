@@ -202,10 +202,10 @@ Deno.serve(async (req) => {
     await randomDelay();
     
     // Return the new AAL2 session tokens so client can update its session
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: true,
-      access_token: verifyData?.session?.access_token,
-      refresh_token: verifyData?.session?.refresh_token,
+      access_token: (verifyData as any)?.access_token ?? null,
+      refresh_token: (verifyData as any)?.refresh_token ?? null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

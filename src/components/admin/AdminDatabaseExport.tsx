@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Download, Database, FileJson, FileCode } from "lucide-react";
+import { Loader2, Download, Database, FileJson, FileCode, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ExportSummary {
@@ -18,6 +18,7 @@ export function AdminDatabaseExport() {
   const [summary, setSummary] = useState<ExportSummary | null>(null);
   const [jsonData, setJsonData] = useState<Record<string, any[]> | null>(null);
   const [sqlBackup, setSqlBackup] = useState<string | null>(null);
+  const [authUsers, setAuthUsers] = useState<any[] | null>(null);
   const { toast } = useToast();
 
   const runExport = async () => {
@@ -25,6 +26,7 @@ export function AdminDatabaseExport() {
     setSummary(null);
     setJsonData(null);
     setSqlBackup(null);
+    setAuthUsers(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -48,7 +50,7 @@ export function AdminDatabaseExport() {
       }
 
       const result = response.data;
-      
+
       if (!result.success) {
         throw new Error(result.error || "Export fehlgeschlagen");
       }
@@ -56,6 +58,7 @@ export function AdminDatabaseExport() {
       setSummary(result.summary);
       setJsonData(result.json_data);
       setSqlBackup(result.sql_backup);
+      setAuthUsers(Array.isArray(result.auth_users) ? result.auth_users : null);
 
       toast({
         title: "Export erfolgreich!",
@@ -91,6 +94,17 @@ export function AdminDatabaseExport() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `uservault-backup-${new Date().toISOString().split("T")[0]}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadAuthUsers = () => {
+    if (!authUsers) return;
+    const blob = new Blob([JSON.stringify(authUsers, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `uservault-auth-users-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -141,7 +155,7 @@ export function AdminDatabaseExport() {
             </div>
 
             {/* Download Buttons */}
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={downloadJson}
                 variant="outline"
@@ -159,6 +173,15 @@ export function AdminDatabaseExport() {
               >
                 <FileCode className="w-4 h-4 mr-2" />
                 SQL Download
+              </Button>
+              <Button
+                onClick={downloadAuthUsers}
+                variant="outline"
+                className="flex-1"
+                disabled={!authUsers}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Auth-User
               </Button>
             </div>
 

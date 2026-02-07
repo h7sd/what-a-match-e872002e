@@ -55,6 +55,31 @@ async function hashIP(ip: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
 }
 
+// GoTrue Admin API does not support direct email lookup in this SDK version.
+// For admin-only flows where we must check if an email already exists, we paginate
+// through users and match client-side.
+async function findAuthUserByEmail(admin: any, email: string): Promise<any | null> {
+  const normalized = email.toLowerCase().trim();
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    const users = data?.users ?? [];
+    const found = users.find((u: any) => (u.email ?? '').toLowerCase() === normalized);
+    if (found) return found;
+
+    const total = typeof data?.total === 'number' ? data.total : users.length;
+    if (users.length < perPage || page * perPage >= total) break;
+
+    page++;
+  }
+
+  return null;
+}
+
 // Map of allowed actions to prevent arbitrary queries
 const ALLOWED_ACTIONS = [
   'get_stats',
@@ -735,31 +760,20 @@ Deno.serve(async (req) => {
           throw new Error('Invalid email format');
         }
 
-        // Check if email exists in auth.users via admin API
-        const { data: users, error } = await supabase.auth.admin.listUsers({
-          page: 1,
-          perPage: 1,
-        });
-
-        // We can't directly query by email with listUsers, so use a different approach
-        // Query profiles table which may have email or use auth.users lookup
-        const { data: authUser } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
-        
-        // Return minimal response - don't reveal if email exists (security)
-        // Always return same response to prevent email enumeration
+        // Do not reveal whether the email exists (prevents enumeration)
         result = { valid: true };
         break;
       }
 
       case 'check_register_available': {
         const { username, email } = params || {};
-        
+
         // Validate inputs
         if (!username || typeof username !== 'string' || username.length < 1 || username.length > 20) {
           result = { available: false, reason: 'invalid_username' };
           break;
         }
-        
+
         if (!email || typeof email !== 'string' || email.length > 255) {
           result = { available: false, reason: 'invalid_email' };
           break;
@@ -775,7 +789,8 @@ Deno.serve(async (req) => {
 
         // Basic email format validation
         const emailValidation = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailValidation.test(email)) {
+        const normalizedEmail = email.toLowerCase().trim();
+        if (!emailValidation.test(normalizedEmail)) {
           result = { available: false, reason: 'invalid_email_format' };
           break;
         }
@@ -799,9 +814,9 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Check email availability via auth admin API
-        const { data: existingUser } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
-        
+        // Check email availability via auth admin API (paginate + match)
+        const existingUser = await findAuthUserByEmail(supabase.auth.admin, normalizedEmail);
+
         if (existingUser) {
           result = { available: false, reason: 'email_taken' };
           break;
