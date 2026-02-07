@@ -16,7 +16,7 @@ import MaintenanceOverlay from "@/components/landing/MaintenanceOverlay";
 import { supabase } from "@/integrations/supabase/client";
 
 // Maintenance mode flag - set to false to disable
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
