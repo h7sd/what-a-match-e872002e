@@ -628,25 +628,14 @@ export default function Auth() {
           return;
         }
 
-        // Call database RPC function directly - no edge function needed
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('verify_and_reset_password', {
-          p_email: email.toLowerCase().trim(),
-          p_code: verificationCode.trim(),
-          p_new_password: newPassword,
+        const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
+          body: { email: email.toLowerCase().trim(), code: verificationCode.trim(), newPassword },
         });
 
-        const result = rpcResult as any;
-
-        if (rpcError) {
+        if (error || (data as any)?.error) {
           toast({
             title: 'Reset failed',
-            description: rpcError.message || 'Please try again.',
-            variant: 'destructive',
-          });
-        } else if (result && result.success === false) {
-          toast({
-            title: 'Reset failed',
-            description: result.error || 'Please try again.',
+            description: (data as any)?.error || error?.message || 'Please try again.',
             variant: 'destructive',
           });
         } else {

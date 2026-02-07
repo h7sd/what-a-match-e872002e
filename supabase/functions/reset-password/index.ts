@@ -60,40 +60,52 @@ serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq("id", codes[0].id);
 
-    // 3. Find user ID from profiles table (profiles.id = auth.users.id)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("id")
-      .eq("email", normalizedEmail)
-      .maybeSingle();
-
-    let userId = profile?.id;
-
-    // Fallback: if not in profiles, use Auth Admin REST API directly
-    if (!userId) {
-      console.log("User not in profiles, trying Auth Admin API...");
-      const listRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=50`, {
-        headers: {
-          "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
-          "apikey": SERVICE_ROLE_KEY,
-        },
-      });
-      if (listRes.ok) {
-        const listData = await listRes.json();
-        const users = listData.users || listData;
-        const found = (Array.isArray(users) ? users : []).find(
-          (u: any) => u.email?.toLowerCase() === normalizedEmail
-        );
-        if (found) userId = found.id;
+    // 3. Find user via Auth Admin REST API - paginate through ALL users
+    let userId: string | null = null;
+    let page = 1;
+    
+    while (!userId && page <= 20) {
+      console.log("Searching auth users page:", page);
+      const listRes = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=100`,
+        {
+          headers: {
+            "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+            "apikey": SERVICE_ROLE_KEY,
+          },
+        }
+      );
+      
+      if (!listRes.ok) {
+        console.error("Failed to list users:", listRes.status, await listRes.text());
+        break;
       }
+      
+      const listData = await listRes.json();
+      const users = listData.users || [];
+      console.log("Page", page, "returned", users.length, "users");
+      
+      if (users.length === 0) break;
+      
+      const found = users.find(
+        (u: any) => u.email?.toLowerCase() === normalizedEmail
+      );
+      
+      if (found) {
+        userId = found.id;
+        console.log("Found user:", userId);
+      }
+      
+      if (users.length < 100) break;
+      page++;
     }
 
     if (!userId) {
-      console.error("User not found for email");
+      console.error("User not found after searching all pages for:", normalizedEmail);
       return json({ error: "User not found" }, 400);
     }
 
-    // 4. Update password via Auth Admin REST API directly (most reliable)
+    // 4. Update password via Auth Admin REST API
     console.log("Updating password for user:", userId);
     const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
       method: "PUT",
