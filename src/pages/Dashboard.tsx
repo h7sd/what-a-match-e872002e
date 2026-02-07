@@ -1458,6 +1458,40 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {/* Database Configuration Display */}
+                <div className="glass-card p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-primary" />
+                      <h3 className="font-semibold">Database Configuration</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-secondary/30 rounded-lg p-4 border border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Active Database URL</p>
+                        <div className="flex items-center gap-2 gap-3">
+                          <code className="flex-1 text-xs bg-black/30 rounded px-3 py-2 font-mono break-all text-primary/90">
+                            {import.meta.env.VITE_SUPABASE_URL || 'Not configured'}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(import.meta.env.VITE_SUPABASE_URL || '');
+                              toast({ title: 'Database URL copied to clipboard' });
+                            }}
+                            className="flex-shrink-0"
+                          >
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        This is the Supabase instance currently connected to the application. Verify this matches your intended database before making changes.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Secret DB Viewer shortcut (super-admin by UID) */}
                 {SECRET_DB_ALLOWED_UIDS.includes((profile?.uid_number as any) ?? -1) && (
                   <div className="glass-card p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
