@@ -39,18 +39,28 @@ export function DashboardPage() {
   const fetchProfile = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching profile:", error);
-    } else {
-      setProfile(data);
+      if (error) {
+        console.error("Error fetching profile:", error);
+        setProfile(null);
+      } else if (!data) {
+        console.warn("No profile found for user:", user.id);
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error("Exception fetching profile:", error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSignOut = async () => {

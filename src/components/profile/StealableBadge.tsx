@@ -102,7 +102,7 @@ export function StealableBadge({
           .from('profiles')
           .select('username')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (myProfile?.username) {
           // Navigate to own profile to see the badge
