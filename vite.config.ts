@@ -1,12 +1,10 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
-import fs from "node:fs";
 
 /**
  * Custom plugin that resolves @/ aliases using Vite's own resolved root
- * instead of __dirname or process.cwd() which can point to wrong directories
- * in the v0 preview environment.
+ * and Vite's own file resolver (no fs.existsSync needed).
  */
 function resolveAtAlias(): Plugin {
   let srcDir = "";
@@ -15,30 +13,30 @@ function resolveAtAlias(): Plugin {
     enforce: "pre",
     configResolved(config) {
       srcDir = path.resolve(config.root, "src");
+      console.log("[v0] resolve-at-alias plugin: srcDir =", srcDir);
     },
-    async resolveId(source) {
+    async resolveId(source, importer) {
       if (!source.startsWith("@/")) return null;
 
       // Special case: proxy supabase client
       if (source === "@/integrations/supabase/client") {
-        return path.resolve(srcDir, "lib/supabase-proxy-client.ts");
+        const target = path.resolve(srcDir, "lib/supabase-proxy-client.ts");
+        console.log("[v0] resolving supabase client ->", target);
+        return target;
       }
 
+      // Rewrite @/foo/bar to <srcDir>/foo/bar and let Vite resolve extensions
       const relative = source.slice(2); // strip "@/"
-      const extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".json", ".css"];
+      const rewritten = path.join(srcDir, relative);
 
-      // Try direct file match with extensions
-      for (const ext of extensions) {
-        const full = path.resolve(srcDir, relative + ext);
-        if (fs.existsSync(full)) return full;
+      // Use Vite's own resolver to find the actual file (handles .ts, .tsx, /index.ts, etc.)
+      const resolved = await this.resolve(rewritten, importer, { skipSelf: true });
+      if (resolved) {
+        console.log("[v0] resolved", source, "->", resolved.id);
+        return resolved;
       }
 
-      // Try index files in directory
-      for (const ext of [".ts", ".tsx", ".js", ".jsx"]) {
-        const full = path.resolve(srcDir, relative, "index" + ext);
-        if (fs.existsSync(full)) return full;
-      }
-
+      console.log("[v0] FAILED to resolve", source, "rewritten as", rewritten);
       return null;
     },
   };
