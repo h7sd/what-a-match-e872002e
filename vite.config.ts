@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { fileURLToPath } from "url";
 import { componentTagger } from "lovable-tagger";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -17,9 +20,8 @@ export default defineConfig(({ mode }) => ({
     // IMPORTANT: Ensure all backend traffic goes through the public API domain
     // so the underlying provider URL is never visible in browser devtools.
     alias: {
-      "@/integrations/supabase/client": path.resolve(__dirname, "./src/lib/supabase-proxy-client.ts"),
-      "@": path.resolve(__dirname, "./src"),
-      "@/": path.resolve(__dirname, "./src/"),
+      "@/integrations/supabase/client": path.resolve(__dirname, "src/lib/supabase-proxy-client.ts"),
+      "@": path.resolve(__dirname, "src"),
     },
   },
 }));
