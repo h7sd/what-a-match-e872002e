@@ -628,9 +628,14 @@ export default function Auth() {
           return;
         }
 
+        const payload = { email: email.toLowerCase().trim(), code: verificationCode.trim(), newPassword };
+        console.log("[v0] reset-password payload:", JSON.stringify({ email: payload.email, code: payload.code, pwLen: payload.newPassword.length }));
+
         const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
-          body: { email: email.toLowerCase().trim(), code: verificationCode.trim(), newPassword },
+          body: payload,
         });
+
+        console.log("[v0] reset-password result:", JSON.stringify({ data, errorMsg: error?.message }));
 
         if (error || (data as any)?.error) {
           toast({
