@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { crypto } from "jsr:@std/crypto@1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
