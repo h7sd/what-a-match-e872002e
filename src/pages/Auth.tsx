@@ -324,9 +324,12 @@ export default function Auth() {
     const discordCode = searchParams.get('discord_code');
     const discordState = searchParams.get('discord_state');
     
-    if (type === 'recovery' && emailParam && codeParam) {
-      setEmail(emailParam);
-      setVerificationCode(codeParam);
+    if (type === 'recovery') {
+      // Supabase built-in recovery: user arrives with ?type=recovery and
+      // a #access_token fragment that the Supabase SDK processes automatically.
+      // Legacy custom flow: ?type=recovery&email=...&code=... (kept for backwards compat)
+      if (emailParam) setEmail(emailParam);
+      if (codeParam) setVerificationCode(codeParam);
       setStep('reset-password');
     }
     
@@ -473,8 +476,13 @@ export default function Auth() {
   };
 
   const sendPasswordResetEmail = async (targetEmail: string) => {
-    // Use edge function to generate code and send email
-    await generateVerificationCode(targetEmail, 'password_reset');
+    // Use Supabase's built-in password reset which handles code generation,
+    // email sending, and token verification reliably.
+    const redirectTo = `${window.location.origin}/auth?type=recovery`;
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail.toLowerCase().trim(), {
+      redirectTo,
+    });
+    if (error) throw error;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -602,40 +610,60 @@ export default function Auth() {
           return;
         }
 
-        // Use state values (set when URL was first parsed) as primary source,
-        // fall back to URL searchParams in case state was cleared
-        const resetCode = verificationCode || searchParams.get('code') || '';
-        const resetEmail = email || searchParams.get('email') || '';
+        // Try Supabase built-in updateUser first (works when user arrived via
+        // Supabase's recovery link which auto-logs them in with a recovery token).
+        const { data: sessionData } = await supabase.auth.getSession();
         
-        if (!resetCode || !resetEmail) {
-          toast({
-            title: 'Invalid link',
-            description: 'Please request a new password reset.',
-            variant: 'destructive',
+        if (sessionData?.session) {
+          // User is logged in via recovery token – use Supabase's built-in API
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: newPassword,
           });
-          setStep('forgot-password');
-          setLoading(false);
-          return;
-        }
 
-        const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
-          body: {
-            email: resetEmail,
-            code: resetCode,
-            newPassword
-          },
-        });
-
-        if (error || (data as any)?.error) {
-          toast({
-            title: 'Reset failed',
-            description: (data as any)?.error || error?.message || 'Please try again.',
-            variant: 'destructive',
-          });
+          if (updateError) {
+            toast({
+              title: 'Reset failed',
+              description: updateError.message || 'Please try again.',
+              variant: 'destructive',
+            });
+          } else {
+            // Sign out so they can log in fresh with the new password
+            await supabase.auth.signOut();
+            toast({ title: 'Password changed!', description: 'You can now log in with your new password.' });
+            setStep('login');
+            navigate('/auth', { replace: true });
+          }
         } else {
-          toast({ title: 'Password changed!', description: 'You can now log in.' });
-          setStep('login');
-          navigate('/auth');
+          // Fallback: legacy custom edge function flow (code + email from URL)
+          const resetCode = verificationCode || searchParams.get('code') || '';
+          const resetEmail = email || searchParams.get('email') || '';
+
+          if (!resetCode || !resetEmail) {
+            toast({
+              title: 'Session expired',
+              description: 'Please request a new password reset.',
+              variant: 'destructive',
+            });
+            setStep('forgot-password');
+            setLoading(false);
+            return;
+          }
+
+          const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
+            body: { email: resetEmail, code: resetCode, newPassword },
+          });
+
+          if (error || (data as any)?.error) {
+            toast({
+              title: 'Reset failed',
+              description: (data as any)?.error || error?.message || 'Please try again.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({ title: 'Password changed!', description: 'You can now log in.' });
+            setStep('login');
+            navigate('/auth', { replace: true });
+          }
         }
       }
     } catch (err: any) {
