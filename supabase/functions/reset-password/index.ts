@@ -60,12 +60,11 @@ serve(async (req: Request) => {
       .update({ used_at: new Date().toISOString() })
       .eq("id", codes[0].id);
 
-    // 3. Find user via Auth Admin REST API - paginate through ALL users
+    // 3. Find user via Auth Admin REST API
     let userId: string | null = null;
     let page = 1;
     
     while (!userId && page <= 20) {
-      console.log("Searching auth users page:", page);
       const listRes = await fetch(
         `${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=100`,
         {
@@ -76,36 +75,51 @@ serve(async (req: Request) => {
         }
       );
       
-      if (!listRes.ok) {
-        console.error("Failed to list users:", listRes.status, await listRes.text());
-        break;
-      }
+      if (!listRes.ok) break;
       
       const listData = await listRes.json();
       const users = listData.users || [];
-      console.log("Page", page, "returned", users.length, "users");
-      
       if (users.length === 0) break;
       
       const found = users.find(
         (u: any) => u.email?.toLowerCase() === normalizedEmail
       );
-      
-      if (found) {
-        userId = found.id;
-        console.log("Found user:", userId);
-      }
-      
+      if (found) userId = found.id;
       if (users.length < 100) break;
       page++;
     }
 
+    // 4. If user not found, CREATE them via Admin API
     if (!userId) {
-      console.error("User not found after searching all pages for:", normalizedEmail);
-      return json({ error: "User not found" }, 400);
+      console.log("User not in auth.users, creating via Admin API...");
+      const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+          "apikey": SERVICE_ROLE_KEY,
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password: newPassword,
+          email_confirm: true,
+        }),
+      });
+
+      const createBody = await createRes.json();
+      console.log("Create user response:", createRes.status, JSON.stringify(createBody));
+
+      if (!createRes.ok) {
+        const errorMsg = createBody.msg || createBody.error || createBody.message || "Failed to create user";
+        console.error("Create user failed:", errorMsg);
+        return json({ error: errorMsg }, 500);
+      }
+
+      console.log("User created and password set for:", normalizedEmail);
+      return json({ success: true, message: "Account created with new password. You can now log in." });
     }
 
-    // 4. Update password via Auth Admin REST API
+    // 5. User exists - update password via Admin API
     console.log("Updating password for user:", userId);
     const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
       method: "PUT",
@@ -126,11 +140,6 @@ serve(async (req: Request) => {
         const parsed = JSON.parse(updateBody);
         errorMsg = parsed.msg || parsed.error || parsed.message || errorMsg;
       } catch {}
-
-      if (errorMsg.includes("weak") || errorMsg.includes("easy to guess")) {
-        return json({ error: "Password is too weak. Use at least 8 characters with uppercase, lowercase, numbers, and symbols." }, 400);
-      }
-      console.error("Password update failed:", errorMsg);
       return json({ error: errorMsg }, 500);
     }
 
