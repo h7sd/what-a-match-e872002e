@@ -96,11 +96,30 @@ serve(async (req) => {
     let authUsersRaw: any[] = [];
 
     // Export auth.users via the secure RPC function (includes encrypted_password for migration)
+    // Use pagination to get ALL users (Supabase default limit is 1000)
     try {
-      const { data: rawUsers, error: rpcError } = await supabase.rpc("export_auth_users_for_migration");
-      if (rpcError) throw rpcError;
-      authUsersRaw = rawUsers ?? [];
-      console.log(`Exported ${authUsersRaw.length} auth.users via RPC`);
+      let offset = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: rawUsers, error: rpcError } = await supabase
+          .rpc("export_auth_users_for_migration")
+          .range(offset, offset + pageSize - 1);
+
+        if (rpcError) throw rpcError;
+
+        const users = rawUsers ?? [];
+        authUsersRaw.push(...users);
+
+        if (users.length < pageSize) {
+          hasMore = false;
+        } else {
+          offset += pageSize;
+        }
+      }
+
+      console.log(`Exported ${authUsersRaw.length} auth.users via RPC (paginated)`);
     } catch (e: any) {
       console.error("auth.users RPC export failed:", e);
       errors.push(`auth.users: ${e?.message ?? String(e)}`);
