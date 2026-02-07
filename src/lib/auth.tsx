@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../integrations/supabase/client';
 import { invokeSecure } from './secureEdgeFunctions';
+import { logAuthEvent } from './authLogger';
 
 interface MfaChallenge {
   factorId: string;
@@ -103,7 +104,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
-    if (error) return { error };
+    if (error) {
+      await logAuthEvent({
+        eventType: 'sign_in',
+        email: loginEmail,
+        success: false,
+        errorMessage: error.message
+      });
+      return { error };
+    }
+
+    await logAuthEvent({
+      eventType: 'sign_in',
+      userId: data.user?.id,
+      email: loginEmail,
+      success: true
+    });
 
     // Check if user is banned
     if (data.user) {
@@ -115,6 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (banFnError) throw banFnError;
 
         if (banData?.isBanned) {
+          await logAuthEvent({
+            eventType: 'ban_check',
+            userId: data.user?.id,
+            email: loginEmail,
+            success: false,
+            errorMessage: `User banned: ${banData.reason || 'No reason provided'}`
+          });
           setBanStatus({
             isBanned: true,
             reason: banData.reason,
@@ -205,8 +228,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!data?.success) {
+        await logAuthEvent({
+          eventType: 'mfa_verified',
+          userId: user?.id,
+          success: false,
+          errorMessage: data?.error || 'Verification failed'
+        });
         throw new Error(data?.error || 'Verification failed');
       }
+
+      await logAuthEvent({
+        eventType: 'mfa_verified',
+        userId: user?.id,
+        success: true
+      });
 
       // CRITICAL: Clear MFA challenge FIRST to prevent re-triggering
       setMfaChallenge(null);
@@ -289,7 +324,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    if (error) return { error };
+    if (error) {
+      await logAuthEvent({
+        eventType: 'sign_up',
+        email,
+        success: false,
+        errorMessage: error.message
+      });
+      return { error };
+    }
 
     // Create profile after signup
     if (data.user) {
@@ -302,17 +345,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
       if (profileError) {
+        await logAuthEvent({
+          eventType: 'sign_up',
+          userId: data.user.id,
+          email,
+          success: false,
+          errorMessage: `Profile creation failed: ${profileError.message}`
+        });
         return { error: profileError };
       }
+
+      await logAuthEvent({
+        eventType: 'sign_up',
+        userId: data.user.id,
+        email,
+        success: true,
+        metadata: { username: username.toLowerCase() }
+      });
     }
 
     return { error: null, data: { user: data.user } };
   };
 
   const signOut = async () => {
+    const currentUser = user;
     setMfaChallenge(null);
     setBanStatus(null);
     await supabase.auth.signOut();
+
+    if (currentUser) {
+      await logAuthEvent({
+        eventType: 'sign_out',
+        userId: currentUser.id,
+        email: currentUser.email,
+        success: true
+      });
+    }
   };
 
   return (
