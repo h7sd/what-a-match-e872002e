@@ -628,14 +628,24 @@ export default function Auth() {
           return;
         }
 
-        const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
-          body: { email: email.toLowerCase().trim(), code: verificationCode.trim(), newPassword },
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('verify_and_reset_password', {
+          p_email: email.toLowerCase().trim(),
+          p_code: verificationCode.trim(),
+          p_new_password: newPassword,
         });
 
-        if (error || (data as any)?.error) {
+        const result = rpcResult as any;
+
+        if (rpcError) {
           toast({
             title: 'Reset failed',
-            description: (data as any)?.error || error?.message || 'Please try again.',
+            description: rpcError.message || 'Please try again.',
+            variant: 'destructive',
+          });
+        } else if (result && result.success === false) {
+          toast({
+            title: 'Reset failed',
+            description: result.error || 'Please try again.',
             variant: 'destructive',
           });
         } else {
