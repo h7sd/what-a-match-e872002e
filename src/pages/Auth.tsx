@@ -221,8 +221,22 @@ export default function Auth() {
     checkAuthAndMfa();
   }, [user, mfaChallenge, step, mfaJustCompleted, navigate, toast, searchParams]);
 
-  // Load Turnstile script
+  // Check if we're on a production domain where Turnstile is configured
+  const isProductionDomain = typeof window !== 'undefined' && (
+    window.location.hostname === 'what-a-match.me' ||
+    window.location.hostname === 'www.what-a-match.me' ||
+    window.location.hostname.endsWith('.what-a-match.me')
+  );
+
+  // Load Turnstile script (only on production domains)
   useEffect(() => {
+    if (!isProductionDomain) {
+      // Auto-bypass Turnstile on non-production domains (v0 preview, localhost, etc.)
+      setTurnstileToken('BYPASS_DEV');
+      setTurnstileLoaded(true);
+      return;
+    }
+
     if (document.getElementById('turnstile-script')) {
       setTurnstileLoaded(true);
       return;
@@ -246,7 +260,7 @@ export default function Auth() {
         }
       }
     };
-  }, []);
+  }, [isProductionDomain]);
 
   // Render Turnstile widget
   const renderTurnstile = useCallback(() => {
@@ -966,10 +980,12 @@ export default function Auth() {
                   )}
                 </div>
 
-                {/* Turnstile Widget */}
-                <div className="flex justify-center py-2">
-                  <div ref={turnstileRef} />
-                </div>
+                {/* Turnstile Widget - only on production domains */}
+                {isProductionDomain && (
+                  <div className="flex justify-center py-2">
+                    <div ref={turnstileRef} />
+                  </div>
+                )}
 
                 <Button
                   type="submit"
@@ -1069,10 +1085,12 @@ export default function Auth() {
                   <PasswordStrengthIndicator password={password} />
                 </div>
 
-                {/* Turnstile Widget */}
-                <div className="flex justify-center py-2">
-                  <div ref={turnstileRef} />
-                </div>
+                {/* Turnstile Widget - only on production domains */}
+                {isProductionDomain && (
+                  <div className="flex justify-center py-2">
+                    <div ref={turnstileRef} />
+                  </div>
+                )}
 
                 <Button
                   type="submit"
