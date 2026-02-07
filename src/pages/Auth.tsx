@@ -605,6 +605,10 @@ export default function Auth() {
         const codeParam = searchParams.get('code');
         const emailParam = searchParams.get('email');
         
+        console.log("[v0] Reset password - codeParam:", codeParam);
+        console.log("[v0] Reset password - emailParam:", emailParam);
+        console.log("[v0] Reset password - searchParams:", window.location.search);
+        
         if (!codeParam || !emailParam) {
           toast({
             title: 'Invalid link',
@@ -616,6 +620,8 @@ export default function Auth() {
           return;
         }
 
+        console.log("[v0] Calling reset-password edge function with:", { email: emailParam, code: codeParam, newPasswordLength: newPassword.length });
+        
         const { data, error } = await invokeSecure<{ error?: string }>('reset-password', {
           body: {
             email: emailParam,
@@ -624,7 +630,11 @@ export default function Auth() {
           },
         });
 
+        console.log("[v0] Reset password response - data:", JSON.stringify(data));
+        console.log("[v0] Reset password response - error:", error);
+
         if (error || (data as any)?.error) {
+          console.log("[v0] Reset FAILED - data.error:", (data as any)?.error, "error:", error?.message);
           toast({
             title: 'Reset failed',
             description: (data as any)?.error || error?.message || 'Please try again.',
