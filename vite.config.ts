@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@/integrations/supabase/client": path.resolve(__dirname, "./src/lib/supabase-proxy-client.ts"),
       "@": path.resolve(__dirname, "./src"),
+      "@/": path.resolve(__dirname, "./src/"),
     },
   },
 }));
