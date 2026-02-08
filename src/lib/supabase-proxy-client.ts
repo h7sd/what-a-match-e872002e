@@ -10,9 +10,9 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types';
 
 // External Supabase project credentials
-const EXTERNAL_URL = import.meta.env.VITE_EXTERNAL_SUPABASE_URL || 'https://ksejlspyueghbrhgoqtd.supabase.co';
-const EXTERNAL_ANON_KEY = import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY || '';
-const EXTERNAL_PROJECT_ID = import.meta.env.VITE_EXTERNAL_SUPABASE_PROJECT_ID || 'ksejlspyueghbrhgoqtd';
+const EXTERNAL_URL = import.meta.env.VITE_EXTERNAL_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || 'https://ksejlspyueghbrhgoqtd.supabase.co';
+const EXTERNAL_ANON_KEY = import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const EXTERNAL_PROJECT_ID = import.meta.env.VITE_EXTERNAL_SUPABASE_PROJECT_ID || import.meta.env.VITE_SUPABASE_PROJECT_ID || 'ksejlspyueghbrhgoqtd';
 
 // Create external Supabase client
 export const supabase = createClient<Database>(EXTERNAL_URL, EXTERNAL_ANON_KEY, {
