@@ -1,4 +1,4 @@
-import { serve } from "jsr:@std/http@1/server";
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -76,7 +76,7 @@ function sanitizeForDiscord(text: string): string {
     .replace(/\[.*?\]\(.*?\)/g, '[link removed]');
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

@@ -1,4 +1,4 @@
-import { serve } from "jsr:@std/http@1/server";
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -13,7 +13,7 @@ const corsHeaders = {
 // Simple auth for cron jobs - use a secret token
 const CLEANUP_SECRET = Deno.env.get("CLEANUP_SECRET") || "internal-cleanup-token";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

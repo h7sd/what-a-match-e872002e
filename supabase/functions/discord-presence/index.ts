@@ -1,4 +1,4 @@
-import { serve } from "jsr:@std/http@1/server";
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -44,7 +44,7 @@ async function verifySignature(payload: string, signature: string, timestamp: nu
   return signature === expectedSignature;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
