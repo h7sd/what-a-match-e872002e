@@ -369,6 +369,51 @@ export type Database = {
         }
         Relationships: []
       }
+      battle_participants: {
+        Row: {
+          battle_id: string
+          id: string
+          items_won: Json | null
+          joined_at: string | null
+          team: number
+          total_value: number | null
+          user_id: string
+        }
+        Insert: {
+          battle_id: string
+          id?: string
+          items_won?: Json | null
+          joined_at?: string | null
+          team: number
+          total_value?: number | null
+          user_id: string
+        }
+        Update: {
+          battle_id?: string
+          id?: string
+          items_won?: Json | null
+          joined_at?: string | null
+          team?: number
+          total_value?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_participants_battle_id_fkey"
+            columns: ["battle_id"]
+            isOneToOne: false
+            referencedRelation: "case_battles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bot_command_notifications: {
         Row: {
           action: string
@@ -438,6 +483,188 @@ export type Database = {
           required_role?: string | null
           updated_at?: string | null
           usage?: string | null
+        }
+        Relationships: []
+      }
+      case_battles: {
+        Row: {
+          battle_type: string
+          case_id: string
+          completed_at: string | null
+          created_at: string | null
+          entry_fee: number
+          id: string
+          started_at: string | null
+          status: string
+          team1_total: number | null
+          team2_total: number | null
+          winner_team: number | null
+        }
+        Insert: {
+          battle_type: string
+          case_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          entry_fee: number
+          id?: string
+          started_at?: string | null
+          status?: string
+          team1_total?: number | null
+          team2_total?: number | null
+          winner_team?: number | null
+        }
+        Update: {
+          battle_type?: string
+          case_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          entry_fee?: number
+          id?: string
+          started_at?: string | null
+          status?: string
+          team1_total?: number | null
+          team2_total?: number | null
+          winner_team?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_battles_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_items: {
+        Row: {
+          badge_id: string | null
+          case_id: string
+          coin_amount: number | null
+          created_at: string | null
+          display_value: number
+          drop_rate: number
+          id: string
+          item_type: string
+          rarity: string
+        }
+        Insert: {
+          badge_id?: string | null
+          case_id: string
+          coin_amount?: number | null
+          created_at?: string | null
+          display_value?: number
+          drop_rate: number
+          id?: string
+          item_type: string
+          rarity: string
+        }
+        Update: {
+          badge_id?: string | null
+          case_id?: string
+          coin_amount?: number | null
+          created_at?: string | null
+          display_value?: number
+          drop_rate?: number
+          id?: string
+          item_type?: string
+          rarity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_items_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_transactions: {
+        Row: {
+          battle_id: string | null
+          case_id: string
+          created_at: string | null
+          id: string
+          items_won: Json | null
+          total_value: number
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          battle_id?: string | null
+          case_id: string
+          created_at?: string | null
+          id?: string
+          items_won?: Json | null
+          total_value?: number
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          battle_id?: string | null
+          case_id?: string
+          created_at?: string | null
+          id?: string
+          items_won?: Json | null
+          total_value?: number
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_transactions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cases: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          order_index: number | null
+          price: number
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          order_index?: number | null
+          price: number
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          order_index?: number | null
+          price?: number
         }
         Relationships: []
       }
@@ -1644,6 +1871,70 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          badge_id: string | null
+          coin_amount: number | null
+          estimated_value: number
+          id: string
+          item_type: string
+          rarity: string
+          sold: boolean | null
+          sold_at: string | null
+          user_id: string
+          won_at: string | null
+          won_from_case_id: string | null
+        }
+        Insert: {
+          badge_id?: string | null
+          coin_amount?: number | null
+          estimated_value?: number
+          id?: string
+          item_type: string
+          rarity: string
+          sold?: boolean | null
+          sold_at?: string | null
+          user_id: string
+          won_at?: string | null
+          won_from_case_id?: string | null
+        }
+        Update: {
+          badge_id?: string | null
+          coin_amount?: number | null
+          estimated_value?: number
+          id?: string
+          item_type?: string
+          rarity?: string
+          sold?: boolean | null
+          sold_at?: string | null
+          user_id?: string
+          won_at?: string | null
+          won_from_case_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_inventory_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_inventory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_inventory_won_from_case_id_fkey"
+            columns: ["won_from_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_notifications: {
         Row: {
