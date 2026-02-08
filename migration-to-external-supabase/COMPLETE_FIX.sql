@@ -658,10 +658,32 @@ END $$;
 -- =============================================================================
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'spotify_integrations') THEN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'spotify_integrations' AND column_name = 'user_id') THEN
-      EXECUTE 'CREATE POLICY "spotify_integrations_owner" ON public.spotify_integrations FOR ALL USING (auth.uid() = user_id)';
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'spotify_integrations'
+  ) THEN
+    -- Some external schemas miss the user_id column; backend code expects it.
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'spotify_integrations'
+        AND column_name = 'user_id'
+    ) THEN
+      EXECUTE 'ALTER TABLE public.spotify_integrations ADD COLUMN IF NOT EXISTS user_id uuid';
+
+      -- Best-effort migration: older drafts used profile_id.
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'spotify_integrations'
+          AND column_name = 'profile_id'
+      ) THEN
+        EXECUTE 'UPDATE public.spotify_integrations SET user_id = profile_id WHERE user_id IS NULL';
+      END IF;
     END IF;
+
+    EXECUTE 'DROP POLICY IF EXISTS "spotify_integrations_owner" ON public.spotify_integrations';
+    EXECUTE 'CREATE POLICY "spotify_integrations_owner" ON public.spotify_integrations FOR ALL USING (auth.uid() = user_id)';
   END IF;
 END $$;
 
@@ -669,13 +691,40 @@ END $$;
 -- PART 46: CREATE PUBLIC VIEW FOR SPOTIFY (hides tokens)
 -- =============================================================================
 DO $$
+DECLARE
+  has_user_id boolean;
+  has_profile_id boolean;
+  select_sql text;
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'spotify_integrations') THEN
-    DROP VIEW IF EXISTS public.spotify_integrations_public;
-    CREATE VIEW public.spotify_integrations_public 
-    WITH (security_invoker=on) AS
-      SELECT id, user_id, show_on_profile, created_at, updated_at
-      FROM public.spotify_integrations;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'spotify_integrations'
+  ) THEN
+    has_user_id := EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'spotify_integrations'
+        AND column_name = 'user_id'
+    );
+
+    has_profile_id := EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'spotify_integrations'
+        AND column_name = 'profile_id'
+    );
+
+    EXECUTE 'DROP VIEW IF EXISTS public.spotify_integrations_public';
+
+    IF has_user_id THEN
+      select_sql := 'SELECT id, user_id, show_on_profile, created_at, updated_at FROM public.spotify_integrations';
+    ELSIF has_profile_id THEN
+      select_sql := 'SELECT id, profile_id as user_id, show_on_profile, created_at, updated_at FROM public.spotify_integrations';
+    ELSE
+      select_sql := 'SELECT id, NULL::uuid as user_id, show_on_profile, created_at, updated_at FROM public.spotify_integrations';
+    END IF;
+
+    EXECUTE 'CREATE VIEW public.spotify_integrations_public WITH (security_invoker=on) AS ' || select_sql;
   END IF;
 END $$;
 
