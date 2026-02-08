@@ -57,18 +57,46 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.can_record_view(p_profile_id uuid, p_ip_hash text)
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT NOT EXISTS (
+DECLARE
+  has_profile_id boolean;
+  seen_recently boolean;
+BEGIN
+  -- Falls die Tabelle fehlt, lieber nicht blockieren
+  IF to_regclass('public.profile_views') IS NULL THEN
+    RETURN true;
+  END IF;
+
+  SELECT EXISTS (
     SELECT 1
-    FROM public.profile_views
-    WHERE profile_id = p_profile_id
-      AND viewer_ip_hash = p_ip_hash
-      AND viewed_at > NOW() - INTERVAL '1 hour'
-  )
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profile_views'
+      AND column_name = 'profile_id'
+  ) INTO has_profile_id;
+
+  -- Wenn es kein profile_id gibt, können wir hier nicht sinnvoll limitieren
+  IF NOT has_profile_id THEN
+    RETURN true;
+  END IF;
+
+  EXECUTE
+    'SELECT EXISTS (\
+       SELECT 1\
+       FROM public.profile_views\
+       WHERE profile_id = $1\
+         AND viewer_ip_hash = $2\
+         AND viewed_at > NOW() - INTERVAL ''1 hour''\
+     )'
+  INTO seen_recently
+  USING p_profile_id, p_ip_hash;
+
+  RETURN NOT seen_recently;
+END;
 $$;
 
 -- =====================================================
@@ -258,17 +286,37 @@ DROP POLICY IF EXISTS "Badges are viewable by everyone" ON public.badges;
 CREATE POLICY "Badges are viewable by everyone" ON public.badges
 FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Users can create badges for their profile" ON public.badges;
-CREATE POLICY "Users can create badges for their profile" ON public.badges
-FOR INSERT WITH CHECK (is_profile_owner(profile_id));
+DO $$
+DECLARE
+  has_profile_id boolean;
+  has_user_id boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='badges' AND column_name='profile_id'
+  ) INTO has_profile_id;
 
-DROP POLICY IF EXISTS "Users can delete their own badges" ON public.badges;
-CREATE POLICY "Users can delete their own badges" ON public.badges
-FOR DELETE USING (is_profile_owner(profile_id));
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='badges' AND column_name='user_id'
+  ) INTO has_user_id;
 
-DROP POLICY IF EXISTS "Users can update their own badges" ON public.badges;
-CREATE POLICY "Users can update their own badges" ON public.badges
-FOR UPDATE USING (is_profile_owner(profile_id));
+  EXECUTE 'DROP POLICY IF EXISTS "Users can create badges for their profile" ON public.badges';
+  EXECUTE 'DROP POLICY IF EXISTS "Users can delete their own badges" ON public.badges';
+  EXECUTE 'DROP POLICY IF EXISTS "Users can update their own badges" ON public.badges';
+
+  IF has_profile_id THEN
+    EXECUTE 'CREATE POLICY "Users can create badges for their profile" ON public.badges FOR INSERT WITH CHECK (is_profile_owner(profile_id))';
+    EXECUTE 'CREATE POLICY "Users can delete their own badges" ON public.badges FOR DELETE USING (is_profile_owner(profile_id))';
+    EXECUTE 'CREATE POLICY "Users can update their own badges" ON public.badges FOR UPDATE USING (is_profile_owner(profile_id))';
+  ELSIF has_user_id THEN
+    EXECUTE 'CREATE POLICY "Users can create badges for their profile" ON public.badges FOR INSERT WITH CHECK (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can delete their own badges" ON public.badges FOR DELETE USING (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can update their own badges" ON public.badges FOR UPDATE USING (auth.uid() = user_id)';
+  ELSE
+    RAISE EXCEPTION 'badges: weder profile_id noch user_id Spalte gefunden';
+  END IF;
+END $$;
 
 -- =====================================================
 -- TABLE: banned_users
@@ -387,16 +435,34 @@ FOR SELECT USING (auth.uid() = user_id);
 -- =====================================================
 -- TABLE: discord_presence
 -- =====================================================
-DROP POLICY IF EXISTS "Users can manage their discord presence" ON public.discord_presence;
-CREATE POLICY "Users can manage their discord presence" ON public.discord_presence
-FOR ALL USING (is_profile_owner(profile_id));
+DO $$
+DECLARE
+  has_profile_id boolean;
+  has_user_id boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='discord_presence' AND column_name='profile_id'
+  ) INTO has_profile_id;
 
-DROP POLICY IF EXISTS "Users can view their own discord presence" ON public.discord_presence;
-CREATE POLICY "Users can view their own discord presence" ON public.discord_presence
-FOR SELECT USING (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = discord_presence.profile_id AND p.user_id = auth.uid())
-  OR has_role(auth.uid(), 'admin'::app_role)
-);
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='discord_presence' AND column_name='user_id'
+  ) INTO has_user_id;
+
+  EXECUTE 'DROP POLICY IF EXISTS "Users can manage their discord presence" ON public.discord_presence';
+  EXECUTE 'DROP POLICY IF EXISTS "Users can view their own discord presence" ON public.discord_presence';
+
+  IF has_profile_id THEN
+    EXECUTE 'CREATE POLICY "Users can manage their discord presence" ON public.discord_presence FOR ALL USING (is_profile_owner(profile_id))';
+    EXECUTE 'CREATE POLICY "Users can view their own discord presence" ON public.discord_presence FOR SELECT USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = discord_presence.profile_id AND p.user_id = auth.uid()) OR has_role(auth.uid(), ''admin''::app_role))';
+  ELSIF has_user_id THEN
+    EXECUTE 'CREATE POLICY "Users can manage their discord presence" ON public.discord_presence FOR ALL USING (auth.uid() = user_id)';
+    EXECUTE 'CREATE POLICY "Users can view their own discord presence" ON public.discord_presence FOR SELECT USING ((auth.uid() = user_id) OR has_role(auth.uid(), ''admin''::app_role))';
+  ELSE
+    RAISE EXCEPTION 'discord_presence: weder profile_id noch user_id Spalte gefunden';
+  END IF;
+END $$;
 
 -- =====================================================
 -- TABLE: friend_badges
@@ -443,12 +509,31 @@ FOR SELECT USING (true);
 -- =====================================================
 -- TABLE: link_clicks
 -- =====================================================
-DROP POLICY IF EXISTS "Profile owners can view their link clicks" ON public.link_clicks;
-CREATE POLICY "Profile owners can view their link clicks" ON public.link_clicks
-FOR SELECT USING (EXISTS (
-  SELECT 1 FROM social_links sl
-  WHERE sl.id = link_clicks.link_id AND is_profile_owner(sl.profile_id)
-));
+DO $$
+DECLARE
+  sl_has_profile_id boolean;
+  sl_has_user_id boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='social_links' AND column_name='profile_id'
+  ) INTO sl_has_profile_id;
+
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='social_links' AND column_name='user_id'
+  ) INTO sl_has_user_id;
+
+  EXECUTE 'DROP POLICY IF EXISTS "Profile owners can view their link clicks" ON public.link_clicks';
+
+  IF sl_has_profile_id THEN
+    EXECUTE 'CREATE POLICY "Profile owners can view their link clicks" ON public.link_clicks FOR SELECT USING (EXISTS (SELECT 1 FROM social_links sl WHERE sl.id = link_clicks.link_id AND is_profile_owner(sl.profile_id)))';
+  ELSIF sl_has_user_id THEN
+    EXECUTE 'CREATE POLICY "Profile owners can view their link clicks" ON public.link_clicks FOR SELECT USING (EXISTS (SELECT 1 FROM social_links sl WHERE sl.id = link_clicks.link_id AND sl.user_id = auth.uid()))';
+  ELSE
+    RAISE EXCEPTION 'social_links: weder profile_id noch user_id Spalte gefunden (für link_clicks policy)';
+  END IF;
+END $$;
 
 DROP POLICY IF EXISTS "Service role can record link clicks" ON public.link_clicks;
 CREATE POLICY "Service role can record link clicks" ON public.link_clicks
@@ -575,13 +660,35 @@ FOR DELETE USING (false);
 -- =====================================================
 -- TABLE: profile_views
 -- =====================================================
-DROP POLICY IF EXISTS "Profile owners can view their analytics" ON public.profile_views;
-CREATE POLICY "Profile owners can view their analytics" ON public.profile_views
-FOR SELECT USING (is_profile_owner(profile_id));
+DO $$
+DECLARE
+  has_profile_id boolean;
+  has_user_id boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='profile_views' AND column_name='profile_id'
+  ) INTO has_profile_id;
 
-DROP POLICY IF EXISTS "Rate limited profile views" ON public.profile_views;
-CREATE POLICY "Rate limited profile views" ON public.profile_views
-FOR INSERT WITH CHECK (viewer_ip_hash IS NULL OR can_record_view(profile_id, viewer_ip_hash));
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='profile_views' AND column_name='user_id'
+  ) INTO has_user_id;
+
+  EXECUTE 'DROP POLICY IF EXISTS "Profile owners can view their analytics" ON public.profile_views';
+  EXECUTE 'DROP POLICY IF EXISTS "Rate limited profile views" ON public.profile_views';
+
+  IF has_profile_id THEN
+    EXECUTE 'CREATE POLICY "Profile owners can view their analytics" ON public.profile_views FOR SELECT USING (is_profile_owner(profile_id))';
+    EXECUTE 'CREATE POLICY "Rate limited profile views" ON public.profile_views FOR INSERT WITH CHECK (viewer_ip_hash IS NULL OR can_record_view(profile_id, viewer_ip_hash))';
+  ELSIF has_user_id THEN
+    EXECUTE 'CREATE POLICY "Profile owners can view their analytics" ON public.profile_views FOR SELECT USING (auth.uid() = user_id)';
+    -- Rate limiting ist ohne profile_id nicht möglich -> nur basic insert erlauben
+    EXECUTE 'CREATE POLICY "Rate limited profile views" ON public.profile_views FOR INSERT WITH CHECK (true)';
+  ELSE
+    RAISE EXCEPTION 'profile_views: weder profile_id noch user_id Spalte gefunden';
+  END IF;
+END $$;
 
 -- =====================================================
 -- TABLE: profiles
@@ -659,9 +766,31 @@ DROP POLICY IF EXISTS "Social links are viewable by everyone" ON public.social_l
 CREATE POLICY "Social links are viewable by everyone" ON public.social_links
 FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Users can manage their social links" ON public.social_links;
-CREATE POLICY "Users can manage their social links" ON public.social_links
-FOR ALL USING (is_profile_owner(profile_id));
+DO $$
+DECLARE
+  has_profile_id boolean;
+  has_user_id boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='social_links' AND column_name='profile_id'
+  ) INTO has_profile_id;
+
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='social_links' AND column_name='user_id'
+  ) INTO has_user_id;
+
+  EXECUTE 'DROP POLICY IF EXISTS "Users can manage their social links" ON public.social_links';
+
+  IF has_profile_id THEN
+    EXECUTE 'CREATE POLICY "Users can manage their social links" ON public.social_links FOR ALL USING (is_profile_owner(profile_id))';
+  ELSIF has_user_id THEN
+    EXECUTE 'CREATE POLICY "Users can manage their social links" ON public.social_links FOR ALL USING (auth.uid() = user_id)';
+  ELSE
+    RAISE EXCEPTION 'social_links: weder profile_id noch user_id Spalte gefunden';
+  END IF;
+END $$;
 
 -- =====================================================
 -- TABLE: support_tickets
