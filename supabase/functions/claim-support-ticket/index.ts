@@ -1,4 +1,3 @@
-import { serve } from "jsr:@std/http@1/server";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -95,7 +94,7 @@ function claimEmailTemplate(params: {
 </html>`;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
