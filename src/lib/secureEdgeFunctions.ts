@@ -5,7 +5,7 @@
  * - Calls functions via PUBLIC_API_URL (derived from the backend project id)
  */
 
-import { supabase, PUBLIC_API_URL } from './supabase-proxy-client';
+import { supabase, PUBLIC_API_URL, originalFetch } from './supabase-proxy-client';
 
 interface InvokeOptions {
   body?: Record<string, unknown>;
@@ -47,7 +47,7 @@ export async function invokeSecure<T = unknown>(
       headers['Authorization'] = `Bearer ${externalAnonKey}`;
     }
 
-    const response = await fetch(`${PUBLIC_API_URL}/functions/v1/${functionName}`, {
+    const response = await originalFetch(`${PUBLIC_API_URL}/functions/v1/${functionName}`, {
       method: 'POST',
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
