@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge, Package, Upload, Coins, AlertCircle, Wand2, Library, Sparkles } from 'lucide-react';
 import { useCreateMarketplaceItem } from '@/hooks/useMarketplace';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 
 interface CreateListingDialogProps {
   open: boolean;

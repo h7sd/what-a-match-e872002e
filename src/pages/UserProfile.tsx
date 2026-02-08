@@ -13,7 +13,7 @@ import { StartScreen } from '@/components/profile/StartScreen';
 import ElasticSlider from '@/components/profile/ElasticSlider';
 import { ProfileLikeButtons } from '@/components/profile/ProfileLikeButtons';
 import { ProfileCommentInput } from '@/components/profile/ProfileCommentInput';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';

@@ -1,4 +1,4 @@
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from './supabase-proxy-client';
 
 export type AuthEventType =
   | 'sign_up'
@@ -29,7 +29,8 @@ export async function logAuthEvent({
   try {
     const ipAddress = await getClientIp();
 
-    const { error } = await supabase
+    // Use type assertion since auth_logs table exists in external DB but not in auto-generated types
+    const { error } = await (supabase as any)
       .from('auth_logs')
       .insert({
         event_type: eventType,

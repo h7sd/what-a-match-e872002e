@@ -13,7 +13,7 @@ import { EventAnnouncementBanner } from "@/components/landing/EventAnnouncementB
 import { GlobalAdminNotification } from "@/components/notifications/GlobalAdminNotification";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MaintenanceOverlay from "@/components/landing/MaintenanceOverlay";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-proxy-client";
 
 // Maintenance mode flag - set to false to disable
 const MAINTENANCE_MODE = false;

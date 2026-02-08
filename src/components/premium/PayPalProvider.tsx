@@ -1,6 +1,6 @@
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { ReactNode, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-proxy-client";
 
 interface PayPalProviderProps {
   children: ReactNode;

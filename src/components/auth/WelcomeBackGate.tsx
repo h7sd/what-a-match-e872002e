@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-proxy-client";
 import { useAuth } from "@/lib/auth";
 import { WelcomeBackOverlay } from "@/components/auth/WelcomeBackOverlay";
 

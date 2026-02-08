@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { GlobalBadge, useAssignBadge, useGlobalBadges, useUserBadges } from '@/hooks/useBadges';
 import { getBadgeIcon } from '@/lib/badges';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 
 export function AllBadgeAssigner() {
   const { data: badges = [], isLoading } = useGlobalBadges();

@@ -3,7 +3,7 @@
  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  import { Input } from "@/components/ui/input";
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
- import { supabase } from "@/integrations/supabase/client";
+ import { supabase } from "@/lib/supabase-proxy-client";
  import { toast } from "sonner";
  import { Send, CheckCircle, XCircle, Loader2 } from "lucide-react";
  

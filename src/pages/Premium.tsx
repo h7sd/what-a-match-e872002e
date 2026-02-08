@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-proxy-client";
 import { PayPalProvider } from "@/components/premium/PayPalProvider";
 import { PremiumCheckout } from "@/components/premium/PremiumCheckout";
 import { Button } from "@/components/ui/button";

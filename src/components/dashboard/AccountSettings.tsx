@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { checkAliasExists, checkUsernameExists } from '@/lib/api';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { useDiscordOAuth } from '@/hooks/useDiscordOAuth';
 import { cn } from '@/lib/utils';
 import {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { Sparkles, Target, Skull, Crosshair } from 'lucide-react';
 import { useHuntBadgeHolder } from '@/hooks/useHuntBadgeHolder';
 

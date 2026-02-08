@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { useIsAdmin } from '@/hooks/useBadges';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
