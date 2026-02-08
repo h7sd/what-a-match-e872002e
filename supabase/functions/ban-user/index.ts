@@ -1,4 +1,3 @@
-import { serve } from "jsr:@std/http@1/server";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -49,7 +48,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   return res.ok;
 }
 
-const handler = async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -238,6 +237,4 @@ const handler = async (req: Request): Promise<Response> => {
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
-};
-
-serve(handler);
+});
