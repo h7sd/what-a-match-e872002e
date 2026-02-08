@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.bot-verify-code]
 verify_jwt = false
+
+[functions.open-case]
+verify_jwt = false
