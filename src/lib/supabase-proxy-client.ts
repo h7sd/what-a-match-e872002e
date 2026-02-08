@@ -27,3 +27,29 @@ export const PUBLIC_API_URL = EXTERNAL_URL;
 export const PROJECT_ID = EXTERNAL_PROJECT_ID;
 
 export { originalFetch };
+
+export function xhrSignIn(email: string, password: string): Promise<{ data: any; error: any }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${EXTERNAL_URL}/auth/v1/token?grant_type=password`, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('apikey', EXTERNAL_ANON_KEY);
+    xhr.setRequestHeader('Authorization', `Bearer ${EXTERNAL_ANON_KEY}`);
+    xhr.onload = () => {
+      try {
+        const body = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ data: body, error: null });
+        } else {
+          resolve({ data: null, error: { message: body.msg || body.message || body.error_description || 'Authentication failed', status: xhr.status } });
+        }
+      } catch {
+        resolve({ data: null, error: { message: 'Failed to parse auth response', status: xhr.status } });
+      }
+    };
+    xhr.onerror = () => {
+      resolve({ data: null, error: { message: 'Network error during authentication', status: 0 } });
+    };
+    xhr.send(JSON.stringify({ email, password }));
+  });
+}

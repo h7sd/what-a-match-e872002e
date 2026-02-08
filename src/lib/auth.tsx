@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase } from './supabase-proxy-client';
+import { supabase, xhrSignIn } from './supabase-proxy-client';
 import { invokeSecure } from './secureEdgeFunctions';
 import { logAuthEvent } from './authLogger';
 
@@ -99,10 +99,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let data: any = null;
+    let error: any = null;
+
+    const result = await supabase.auth.signInWithPassword({
       email: loginEmail,
       password,
     });
+    data = result.data;
+    error = result.error;
+
+    if (error && (error.message?.includes('Database error') || error.status === 500)) {
+      const xhrResult = await xhrSignIn(loginEmail, password);
+      if (xhrResult.error) {
+        await logAuthEvent({
+          eventType: 'sign_in',
+          email: loginEmail,
+          success: false,
+          errorMessage: xhrResult.error.message
+        });
+        return { error: new Error(xhrResult.error.message) };
+      }
+      const tokenData = xhrResult.data;
+      if (tokenData?.access_token && tokenData?.refresh_token) {
+        const { error: setErr } = await supabase.auth.setSession({
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+        });
+        if (setErr) {
+          return { error: setErr };
+        }
+        const { data: sessionData } = await supabase.auth.getSession();
+        data = { user: sessionData.session?.user ?? null, session: sessionData.session };
+        error = null;
+      }
+    }
 
     if (error) {
       await logAuthEvent({
