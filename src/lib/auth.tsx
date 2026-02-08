@@ -38,10 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallenge | null>(null);
   const [banStatus, setBanStatus] = useState<BanStatus | null>(null);
 
-  console.log('AuthProvider state:', { user: !!user, session: !!session, loading });
-
   useEffect(() => {
-    console.log('AuthProvider useEffect running');
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {

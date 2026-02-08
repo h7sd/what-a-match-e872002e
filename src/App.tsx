@@ -249,7 +249,6 @@ function MaintenanceRouter() {
 }
 
 const App = () => {
-  console.log('App component rendered');
   // During maintenance, use special router that checks admin status
   if (MAINTENANCE_MODE) {
     return (
