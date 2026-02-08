@@ -29,13 +29,13 @@ export async function invokeSecure<T = unknown>(
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
-    // Use external project's anon key
-    const externalAnonKey = import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    // Use Lovable Cloud anon key
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       // Always include apikey so the backend can authorize anon/public calls
-      apikey: externalAnonKey,
+      apikey: anonKey,
       ...options.headers,
     };
 
@@ -44,7 +44,7 @@ export async function invokeSecure<T = unknown>(
       headers['Authorization'] = `Bearer ${accessToken}`;
     } else {
       // Use anon key for public functions
-      headers['Authorization'] = `Bearer ${externalAnonKey}`;
+      headers['Authorization'] = `Bearer ${anonKey}`;
     }
 
     const response = await originalFetch(`${PUBLIC_API_URL}/functions/v1/${functionName}`, {
