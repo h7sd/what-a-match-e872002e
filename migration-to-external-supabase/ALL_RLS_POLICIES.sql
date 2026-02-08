@@ -708,7 +708,7 @@ FOR INSERT WITH CHECK (EXISTS (
 ));
 
 -- =====================================================
--- TABLE: user_badges
+-- TABLE: user_badges (uses user_id, not profile_id!)
 -- =====================================================
 DROP POLICY IF EXISTS "Admins can manage all user badges" ON public.user_badges;
 CREATE POLICY "Admins can manage all user badges" ON public.user_badges
@@ -716,7 +716,7 @@ FOR ALL USING (has_role(auth.uid(), 'admin'::app_role));
 
 DROP POLICY IF EXISTS "Users can manage their own badges" ON public.user_badges;
 CREATE POLICY "Users can manage their own badges" ON public.user_badges
-FOR ALL USING (is_profile_owner(profile_id));
+FOR ALL USING (auth.uid() = user_id);
 
 -- =====================================================
 -- TABLE: user_balances
