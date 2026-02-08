@@ -1,5 +1,8 @@
-// Re-export from the main Supabase client (Lovable Cloud)
-export { supabase } from '@/integrations/supabase/client';
+// Import from the main Supabase client (Lovable Cloud)
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
+
+// Re-export with same name
+export const supabase = supabaseClient;
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
