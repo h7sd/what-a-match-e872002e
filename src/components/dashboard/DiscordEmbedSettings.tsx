@@ -14,7 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Image, Type, FileText, Upload, X, Globe, Monitor, Copy, Check, ExternalLink, Palette } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { useToast } from '@/hooks/use-toast';
 
 // Animation types for OG title
