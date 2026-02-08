@@ -219,8 +219,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-   }
-};
-
-// Start server
-Deno.serve(handler);
+    );
+  }
+});
