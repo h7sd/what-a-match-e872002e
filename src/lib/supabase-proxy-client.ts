@@ -9,7 +9,7 @@ const EXTERNAL_URL = import.meta.env.VITE_EXTERNAL_SUPABASE_URL || HARDCODED_URL
 const EXTERNAL_ANON_KEY = import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY || HARDCODED_ANON_KEY;
 const EXTERNAL_PROJECT_ID = import.meta.env.VITE_EXTERNAL_SUPABASE_PROJECT_ID || HARDCODED_PROJECT_ID;
 
-const originalFetch = window.fetch.bind(window);
+const originalFetch: typeof fetch = (window as any).__nativeFetch || window.fetch.bind(window);
 
 export const supabase = createClient<Database>(EXTERNAL_URL, EXTERNAL_ANON_KEY, {
   auth: {
