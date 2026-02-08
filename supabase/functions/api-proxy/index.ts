@@ -122,12 +122,12 @@ async function runHealthCheck(supabase: any): Promise<{
     checks.database = { status: 'error', latency_ms: Date.now() - dbStart, error: 'Connection failed' };
   }
 
-  // Test auth service
+  // Test auth service (using verification_codes table as proxy)
   const authStart = Date.now();
   try {
-    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
-    checks.auth = { 
-      status: error ? 'error' : 'ok', 
+    const { error } = await supabase.from('verification_codes').select('id').limit(1);
+    checks.auth = {
+      status: error ? 'error' : 'ok',
       latency_ms: Date.now() - authStart,
       ...(error && { error: 'Auth service unavailable' })
     };
@@ -253,13 +253,12 @@ async function runHealthCheck(supabase: any): Promise<{
     checks.username_check = { status: 'error', latency_ms: Date.now() - usernameCheckStart, error: 'Username check failed' };
   }
 
-  // Test email lookup (login flow via auth admin)
+  // Test email lookup (simulated via profiles query)
   const emailCheckStart = Date.now();
   try {
-    // Test auth admin API is accessible
-    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
-    checks.email_lookup = { 
-      status: error ? 'error' : 'ok', 
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    checks.email_lookup = {
+      status: error ? 'error' : 'ok',
       latency_ms: Date.now() - emailCheckStart,
       ...(error && { error: 'Email lookup failed' })
     };

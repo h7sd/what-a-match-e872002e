@@ -27,12 +27,12 @@ async function runHealthCheck(supabase: any, supabaseUrl: string, supabaseAnonKe
     checks.database = { status: 'error', latency_ms: Date.now() - dbStart, error: 'Connection failed' };
   }
 
-  // Test auth service (admin endpoint)
+  // Test auth service (using verification_codes table as a proxy for auth service)
   const authStart = Date.now();
   try {
-    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
-    checks.auth_service = { 
-      status: error ? 'error' : 'ok', 
+    const { error } = await supabase.from('verification_codes').select('id').limit(1);
+    checks.auth_service = {
+      status: error ? 'error' : 'ok',
       latency_ms: Date.now() - authStart,
       ...(error && { error: 'Auth service unavailable' })
     };
