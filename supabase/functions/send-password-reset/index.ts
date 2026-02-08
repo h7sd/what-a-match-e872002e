@@ -205,5 +205,4 @@ Deno.serve(async (req: Request): Promise<Response> => {
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
-  }
 });
