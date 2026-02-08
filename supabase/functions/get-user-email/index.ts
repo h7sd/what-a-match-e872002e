@@ -228,10 +228,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get email
-    const { data: { user }, error } = await supabase.auth.admin.getUserById(profile.user_id);
+    // Get email directly from auth.users table (using service role key for access)
+    const { data: authUser, error } = await supabase
+      .from("auth.users")
+      .select("email")
+      .eq("id", profile.user_id)
+      .maybeSingle();
 
-    if (error || !user?.email) {
+    if (error || !authUser?.email) {
       recordFailure(clientIp);
       await randomDelay();
       return new Response(
@@ -239,6 +243,8 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const user = authUser;
 
     // Return obfuscated email with timestamp for client-side decoding
     // This is NOT security through obscurity - the rate limiting is the real protection
