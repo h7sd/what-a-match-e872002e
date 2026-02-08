@@ -1,19 +1,26 @@
-// Re-export from the official Lovable Cloud client
-// This file exists for backwards compatibility
-export { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
-// Public API URL from the Lovable Cloud Supabase instance
-export const PUBLIC_API_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+// Create a standalone client to avoid circular dependencies
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});
+
+// Public API URL
+export const PUBLIC_API_URL = SUPABASE_URL;
 export const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 // Native fetch reference for edge cases
 export const originalFetch: typeof fetch = (window as any).__nativeFetch || window.fetch.bind(window);
 
-// XHR-based sign in as fallback (rarely needed)
+// XHR-based sign in as fallback
 export function xhrSignIn(email: string, password: string): Promise<{ data: any; error: any }> {
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-  const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${SUPABASE_URL}/auth/v1/token?grant_type=password`, true);
