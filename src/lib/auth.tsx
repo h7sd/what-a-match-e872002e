@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, xhrSignIn } from './supabase-proxy-client';
+import { supabase } from '@/integrations/supabase/client';
+import { xhrSignIn } from './supabase-proxy-client';
 import { invokeSecure } from './secureEdgeFunctions';
 import { logAuthEvent } from './authLogger';
 
