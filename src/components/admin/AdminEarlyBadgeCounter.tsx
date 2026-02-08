@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Award, Sparkles } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { Progress } from '@/components/ui/progress';
 
 export function AdminEarlyBadgeCounter() {

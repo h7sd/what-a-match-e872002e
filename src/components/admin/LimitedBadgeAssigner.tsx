@@ -12,7 +12,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { GlobalBadge, useAssignBadge, useGlobalBadges } from '@/hooks/useBadges';
 import { getBadgeIcon } from '@/lib/badges';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 
 export function LimitedBadgeAssigner() {
   const { data: badges = [], isLoading } = useGlobalBadges();

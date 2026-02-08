@@ -16,7 +16,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 
 type ServiceStatus = 'operational' | 'degraded' | 'outage' | 'checking';
 

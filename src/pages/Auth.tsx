@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Mail, Shield, Check } from 'lucide-react';
 import { FaDiscord } from 'react-icons/fa';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { invokeSecure } from '@/lib/secureEdgeFunctions';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';

@@ -2,7 +2,7 @@ import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import CardSwap, { Card } from '@/components/ui/CardSwap';
 import { Sparkles, Eye, AtSign } from 'lucide-react';
 import { OrbitingAvatar } from '@/components/profile/OrbitingAvatar';

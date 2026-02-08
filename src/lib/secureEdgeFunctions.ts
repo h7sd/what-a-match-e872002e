@@ -5,8 +5,7 @@
  * - Calls functions via PUBLIC_API_URL (derived from the backend project id)
  */
 
-import { supabase } from '../integrations/supabase/client';
-import { PUBLIC_API_URL } from './supabase-proxy-client';
+import { supabase, PUBLIC_API_URL } from './supabase-proxy-client';
 
 interface InvokeOptions {
   body?: Record<string, unknown>;
@@ -30,10 +29,13 @@ export async function invokeSecure<T = unknown>(
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
+    // Use external project's anon key
+    const externalAnonKey = import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       // Always include apikey so the backend can authorize anon/public calls
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      apikey: externalAnonKey,
       ...options.headers,
     };
 
@@ -42,7 +44,7 @@ export async function invokeSecure<T = unknown>(
       headers['Authorization'] = `Bearer ${accessToken}`;
     } else {
       // Use anon key for public functions
-      headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
+      headers['Authorization'] = `Bearer ${externalAnonKey}`;
     }
 
     const response = await fetch(`${PUBLIC_API_URL}/functions/v1/${functionName}`, {

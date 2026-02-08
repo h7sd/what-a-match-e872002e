@@ -6,7 +6,7 @@ import { useCurrentUserProfile, useUpdateProfile, useSocialLinks, useCreateSocia
 import { useIsAdmin, useIsSupporter, useUserBadges, useGlobalBadges, useClaimBadge } from '@/hooks/useBadges';
 import { BanAppealScreen } from '@/components/auth/BanAppealScreen';
 import { FileUploader } from '@/components/dashboard/FileUploader';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

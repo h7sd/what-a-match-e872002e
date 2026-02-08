@@ -3,7 +3,7 @@ import { Loader2, Plus, Check, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getBadgeIcon } from '@/lib/badges';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface GlobalBadge {
