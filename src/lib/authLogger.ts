@@ -1,4 +1,4 @@
-import { supabase } from './supabase-proxy-client';
+import { supabase } from '@/integrations/supabase/client';
 
 export type AuthEventType =
   | 'sign_up'
