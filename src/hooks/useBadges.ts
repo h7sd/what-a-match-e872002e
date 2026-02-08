@@ -166,7 +166,7 @@ export function useUserBadges(userId: string) {
         .eq('user_id', userId);
       
       if (error) throw error;
-      return data as (UserBadge & { badge: GlobalBadge })[];
+      return data as unknown as (UserBadge & { badge: GlobalBadge })[];
     },
     enabled: !!userId && !!user && user.id === userId,
   });

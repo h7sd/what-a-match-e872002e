@@ -185,7 +185,7 @@ export function AdminAccountLookup() {
         .eq('user_id', user.user_id);
 
       if (badgesError) throw badgesError;
-      setUserBadges((badges || []) as UserBadgeWithGlobal[]);
+      setUserBadges((badges || []) as unknown as UserBadgeWithGlobal[]);
 
       // Load roles
       const { data: roles, error: rolesError } = await supabase

@@ -267,7 +267,7 @@ export function AdminUserDashboard({ user, open, onClose }: AdminUserDashboardPr
         .eq('user_id', user.user_id);
 
       if (badgesError) throw badgesError;
-      setUserBadges((badges || []) as UserBadgeWithGlobal[]);
+      setUserBadges((badges || []) as unknown as UserBadgeWithGlobal[]);
 
       // Load social links
       const { data: links, error: linksError } = await supabase

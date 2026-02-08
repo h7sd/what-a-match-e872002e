@@ -1,11 +1,16 @@
-// Import from the main Supabase client (Lovable Cloud)
-import { supabase as supabaseClient } from '@/integrations/supabase/client';
-
-// Re-export with same name
-export const supabase = supabaseClient;
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+// Create client directly to avoid circular dependency
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});
 
 export const PUBLIC_API_URL = SUPABASE_URL;
 export const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
