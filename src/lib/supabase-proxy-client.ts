@@ -1,27 +1,44 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Get env vars - Lovable Cloud provides these automatically
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
-// Create a standalone client to avoid circular dependencies
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
+// Validate that we have the required config
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('Missing Supabase configuration. VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are required.');
+}
+
+// Create the Supabase client
+export const supabase: SupabaseClient = createClient(
+  SUPABASE_URL || 'https://placeholder.supabase.co',
+  SUPABASE_ANON_KEY || 'placeholder-key',
+  {
+    auth: {
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
   }
-});
+);
 
 // Public API URL
 export const PUBLIC_API_URL = SUPABASE_URL;
-export const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+export const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
 
 // Native fetch reference for edge cases
-export const originalFetch: typeof fetch = (window as any).__nativeFetch || window.fetch.bind(window);
+export const originalFetch: typeof fetch = typeof window !== 'undefined' 
+  ? ((window as any).__nativeFetch || window.fetch.bind(window))
+  : fetch;
 
 // XHR-based sign in as fallback
 export function xhrSignIn(email: string, password: string): Promise<{ data: any; error: any }> {
   return new Promise((resolve) => {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      resolve({ data: null, error: { message: 'Supabase not configured', status: 500 } });
+      return;
+    }
+    
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${SUPABASE_URL}/auth/v1/token?grant_type=password`, true);
     xhr.setRequestHeader('Content-Type', 'application/json');

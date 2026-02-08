@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Target, X, Skull, Crosshair } from 'lucide-react';
 import { useState } from 'react';

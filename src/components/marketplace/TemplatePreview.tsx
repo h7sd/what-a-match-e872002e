@@ -4,7 +4,7 @@ import { Eye, MapPin, Briefcase, AtSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatedUsername } from '@/components/profile/AnimatedUsername';
 
@@ -69,7 +69,7 @@ function useCurrentUserData() {
         .map(ub => ({
           ...ub.badge,
           custom_color: ub.custom_color,
-        })) as Badge[];
+        })) as unknown as Badge[];
     },
     enabled: !!user?.id,
     staleTime: 60000,

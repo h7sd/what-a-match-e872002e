@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-proxy-client';
 import { deriveApiEncryptionKey, encryptApiPayload, decryptApiPayload } from '@/lib/crypto';
 import { useAuth } from '@/lib/auth';
 
