@@ -63,14 +63,24 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get user profile with balance - use user_id column, not id
+    console.log('Looking for profile with user_id:', user.id);
+    
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, uc_balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile) {
-      throw new Error('Profile not found');
+    console.log('Profile query result:', { profile, profileError });
+
+    if (profileError) {
+      console.error('Profile query error:', profileError);
+      throw new Error('Profile query failed: ' + profileError.message);
+    }
+    
+    if (!profile) {
+      console.error('No profile found for user_id:', user.id);
+      throw new Error('Profile not found for user: ' + user.id);
     }
 
     const currentBalance = BigInt(profile.uc_balance || 0);
