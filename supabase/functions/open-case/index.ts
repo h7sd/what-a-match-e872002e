@@ -21,6 +21,14 @@ interface CaseItem {
   };
 }
 
+function toBigInt(value: unknown): bigint {
+  if (value === null || value === undefined) return 0n;
+  if (typeof value === 'bigint') return value;
+  if (typeof value === 'number') return BigInt(Math.trunc(value));
+  if (typeof value === 'string') return BigInt(value);
+  return BigInt(String(value));
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -28,21 +36,36 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.slice('Bearer '.length);
+
+    // User-scoped client for auth validation (RLS-aware)
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await userClient.auth.getUser(token);
 
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    // Admin client (bypasses RLS) for reads/writes
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { caseId } = await req.json();
 
@@ -62,29 +85,56 @@ Deno.serve(async (req: Request) => {
       throw new Error('Case not found or inactive');
     }
 
-    // Get user profile with balance - use user_id column, not id
-    console.log('Looking for profile with user_id:', user.id);
-    
+    // Fetch profile (needed because inventory/transactions reference profiles.id)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, uc_balance')
+      .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
-
-    console.log('Profile query result:', { profile, profileError });
 
     if (profileError) {
       console.error('Profile query error:', profileError);
       throw new Error('Profile query failed: ' + profileError.message);
     }
-    
+
     if (!profile) {
-      console.error('No profile found for user_id:', user.id);
       throw new Error('Profile not found for user: ' + user.id);
     }
 
-    const currentBalance = BigInt(profile.uc_balance || 0);
-    const casePrice = BigInt(caseData.price);
+    const profileId = profile.id;
+
+    // Fetch UC balance from user_balances
+    let { data: balanceRow, error: balanceRowError } = await supabase
+      .from('user_balances')
+      .select('balance, total_earned, total_spent')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (balanceRowError) {
+      console.error('Balance query error:', balanceRowError);
+      throw new Error('Balance query failed: ' + balanceRowError.message);
+    }
+
+    if (!balanceRow) {
+      // Initialize a 0-balance row (avoid "not found" errors)
+      const { data: created, error: createErr } = await supabase
+        .from('user_balances')
+        .insert({ user_id: user.id, balance: 0, total_earned: 0, total_spent: 0 })
+        .select('balance, total_earned, total_spent')
+        .single();
+
+      if (createErr || !created) {
+        console.error('Balance init error:', createErr);
+        throw new Error('Failed to initialize balance');
+      }
+
+      balanceRow = created;
+    }
+
+    const currentBalance = toBigInt(balanceRow.balance);
+    const totalEarned = toBigInt(balanceRow.total_earned);
+    const totalSpent = toBigInt(balanceRow.total_spent);
+    const casePrice = toBigInt(caseData.price);
 
     if (currentBalance < casePrice) {
       throw new Error('Insufficient coins');
@@ -132,32 +182,49 @@ Deno.serve(async (req: Request) => {
       wonItem = items[items.length - 1] as CaseItem;
     }
 
-    // Deduct case price
-    const newBalance = currentBalance - casePrice;
+    // Deduct case price (and track spend)
+    const balanceAfterOpen = currentBalance - casePrice;
+    const spentAfterOpen = totalSpent + casePrice;
 
-    const { error: balanceError } = await supabase
-      .from('profiles')
-      .update({ uc_balance: newBalance.toString() })
+    const { error: deductError } = await supabase
+      .from('user_balances')
+      .update({
+        balance: balanceAfterOpen.toString(),
+        total_spent: spentAfterOpen.toString(),
+      })
       .eq('user_id', user.id);
 
-    if (balanceError) {
+    if (deductError) {
+      console.error('Balance deduct error:', deductError);
       throw new Error('Failed to deduct coins');
     }
 
-    // Add coins if won
+    let resultingBalance = balanceAfterOpen;
+
+    // Add coins if won (and track earned)
     if (wonItem.item_type === 'coins' && wonItem.coin_amount) {
-      const finalBalance = newBalance + BigInt(wonItem.coin_amount);
-      await supabase
-        .from('profiles')
-        .update({ uc_balance: finalBalance.toString() })
+      const wonCoins = toBigInt(wonItem.coin_amount);
+      resultingBalance = balanceAfterOpen + wonCoins;
+
+      const { error: creditError } = await supabase
+        .from('user_balances')
+        .update({
+          balance: resultingBalance.toString(),
+          total_earned: (totalEarned + wonCoins).toString(),
+        })
         .eq('user_id', user.id);
+
+      if (creditError) {
+        console.error('Balance credit error:', creditError);
+        throw new Error('Failed to credit coins');
+      }
     }
 
-    // Add to inventory
+    // Add to inventory (FK -> profiles.id)
     const { error: inventoryError } = await supabase
       .from('user_inventory')
       .insert({
-        user_id: user.id,
+        user_id: profileId,
         item_type: wonItem.item_type,
         badge_id: wonItem.badge_id,
         coin_amount: wonItem.coin_amount,
@@ -181,11 +248,11 @@ Deno.serve(async (req: Request) => {
       badge: wonItem.badge,
     };
 
-    // Save transaction to case_transactions
+    // Save transaction to case_transactions (FK -> profiles.id)
     const { error: transactionError } = await supabase
       .from('case_transactions')
       .insert({
-        user_id: user.id,
+        user_id: profileId,
         case_id: caseId,
         transaction_type: 'open',
         items_won: [itemWonData],
@@ -202,9 +269,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         item: itemWonData,
-        newBalance: wonItem.item_type === 'coins'
-          ? (newBalance + BigInt(wonItem.coin_amount || 0)).toString()
-          : newBalance.toString(),
+        newBalance: resultingBalance.toString(),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
