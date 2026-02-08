@@ -62,11 +62,11 @@ Deno.serve(async (req: Request) => {
       throw new Error('Case not found or inactive');
     }
 
-    // Get user profile with balance
+    // Get user profile with balance - use user_id column, not id
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('uc_balance')
-      .eq('id', user.id)
+      .select('id, uc_balance')
+      .eq('user_id', user.id)
       .single();
 
     if (profileError || !profile) {
@@ -128,7 +128,7 @@ Deno.serve(async (req: Request) => {
     const { error: balanceError } = await supabase
       .from('profiles')
       .update({ uc_balance: newBalance.toString() })
-      .eq('id', user.id);
+      .eq('user_id', user.id);
 
     if (balanceError) {
       throw new Error('Failed to deduct coins');
@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
       await supabase
         .from('profiles')
         .update({ uc_balance: finalBalance.toString() })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
     }
 
     // Add to inventory
