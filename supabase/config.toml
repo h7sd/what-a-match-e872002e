@@ -173,3 +173,9 @@ verify_jwt = false
 
 [functions.open-case]
 verify_jwt = false
+
+[functions.sell-inventory-item]
+verify_jwt = false
+
+[functions.get-live-feed]
+verify_jwt = false
