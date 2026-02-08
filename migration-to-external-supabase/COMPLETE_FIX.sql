@@ -689,43 +689,51 @@ END $$;
 
 -- =============================================================================
 -- PART 46: CREATE PUBLIC VIEW FOR SPOTIFY (hides tokens)
+-- Fully schema-tolerant: adds missing columns, then builds view dynamically
 -- =============================================================================
 DO $$
 DECLARE
-  has_user_id boolean;
-  has_profile_id boolean;
+  col_user text;
+  col_show text;
+  col_created text;
+  col_updated text;
   select_sql text;
 BEGIN
-  IF EXISTS (
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'spotify_integrations'
   ) THEN
-    has_user_id := EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'spotify_integrations'
-        AND column_name = 'user_id'
-    );
-
-    has_profile_id := EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'spotify_integrations'
-        AND column_name = 'profile_id'
-    );
-
-    EXECUTE 'DROP VIEW IF EXISTS public.spotify_integrations_public';
-
-    IF has_user_id THEN
-      select_sql := 'SELECT id, user_id, show_on_profile, created_at, updated_at FROM public.spotify_integrations';
-    ELSIF has_profile_id THEN
-      select_sql := 'SELECT id, profile_id as user_id, show_on_profile, created_at, updated_at FROM public.spotify_integrations';
-    ELSE
-      select_sql := 'SELECT id, NULL::uuid as user_id, show_on_profile, created_at, updated_at FROM public.spotify_integrations';
-    END IF;
-
-    EXECUTE 'CREATE VIEW public.spotify_integrations_public WITH (security_invoker=on) AS ' || select_sql;
+    RETURN; -- table doesn't exist, skip
   END IF;
+
+  -- Ensure essential columns exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='spotify_integrations' AND column_name='show_on_profile') THEN
+    EXECUTE 'ALTER TABLE public.spotify_integrations ADD COLUMN show_on_profile boolean DEFAULT false';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='spotify_integrations' AND column_name='created_at') THEN
+    EXECUTE 'ALTER TABLE public.spotify_integrations ADD COLUMN created_at timestamptz DEFAULT now()';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='spotify_integrations' AND column_name='updated_at') THEN
+    EXECUTE 'ALTER TABLE public.spotify_integrations ADD COLUMN updated_at timestamptz DEFAULT now()';
+  END IF;
+
+  -- Determine user column
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='spotify_integrations' AND column_name='user_id') THEN
+    col_user := 'user_id';
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='spotify_integrations' AND column_name='profile_id') THEN
+    col_user := 'profile_id AS user_id';
+  ELSE
+    col_user := 'NULL::uuid AS user_id';
+  END IF;
+
+  EXECUTE 'DROP VIEW IF EXISTS public.spotify_integrations_public';
+
+  select_sql := format(
+    'SELECT id, %s, show_on_profile, created_at, updated_at FROM public.spotify_integrations',
+    col_user
+  );
+
+  EXECUTE 'CREATE VIEW public.spotify_integrations_public WITH (security_invoker=on) AS ' || select_sql;
 END $$;
 
 -- =============================================================================
