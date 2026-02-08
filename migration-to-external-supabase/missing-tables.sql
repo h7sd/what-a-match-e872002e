@@ -17,8 +17,15 @@ END $$;
 -- STEP 2: Helper Functions (CRITICAL for RLS!)
 -- =====================================================
 
+-- Drop existing functions first (to avoid parameter name conflicts)
+DROP FUNCTION IF EXISTS public.has_role(uuid, app_role);
+DROP FUNCTION IF EXISTS public.is_profile_owner(uuid);
+DROP FUNCTION IF EXISTS public.can_record_view(uuid, text);
+DROP FUNCTION IF EXISTS public.get_public_badges();
+DROP FUNCTION IF EXISTS public.get_profile_badges(uuid);
+
 -- has_role function
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+CREATE FUNCTION public.has_role(_user_id uuid, _role app_role)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -31,7 +38,7 @@ AS $$
 $$;
 
 -- is_profile_owner function
-CREATE OR REPLACE FUNCTION public.is_profile_owner(p_profile_id uuid)
+CREATE FUNCTION public.is_profile_owner(p_profile_id uuid)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -44,7 +51,7 @@ AS $$
 $$;
 
 -- can_record_view function (rate limiting)
-CREATE OR REPLACE FUNCTION public.can_record_view(p_profile_id uuid, p_ip_hash text)
+CREATE FUNCTION public.can_record_view(p_profile_id uuid, p_ip_hash text)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -59,7 +66,7 @@ AS $$
 $$;
 
 -- get_public_badges function
-CREATE OR REPLACE FUNCTION public.get_public_badges()
+CREATE FUNCTION public.get_public_badges()
 RETURNS TABLE (
   id uuid,
   name text,
@@ -83,7 +90,7 @@ AS $$
 $$;
 
 -- get_profile_badges function
-CREATE OR REPLACE FUNCTION public.get_profile_badges(p_profile_id uuid)
+CREATE FUNCTION public.get_profile_badges(p_profile_id uuid)
 RETURNS TABLE (
   id uuid,
   name text,
