@@ -22,10 +22,10 @@ END $$;
 
 -- =====================================================
 -- STEP 2: Helper Functions (KRITISCH für RLS!)
+-- Nutze CREATE OR REPLACE um Abhängigkeitsfehler zu vermeiden
 -- =====================================================
 
-DROP FUNCTION IF EXISTS public.has_role(uuid, app_role);
-CREATE FUNCTION public.has_role(_user_id uuid, _role app_role)
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -40,8 +40,7 @@ AS $$
   )
 $$;
 
-DROP FUNCTION IF EXISTS public.is_profile_owner(uuid);
-CREATE FUNCTION public.is_profile_owner(p_profile_id uuid)
+CREATE OR REPLACE FUNCTION public.is_profile_owner(p_profile_id uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -56,8 +55,7 @@ AS $$
   )
 $$;
 
-DROP FUNCTION IF EXISTS public.can_record_view(uuid, text);
-CREATE FUNCTION public.can_record_view(p_profile_id uuid, p_ip_hash text)
+CREATE OR REPLACE FUNCTION public.can_record_view(p_profile_id uuid, p_ip_hash text)
 RETURNS boolean
 LANGUAGE sql
 STABLE
