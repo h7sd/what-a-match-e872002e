@@ -39,7 +39,7 @@ export const lovable = {
             .from('profiles')
             .select('id')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
           
           // Create profile if it doesn't exist
           if (!existingProfile) {
