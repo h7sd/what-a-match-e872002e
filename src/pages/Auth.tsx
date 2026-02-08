@@ -997,12 +997,10 @@ export default function Auth() {
                   )}
                 </div>
 
-                {/* Turnstile Widget - only on production domains */}
-                {isProductionDomain && (
-                  <div className="flex justify-center py-2">
-                    <div ref={turnstileRef} />
-                  </div>
-                )}
+                {/* Turnstile Widget */}
+                <div className="flex justify-center py-2">
+                  <div ref={turnstileRef} />
+                </div>
 
                 <Button
                   type="submit"
@@ -1102,12 +1100,10 @@ export default function Auth() {
                   <PasswordStrengthIndicator password={password} />
                 </div>
 
-                {/* Turnstile Widget - only on production domains */}
-                {isProductionDomain && (
-                  <div className="flex justify-center py-2">
-                    <div ref={turnstileRef} />
-                  </div>
-                )}
+                {/* Turnstile Widget */}
+                <div className="flex justify-center py-2">
+                  <div ref={turnstileRef} />
+                </div>
 
                 <Button
                   type="submit"
